@@ -11,8 +11,7 @@ import (
 func xlayerInit() {
 	ctx := context.Background()
 	xlayer := evm{
-		Network:  conf.Xlayer,
-		Endpoint: conf.GetXlayerRpcEndpoint(),
+		Network: conf.Xlayer,
 		Block: block{
 			InitStartOffset: -600,
 			RollDelayOffset: 3,
@@ -21,7 +20,7 @@ func xlayerInit() {
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 
-	register(task{callback: xlayer.blockDispatch})
-	register(task{callback: xlayer.blockRoll, duration: time.Second * 3})
-	register(task{callback: xlayer.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: xlayer.blockDispatch})
+	Register(Task{Callback: xlayer.blockRoll, Duration: time.Second * 3})
+	Register(Task{Callback: xlayer.tradeConfirmHandle, Duration: time.Second * 5})
 }

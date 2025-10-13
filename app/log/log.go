@@ -1,15 +1,15 @@
 package log
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/v03413/bepusdt/app/conf"
 	"io"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 var logger *logrus.Logger
 
-func Init() error {
+func Init(path string) error {
 	logger = logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{
 		ForceColors:     true,
@@ -20,7 +20,7 @@ func Init() error {
 
 	logger.SetLevel(logrus.InfoLevel)
 
-	output, err := os.OpenFile(conf.GetOutputLog(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	output, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 
 		return err

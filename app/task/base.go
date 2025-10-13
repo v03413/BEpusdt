@@ -11,8 +11,7 @@ import (
 func baseInit() {
 	ctx := context.Background()
 	base := evm{
-		Network:  conf.Base,
-		Endpoint: conf.GetBaseRpcEndpoint(),
+		Network: conf.Base,
 		Block: block{
 			InitStartOffset: -600,
 			ConfirmedOffset: 40,
@@ -20,7 +19,7 @@ func baseInit() {
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 
-	register(task{callback: base.blockDispatch})
-	register(task{callback: base.blockRoll, duration: time.Second * 5})
-	register(task{callback: base.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: base.blockDispatch})
+	Register(Task{Callback: base.blockRoll, Duration: time.Second * 5})
+	Register(Task{Callback: base.tradeConfirmHandle, Duration: time.Second * 5})
 }

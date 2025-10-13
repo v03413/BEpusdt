@@ -4,45 +4,44 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"runtime"
 
-	"github.com/v03413/bepusdt/app"
-	"github.com/v03413/bepusdt/app/bot"
-	"github.com/v03413/bepusdt/app/conf"
-	"github.com/v03413/bepusdt/app/log"
+	"github.com/urfave/cli/v3"
+	"github.com/v03413/bepusdt/app/command"
 	"github.com/v03413/bepusdt/app/model"
-	"github.com/v03413/bepusdt/app/task"
-	"github.com/v03413/bepusdt/app/web"
 )
 
-type Initializer func() error
-
-var initializers = []Initializer{conf.Init, log.Init, bot.Init, model.Init, task.Init}
-
-func init() {
-	for _, initFunc := range initializers {
-		if err := initFunc(); err != nil {
-
-			panic(fmt.Sprintf("初始化失败: %v", err))
-		}
-	}
-}
-
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	cmd := &cli.Command{
+		Name:  "BEpusdt",
+		Usage: "一款更好用的个人加密货币收款网关",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "sqlite",
+				Value: "/var/lib/bepusdt/sqlite.db",
+				Usage: "SQLite 数据库文件路径",
+			},
+			&cli.StringFlag{
+				Name:  "log",
+				Value: "/var/log/bepusdt.log",
+				Usage: "日志文件保存路径",
+			},
+		},
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			err := model.Init(c.String("sqlite"))
+			if err != nil {
 
-	task.Start(ctx)
-	web.Start(ctx)
+				return ctx, fmt.Errorf("数据库初始化失败 %w", err)
+			}
 
-	fmt.Println("BEpusdt 启动成功，当前版本：" + app.Version)
-
-	{
-		var signals = make(chan os.Signal, 1)
-		signal.Notify(signals, os.Interrupt, os.Kill)
-		<-signals
-		cancel()
-		runtime.GC()
+			return ctx, nil
+		},
+		Commands: []*cli.Command{
+			command.Start,
+			command.Version,
+			command.Reset,
+		},
+	}
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		panic(err)
 	}
 }

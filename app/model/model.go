@@ -2,24 +2,32 @@ package model
 
 import (
 	"fmt"
-	"github.com/glebarez/sqlite"
-	"github.com/v03413/bepusdt/app/conf"
-	"gorm.io/gorm"
 	"os"
 	"path/filepath"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
+var Db *gorm.DB
 var err error
 
-func Init() error {
-	var path = conf.GetSqlitePath()
+type Id struct {
+	ID int64 `gorm:"column:id;type:INTEGER PRIMARY KEY AUTOINCREMENT;;not null;comment:主键ID" json:"id"`
+}
+
+type AutoTimeAt struct {
+	CreatedAt *Datetime `gorm:"column:created_at;type:Datetime;not null;comment:记录创建时间;index" json:"created_at"`
+	UpdatedAt *Datetime `gorm:"column:updated_at;type:Datetime;not null;comment:最后更新时间" json:"updated_at"`
+}
+
+func Init(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 
 		return fmt.Errorf("创建数据库目录失败：%w", err)
 	}
 
-	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{})
+	Db, err = gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
 
 		return fmt.Errorf("数据库初始化失败：%w", err)
@@ -30,12 +38,15 @@ func Init() error {
 		return fmt.Errorf("数据库结构迁移失败：%w", err)
 	}
 
-	addStartWalletAddress()
+	var count int64
+	Db.Model(&Conf{}).Count(&count)
+	if count == 0 {
+		ConfInit()
+	}
 
 	return nil
 }
 
 func AutoMigrate() error {
-
-	return DB.AutoMigrate(&WalletAddress{}, &TradeOrders{}, &NotifyRecord{}, &Config{}, &Webhook{})
+	return Db.AutoMigrate(&Wallet{}, &Order{}, &NotifyRecord{}, &Conf{}, &Rate{})
 }

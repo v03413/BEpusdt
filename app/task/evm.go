@@ -16,11 +16,12 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
+	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/v03413/bepusdt/app/conf"
-	"github.com/v03413/bepusdt/app/help"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 const (
@@ -30,27 +31,27 @@ const (
 
 var chainBlockNum sync.Map
 var contractMap = map[string]string{
-	conf.UsdtXlayer:   model.OrderTradeTypeUsdtXlayer,
-	conf.UsdtBep20:    model.OrderTradeTypeUsdtBep20,
-	conf.UsdtPolygon:  model.OrderTradeTypeUsdtPolygon,
-	conf.UsdtArbitrum: model.OrderTradeTypeUsdtArbitrum,
-	conf.UsdtErc20:    model.OrderTradeTypeUsdtErc20,
-	conf.UsdcErc20:    model.OrderTradeTypeUsdcErc20,
-	conf.UsdcPolygon:  model.OrderTradeTypeUsdcPolygon,
-	conf.UsdcXlayer:   model.OrderTradeTypeUsdcXlayer,
-	conf.UsdcArbitrum: model.OrderTradeTypeUsdcArbitrum,
-	conf.UsdcBep20:    model.OrderTradeTypeUsdcBep20,
-	conf.UsdcBase:     model.OrderTradeTypeUsdcBase,
+	conf.UsdtXlayer:   model.TradeTypeUsdtXlayer,
+	conf.UsdtBep20:    model.TradeTypeUsdtBep20,
+	conf.UsdtPolygon:  model.TradeTypeUsdtPolygon,
+	conf.UsdtArbitrum: model.TradeTypeUsdtArbitrum,
+	conf.UsdtErc20:    model.TradeTypeUsdtErc20,
+	conf.UsdcErc20:    model.TradeTypeUsdcErc20,
+	conf.UsdcPolygon:  model.TradeTypeUsdcPolygon,
+	conf.UsdcXlayer:   model.TradeTypeUsdcXlayer,
+	conf.UsdcArbitrum: model.TradeTypeUsdcArbitrum,
+	conf.UsdcBep20:    model.TradeTypeUsdcBep20,
+	conf.UsdcBase:     model.TradeTypeUsdcBase,
 }
 var networkTokenMap = map[string][]string{
-	conf.Bsc:      {model.OrderTradeTypeUsdtBep20, model.OrderTradeTypeUsdcBep20},
-	conf.Xlayer:   {model.OrderTradeTypeUsdtXlayer, model.OrderTradeTypeUsdcXlayer},
-	conf.Polygon:  {model.OrderTradeTypeUsdtPolygon, model.OrderTradeTypeUsdcPolygon},
-	conf.Arbitrum: {model.OrderTradeTypeUsdtArbitrum, model.OrderTradeTypeUsdcArbitrum},
-	conf.Ethereum: {model.OrderTradeTypeUsdtErc20, model.OrderTradeTypeUsdcErc20},
-	conf.Base:     {model.OrderTradeTypeUsdcBase},
-	conf.Solana:   {model.OrderTradeTypeUsdtSolana, model.OrderTradeTypeUsdcSolana},
-	conf.Aptos:    {model.OrderTradeTypeUsdtAptos, model.OrderTradeTypeUsdcAptos},
+	conf.Bsc:      {model.TradeTypeUsdtBep20, model.TradeTypeUsdcBep20},
+	conf.Xlayer:   {model.TradeTypeUsdtXlayer, model.TradeTypeUsdcXlayer},
+	conf.Polygon:  {model.TradeTypeUsdtPolygon, model.TradeTypeUsdcPolygon},
+	conf.Arbitrum: {model.TradeTypeUsdtArbitrum, model.TradeTypeUsdcArbitrum},
+	conf.Ethereum: {model.TradeTypeUsdtErc20, model.TradeTypeUsdcErc20},
+	conf.Base:     {model.TradeTypeUsdcBase},
+	conf.Solana:   {model.TradeTypeUsdtSolana, model.TradeTypeUsdcSolana},
+	conf.Aptos:    {model.TradeTypeUsdtAptos, model.TradeTypeUsdcAptos},
 }
 var client = &http.Client{Timeout: time.Second * 30}
 var decimals = map[string]int32{
@@ -77,7 +78,6 @@ type block struct {
 
 type evm struct {
 	Network        string
-	Endpoint       string
 	Block          block
 	blockScanQueue *chanx.UnboundedChan[evmBlock]
 }
@@ -87,10 +87,6 @@ type evmBlock struct {
 	To   int64
 }
 
-func init() {
-	//register(task{callback: evmBlockDispatch})
-}
-
 func (e *evm) blockRoll(ctx context.Context) {
 	if rollBreak(e.Network) {
 
@@ -98,7 +94,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 	}
 
 	post := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
-	req, err := http.NewRequestWithContext(ctx, "POST", e.Endpoint, bytes.NewBuffer(post))
+	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
 	if err != nil {
 		log.Warn("Error creating request:", err)
 
@@ -123,15 +119,10 @@ func (e *evm) blockRoll(ctx context.Context) {
 	}
 
 	var res = gjson.ParseBytes(body)
-	var now = help.HexStr2Int(res.Get("result").String()).Int64() - e.Block.RollDelayOffset
+	var now = utils.HexStr2Int(res.Get("result").String()).Int64() - e.Block.RollDelayOffset
 	if now <= 0 {
 
 		return
-	}
-
-	if conf.GetTradeIsConfirmed() {
-
-		now = now - e.Block.ConfirmedOffset
 	}
 
 	var lastBlockNumber int64
@@ -140,7 +131,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 		lastBlockNumber = v.(int64)
 	}
 
-	if now-lastBlockNumber > conf.BlockHeightMaxDiff {
+	if now-lastBlockNumber > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
 		lastBlockNumber = e.blockInitOffset(now, e.Block.InitStartOffset) - 1
 	}
 
@@ -220,7 +211,7 @@ func (e *evm) getBlockByNumber(a any) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", e.Endpoint, bytes.NewBuffer([]byte(fmt.Sprintf(`[%s]`, strings.Join(items, ",")))))
+	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer([]byte(fmt.Sprintf(`[%s]`, strings.Join(items, ",")))))
 	if err != nil {
 		log.Warn("Error creating request:", err)
 
@@ -258,7 +249,7 @@ func (e *evm) getBlockByNumber(a any) {
 			return
 		}
 
-		timestamp[itm.Get("result.number").String()] = time.Unix(help.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
+		timestamp[itm.Get("result.number").String()] = time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
 	}
 
 	transfers, err := e.parseBlockTransfer(b, timestamp)
@@ -281,7 +272,7 @@ func (e *evm) getBlockByNumber(a any) {
 func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
 	transfers := make([]transfer, 0)
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x%x","toBlock":"0x%x","topics":["%s"]}],"id":1}`, b.From, b.To, evmTransferEvent))
-	resp, err := client.Post(e.Endpoint, "application/json", bytes.NewBuffer(post))
+	resp, err := client.Post(e.rpcEndpoint(), "application/json", bytes.NewBuffer(post))
 	if err != nil {
 
 		return transfers, errors.Join(errors.New("eth_getLogs Post Error"), err)
@@ -354,9 +345,9 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 	var orders = getConfirmingOrders(networkTokenMap[e.Network])
 	var wg sync.WaitGroup
 
-	var handle = func(o model.TradeOrders) {
-		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":1}`, o.TradeHash))
-		req, err := http.NewRequestWithContext(ctx, "POST", e.Endpoint, bytes.NewBuffer(post))
+	var handle = func(o model.Order) {
+		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":1}`, o.RefHash))
+		req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
 		if err != nil {
 			log.Warn("evm tradeConfirmHandle Error creating request:", err)
 
@@ -403,6 +394,11 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 	wg.Wait()
 }
 
+func (e *evm) rpcEndpoint() string {
+
+	return model.Endpoint(e.Network)
+}
+
 func rollBreak(network string) bool {
 	token, ok := networkTokenMap[network]
 	if !ok {
@@ -411,13 +407,13 @@ func rollBreak(network string) bool {
 	}
 
 	var count int64 = 0
-	model.DB.Model(&model.TradeOrders{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, token).Count(&count)
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, token).Count(&count)
 	if count > 0 {
 
 		return false
 	}
 
-	model.DB.Model(&model.WalletAddress{}).Where("other_notify = ? and trade_type in (?)", model.OtherNotifyEnable, token).Count(&count)
+	model.Db.Model(&model.Wallet{}).Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, token).Count(&count)
 	if count > 0 {
 
 		return false

@@ -1,0 +1,47 @@
+@use "@/style/var/index" as *;
+
+// 设置滚动条的样式
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+// 基于 WebKit 内核的浏览器
+// 设置滚动条的样式，宽、圆角、背景颜色
+::-webkit-scrollbar-thumb {
+  width: 6px;
+  height: 6px;
+  background-color: $color-border-3;
+  border-radius: 6px;
+}
+
+// 设置滚动条hover样式，宽、圆角、背景颜色
+::-webkit-scrollbar-thumb:hover {
+  width: 6px;
+  height: 6px;
+  background-color: $color-border-4;
+}
+
+// 设置IE/Edge浏览器滚动条的样式，与webkit内核浏览器样式相同
+::-ms-scrollbar-thumb {
+  width: 6px;
+  height: 6px;
+  background-color: $color-border-3;
+  border-radius: 6px;
+}
+::-ms-scrollbar-thumb:hover {
+  width: 6px;
+  height: 6px;
+  background-color: $color-border-4;
+}
+
+// arco滚动条样式
+// 横向
+.arco-scrollbar-thumb-direction-horizontal .arco-scrollbar-thumb-bar {
+  height: 4px !important;
+}
+
+// 纵向
+.arco-scrollbar-thumb-direction-vertical .arco-scrollbar-thumb-bar {
+  width: 4px !important;
+}

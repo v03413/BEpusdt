@@ -35,8 +35,8 @@ type version struct {
 var apt aptos
 
 var aptDecimals = map[string]int32{
-	model.OrderTradeTypeUsdtAptos: conf.UsdtAptosDecimals,
-	model.OrderTradeTypeUsdcAptos: conf.UsdcAptosDecimals,
+	model.TradeTypeUsdtAptos: conf.UsdtAptosDecimals,
+	model.TradeTypeUsdcAptos: conf.UsdcAptosDecimals,
 }
 
 type aptEvent struct {
@@ -53,9 +53,9 @@ type aptAmount struct {
 
 func init() {
 	apt = newAptos()
-	register(task{callback: apt.versionDispatch})
-	register(task{callback: apt.versionRoll, duration: time.Second * 3})
-	register(task{callback: apt.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: apt.versionDispatch})
+	Register(Task{Callback: apt.versionRoll, Duration: time.Second * 3})
+	Register(Task{Callback: apt.tradeConfirmHandle, Duration: time.Second * 5})
 }
 
 func newAptos() aptos {
@@ -74,7 +74,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 		return
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, "GET", conf.GetAptosRpcNode()+"/v1", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"/v1", nil)
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Warn("aptos versionRoll Error sending request:", err)
@@ -102,11 +102,6 @@ func (a *aptos) versionRoll(ctx context.Context) {
 		log.Warn("versionRoll Error: invalid ledger_version:", now)
 
 		return
-	}
-
-	if conf.GetTradeIsConfirmed() {
-
-		now = now - a.versionConfirmedOffset
 	}
 
 	if now-a.lastVersion > 10000 {
@@ -198,7 +193,7 @@ func (a *aptos) versionParse(n any) {
 	p := n.(version)
 
 	var net = conf.Aptos
-	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", conf.GetAptosRpcNode(), p.Start, p.Limit)
+	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", model.Endpoint(conf.Aptos), p.Start, p.Limit)
 
 	conf.SetBlockTotal(net)
 	resp, err := client.Get(url)
@@ -255,9 +250,9 @@ func (a *aptos) versionParse(n any) {
 				addr := v.Get("address").String()
 				switch data.Get("data.metadata.inner").String() {
 				case conf.UsdtAptos:
-					addrType[addr] = model.OrderTradeTypeUsdtAptos
+					addrType[addr] = model.TradeTypeUsdtAptos
 				case conf.UsdcAptos:
-					addrType[addr] = model.OrderTradeTypeUsdcAptos
+					addrType[addr] = model.TradeTypeUsdcAptos
 				}
 			}
 			if data.Get("type").String() == "0x1::object::ObjectCore" {
@@ -371,12 +366,12 @@ func (a *aptos) versionParse(n any) {
 		}
 
 		// 处理 USDT
-		usdtDeposits, usdtFrom := processEvents(model.OrderTradeTypeUsdtAptos, aptEvents)
-		generateTransfers(usdtDeposits, usdtFrom, model.OrderTradeTypeUsdtAptos, aptDecimals[model.OrderTradeTypeUsdtAptos])
+		usdtDeposits, usdtFrom := processEvents(model.TradeTypeUsdtAptos, aptEvents)
+		generateTransfers(usdtDeposits, usdtFrom, model.TradeTypeUsdtAptos, aptDecimals[model.TradeTypeUsdtAptos])
 
 		// 处理 USDC
-		usdcDeposits, usdcFrom := processEvents(model.OrderTradeTypeUsdcAptos, aptEvents)
-		generateTransfers(usdcDeposits, usdcFrom, model.OrderTradeTypeUsdcAptos, aptDecimals[model.OrderTradeTypeUsdcAptos])
+		usdcDeposits, usdcFrom := processEvents(model.TradeTypeUsdcAptos, aptEvents)
+		generateTransfers(usdcDeposits, usdcFrom, model.TradeTypeUsdcAptos, aptDecimals[model.TradeTypeUsdcAptos])
 	}
 
 	if len(transfers) > 0 {
@@ -398,8 +393,8 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 	var orders = getConfirmingOrders(networkTokenMap[conf.Aptos])
 	var wg sync.WaitGroup
 
-	var handle = func(o model.TradeOrders) {
-		req, _ := http.NewRequestWithContext(ctx, "GET", conf.GetAptosRpcNode()+"v1/transactions/by_hash/"+o.TradeHash, nil)
+	var handle = func(o model.Order) {
+		req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"v1/transactions/by_hash/"+o.RefHash, nil)
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Warn("aptos tradeConfirmHandle Error sending request:", err)

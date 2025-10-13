@@ -4,18 +4,15 @@ import (
 	"context"
 	"sync"
 	"time"
-
-	"github.com/shopspring/decimal"
-	"github.com/v03413/bepusdt/app/conf"
 )
 
-type task struct {
-	duration time.Duration
-	callback func(ctx context.Context)
+type Task struct {
+	Duration time.Duration
+	Callback func(ctx context.Context)
 }
 
 var (
-	tasks []task
+	tasks []Task
 	mu    sync.Mutex
 )
 
@@ -30,30 +27,16 @@ func Init() error {
 	return nil
 }
 
-func register(t task) {
+func Register(t Task) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if t.callback == nil {
+	if t.Callback == nil {
 
-		panic("task callback cannot be nil")
+		panic("Task Callback cannot be nil")
 	}
 
 	tasks = append(tasks, t)
-}
-
-func inAmountRange(payAmount decimal.Decimal) bool {
-	if payAmount.GreaterThan(conf.GetPaymentAmountMax()) {
-
-		return false
-	}
-
-	if payAmount.LessThan(conf.GetPaymentAmountMin()) {
-
-		return false
-	}
-
-	return true
 }
 
 func Start(ctx context.Context) {
@@ -61,16 +44,16 @@ func Start(ctx context.Context) {
 	defer mu.Unlock()
 
 	for _, t := range tasks {
-		go func(t task) {
-			if t.duration <= 0 {
-				t.callback(ctx)
+		go func(t Task) {
+			if t.Duration <= 0 {
+				t.Callback(ctx)
 
 				return
 			}
 
-			t.callback(ctx)
+			t.Callback(ctx)
 
-			ticker := time.NewTicker(t.duration)
+			ticker := time.NewTicker(t.Duration)
 			defer ticker.Stop()
 
 			for {
@@ -78,7 +61,7 @@ func Start(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					t.callback(ctx)
+					t.Callback(ctx)
 				}
 			}
 		}(t)

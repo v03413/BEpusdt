@@ -1,0 +1,32 @@
+@use "@/style/var/index" as *;
+@use "@/style/model";
+@use "@/style/media";
+* {
+  padding: 0;
+  margin: 0;
+}
+html,
+body,
+#app {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+html {
+  font-size: 14px;
+}
+#app {
+  overflow: hidden;
+}
+
+// 设置全局颜色-关联黑暗模式
+// 全局取一级容器背景色$color-bg-2，main窗口取边框色浅色$color-border-1
+body {
+  color: $color-text-1; // 整体文字的颜色
+  background: $color-bg-2; // body背景颜色
+}
+
+// 设置nprogress进度条样式
+#nprogress .bar {
+  background: $color-primary !important;
+}
