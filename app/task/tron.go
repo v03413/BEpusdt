@@ -18,11 +18,10 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 	"github.com/v03413/tronprotocol/api"
 	"github.com/v03413/tronprotocol/core"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var gasFreeUsdtTokenAddress = []byte{0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 0x78, 0x09, 0x86, 0xa4, 0x2c, 0x78, 0xec, 0x9c, 0x7f, 0x77, 0xe6, 0xde, 0xd1, 0x3c}
@@ -33,10 +32,6 @@ var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 
 var trc20TokenDecimals = map[string]int32{
 	model.TradeTypeUsdtTrc20: conf.UsdtTronDecimals,
 	model.TradeTypeUsdcTrc20: conf.UsdcTronDecimals,
-}
-var grpcParams = grpc.ConnectParams{
-	Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
-	MinConnectTimeout: 1 * time.Minute,
 }
 
 type tron struct {
@@ -70,7 +65,7 @@ func (t *tron) blockRoll(context.Context) {
 		return
 	}
 
-	conn, err := grpc.NewClient(model.Endpoint(conf.Tron), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey))
 	if err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
@@ -135,10 +130,10 @@ func (t *tron) blockDispatch(context.Context) {
 
 func (t *tron) blockParse(n any) {
 	var num = n.(int64)
-	var node = model.Endpoint(conf.Tron)
+
 	var conn *grpc.ClientConn
 	var err error
-	if conn, err = grpc.NewClient(node, grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials())); err != nil {
+	if conn, err = utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey)); err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
 		return
@@ -403,7 +398,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
-		conn, err := grpc.NewClient(model.Endpoint(conf.Tron), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey))
 		if err != nil {
 			log.Task.Error("grpc.NewClient", err)
 
