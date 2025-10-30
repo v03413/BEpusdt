@@ -9,6 +9,10 @@ func GetTronGrpcNode() string {
 	return defaultTronGrpcNode
 }
 
+func GetTronApiKey() string {
+	return cfg.TronApiKey
+}
+
 func GetAptosRpcNode() string {
 	if cfg.AptosRpcNode != "" {
 		return cfg.AptosRpcNode
