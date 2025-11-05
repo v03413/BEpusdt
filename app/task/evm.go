@@ -302,7 +302,7 @@ func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 	}
 
 	for _, itm := range data.Get("result").Array() {
-		to := itm.Get("address").String()
+		to := strings.ToLower(itm.Get("address").String()) // 转换为小写以匹配contractMap
 		tradeType, ok := contractMap[to]
 		if !ok {
 
@@ -320,8 +320,8 @@ func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 			continue
 		}
 
-		from := fmt.Sprintf("0x%s", topics[1].String()[26:])
-		recv := fmt.Sprintf("0x%s", topics[2].String()[26:])
+		from := strings.ToLower(fmt.Sprintf("0x%s", topics[1].String()[26:])) // 转换为小写
+		recv := strings.ToLower(fmt.Sprintf("0x%s", topics[2].String()[26:])) // 转换为小写
 		amount, ok := big.NewInt(0).SetString(itm.Get("data").String()[2:], 16)
 		if !ok || amount.Sign() <= 0 {
 
