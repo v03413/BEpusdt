@@ -5,3 +5,5 @@ tmp
 conf.toml
 # Added by goreleaser init:
 dist/
+*.log
+*.db

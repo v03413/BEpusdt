@@ -10,6 +10,8 @@ static_path = ""
 sqlite_path = "/var/lib/bepusdt/sqlite.db"
 # Tron网络GRPC节点，可选列表：https://developers.tron.network/docs/networks#public-node
 tron_grpc_node = "18.141.79.38:50051"
+# Tron API Key，从 https://www.trongrid.io/ 获取，留空则不使用API key（部分节点可能需要）
+tron_api_key = ""
 # 日志输出路径
 output_log = "/var/log/bepusdt.log"
 # Webhook地址，留空则不启用
