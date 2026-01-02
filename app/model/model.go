@@ -13,12 +13,12 @@ var Db *gorm.DB
 var err error
 
 type Id struct {
-	ID int64 `gorm:"column:id;type:INTEGER PRIMARY KEY AUTOINCREMENT;;not null;comment:主键ID" json:"id"`
+	ID int64 `Gorm:"column:id;type:INTEGER PRIMARY KEY AUTOINCREMENT;;not null;comment:主键ID" json:"id"`
 }
 
 type AutoTimeAt struct {
-	CreatedAt *Datetime `gorm:"column:created_at;type:Datetime;not null;comment:记录创建时间;index" json:"created_at"`
-	UpdatedAt *Datetime `gorm:"column:updated_at;type:Datetime;not null;comment:最后更新时间" json:"updated_at"`
+	CreatedAt *Datetime `Gorm:"column:created_at;type:Datetime;not null;comment:记录创建时间;index" json:"created_at"`
+	UpdatedAt *Datetime `Gorm:"column:updated_at;type:Datetime;not null;comment:最后更新时间" json:"updated_at"`
 }
 
 func Init(path string) error {

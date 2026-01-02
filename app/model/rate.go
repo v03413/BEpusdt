@@ -32,11 +32,11 @@ var SupportTradeCrypto = []string{string(TokenTypeUSDT), string(TokenTypeUSDC), 
 
 type Rate struct {
 	Id
-	Rate    string  `gorm:"column:rate;type:varchar(32);not null;comment:订单汇率" json:"rate"`
-	Fiat    string  `gorm:"column:fiat;type:varchar(16);not null;comment:法币" json:"fiat"`
-	Crypto  string  `gorm:"column:crypto;type:varchar(16);not null;comment:加密货币" json:"crypto"`
-	RawRate float64 `gorm:"column:raw_rate;type:decimal(10,4);not null;comment:基准汇率" json:"raw_rate"`
-	Syntax  string  `gorm:"column:syntax;type:varchar(32);not null;default:'';comment:浮动语法" json:"syntax"`
+	Rate    string  `Gorm:"column:rate;type:varchar(32);not null;comment:订单汇率" json:"rate"`
+	Fiat    string  `Gorm:"column:fiat;type:varchar(16);not null;comment:法币" json:"fiat"`
+	Crypto  string  `Gorm:"column:crypto;type:varchar(16);not null;comment:加密货币" json:"crypto"`
+	RawRate float64 `Gorm:"column:raw_rate;type:decimal(10,4);not null;comment:基准汇率" json:"raw_rate"`
+	Syntax  string  `Gorm:"column:syntax;type:varchar(32);not null;default:'';comment:浮动语法" json:"syntax"`
 	AutoTimeAt
 }
 
