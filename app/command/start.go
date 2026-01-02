@@ -78,6 +78,10 @@ func start(ctx context.Context, cmd *cli.Command) error {
 	signal.Notify(signals, os.Interrupt, os.Kill)
 	<-signals
 
+	if err := log.Close(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "关闭日志文件失败: %v\n", err)
+	}
+
 	runtime.GC()
 
 	return nil

@@ -71,7 +71,7 @@ func (t *tron) blockRoll(context.Context) {
 
 	conn, err := grpc.NewClient(model.Endpoint(conf.Tron), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Error("grpc.NewClient", err)
+		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
@@ -85,7 +85,7 @@ func (t *tron) blockRoll(context.Context) {
 	defer cancel()
 
 	if err1 != nil {
-		log.Warn("GetNowBlock2 超时：", err1)
+		log.Task.Warn("GetNowBlock2 超时：", err1)
 
 		return
 	}
@@ -127,7 +127,7 @@ func (t *tron) blockDispatch(context.Context) {
 		if err := p.Invoke(n); err != nil {
 			t.blockScanQueue.In <- n
 
-			log.Warn("Tron Error invoking process block:", err)
+			log.Task.Warn("Tron Error invoking process block:", err)
 		}
 	}
 }
@@ -138,7 +138,7 @@ func (t *tron) blockParse(n any) {
 	var conn *grpc.ClientConn
 	var err error
 	if conn, err = grpc.NewClient(node, grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials())); err != nil {
-		log.Error("grpc.NewClient", err)
+		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
@@ -154,7 +154,7 @@ func (t *tron) blockParse(n any) {
 	if err2 != nil {
 		conf.SetBlockFail(conf.Tron)
 		t.blockScanQueue.In <- num
-		log.Warn("GetBlockByNum2 Error", err2)
+		log.Task.Warn("GetBlockByNum2 Error", err2)
 
 		return
 	}
@@ -315,7 +315,7 @@ func (t *tron) blockParse(n any) {
 		resourceQueue.In <- resources
 	}
 
-	log.Info("区块扫描完成", num, conf.GetBlockSuccRate(conf.Tron), conf.Tron)
+	log.Task.Info("区块扫描完成", num, conf.GetBlockSuccRate(conf.Tron), conf.Tron)
 }
 
 func (t *tron) blockInitOffset(now int64) {
@@ -404,7 +404,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 	var handle = func(o model.Order) {
 		conn, err := grpc.NewClient(model.Endpoint(conf.Tron), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Error("grpc.NewClient", err)
+			log.Task.Error("grpc.NewClient", err)
 
 			return
 		}
@@ -415,7 +415,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 
 		idBytes, err := hex.DecodeString(o.RefHash)
 		if err != nil {
-			log.Error("hex.DecodeString", err)
+			log.Task.Error("hex.DecodeString", err)
 
 			return
 		}
@@ -423,7 +423,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 		if o.TradeType == model.TradeTypeTronTrx {
 			trans, err := c.GetTransactionById(ctx, &api.BytesMessage{Value: idBytes})
 			if err != nil {
-				log.Error("GetTransactionById", err)
+				log.Task.Error("GetTransactionById", err)
 
 				return
 			}
@@ -437,7 +437,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 
 		info, err := c.GetTransactionInfoById(ctx, &api.BytesMessage{Value: idBytes})
 		if err != nil {
-			log.Error("GetTransactionInfoById", err)
+			log.Task.Error("GetTransactionInfoById", err)
 
 			return
 		}

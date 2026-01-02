@@ -77,7 +77,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"/v1", nil)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warn("aptos versionRoll Error sending request:", err)
+		log.Task.Warn("aptos versionRoll Error sending request:", err)
 
 		return
 	}
@@ -85,21 +85,21 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Warn("aptos versionRoll Error response status code:", resp.StatusCode)
+		log.Task.Warn("aptos versionRoll Error response status code:", resp.StatusCode)
 
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warn("aptos versionRoll Error reading response body:", err)
+		log.Task.Warn("aptos versionRoll Error reading response body:", err)
 
 		return
 	}
 
 	now := gjson.GetBytes(body, "ledger_version").Int()
 	if now <= 0 {
-		log.Warn("versionRoll Error: invalid ledger_version:", now)
+		log.Task.Warn("versionRoll Error: invalid ledger_version:", now)
 
 		return
 	}
@@ -151,11 +151,11 @@ func (a *aptos) versionDispatch(ctx context.Context) {
 		case n := <-a.versionQueue.Out:
 			if err := p.Invoke(n); err != nil {
 				a.versionQueue.In <- n
-				log.Warn("versionDispatch Error invoking process slot:", err)
+				log.Task.Warn("versionDispatch Error invoking process slot:", err)
 			}
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
-				log.Warn("versionDispatch context done:", err)
+				log.Task.Warn("versionDispatch context done:", err)
 			}
 
 			return
@@ -199,7 +199,7 @@ func (a *aptos) versionParse(n any) {
 	resp, err := client.Get(url)
 	if err != nil {
 		conf.SetBlockFail(net)
-		log.Warn("versionParse Error sending request:", err)
+		log.Task.Warn("versionParse Error sending request:", err)
 
 		return
 	}
@@ -207,7 +207,7 @@ func (a *aptos) versionParse(n any) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		conf.SetBlockFail(net)
-		log.Warn("versionParse Error response status code:", resp.StatusCode)
+		log.Task.Warn("versionParse Error response status code:", resp.StatusCode)
 
 		return
 	}
@@ -216,7 +216,7 @@ func (a *aptos) versionParse(n any) {
 	if err != nil {
 		conf.SetBlockFail(net)
 		a.versionQueue.In <- p
-		log.Warn("versionParse Error reading response body:", err)
+		log.Task.Warn("versionParse Error reading response body:", err)
 
 		return
 	}
@@ -224,7 +224,7 @@ func (a *aptos) versionParse(n any) {
 	if !gjson.ValidBytes(body) {
 		conf.SetBlockFail(net)
 		a.versionQueue.In <- p
-		log.Warn("versionParse Error: invalid JSON response body")
+		log.Task.Warn("versionParse Error: invalid JSON response body")
 
 		return
 	}
@@ -379,7 +379,7 @@ func (a *aptos) versionParse(n any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Info("区块扫描完成", fmt.Sprintf("%d.%d", p.Start, p.Limit), conf.GetBlockSuccRate(net), net)
+	log.Task.Info("区块扫描完成", fmt.Sprintf("%d.%d", p.Start, p.Limit), conf.GetBlockSuccRate(net), net)
 }
 
 func (a *aptos) padAddressLeadingZeros(addr string) string {
@@ -397,7 +397,7 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 		req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"v1/transactions/by_hash/"+o.RefHash, nil)
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Warn("aptos tradeConfirmHandle Error sending request:", err)
+			log.Task.Warn("aptos tradeConfirmHandle Error sending request:", err)
 
 			return
 		}
@@ -405,21 +405,21 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != 200 {
-			log.Warn("aptos tradeConfirmHandle Error response status code:", resp.StatusCode)
+			log.Task.Warn("aptos tradeConfirmHandle Error response status code:", resp.StatusCode)
 
 			return
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Warn("aptos tradeConfirmHandle Error reading response body:", err)
+			log.Task.Warn("aptos tradeConfirmHandle Error reading response body:", err)
 
 			return
 		}
 
 		data := gjson.ParseBytes(body)
 		if data.Get("error_code").Exists() {
-			log.Warn("aptos tradeConfirmHandle Error:", data.Get("message").String())
+			log.Task.Warn("aptos tradeConfirmHandle Error:", data.Get("message").String())
 
 			return
 		}

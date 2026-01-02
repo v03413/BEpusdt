@@ -19,7 +19,7 @@ func init() {
 func notifyRetry(context.Context) {
 	tradeOrders, err := model.GetNotifyFailedTradeOrders()
 	if err != nil {
-		log.Error("待回调订单获取失败", err)
+		log.Task.Error("待回调订单获取失败", err)
 
 		return
 	}

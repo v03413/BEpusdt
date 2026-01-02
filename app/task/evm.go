@@ -96,7 +96,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 	post := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
 	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
 	if err != nil {
-		log.Warn("Error creating request:", err)
+		log.Task.Warn("Error creating request:", err)
 
 		return
 	}
@@ -104,7 +104,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warn("Error sending request:", err)
+		log.Task.Warn("Error sending request:", err)
 
 		return
 	}
@@ -113,7 +113,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warn("Error reading response body:", err)
+		log.Task.Warn("Error reading response body:", err)
 
 		return
 	}
@@ -189,7 +189,7 @@ func (e *evm) blockDispatch(ctx context.Context) {
 			if err := p.Invoke(n); err != nil {
 				e.blockScanQueue.In <- n
 
-				log.Warn("evmBlockDispatch Error invoking process block:", err)
+				log.Task.Warn("evmBlockDispatch Error invoking process block:", err)
 			}
 		}
 	}
@@ -198,7 +198,7 @@ func (e *evm) blockDispatch(ctx context.Context) {
 func (e *evm) getBlockByNumber(a any) {
 	b, ok := a.(evmBlock)
 	if !ok {
-		log.Warn("evmBlockParse Error: expected []int64, got", a)
+		log.Task.Warn("evmBlockParse Error: expected []int64, got", a)
 
 		return
 	}
@@ -213,7 +213,7 @@ func (e *evm) getBlockByNumber(a any) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer([]byte(fmt.Sprintf(`[%s]`, strings.Join(items, ",")))))
 	if err != nil {
-		log.Warn("Error creating request:", err)
+		log.Task.Warn("Error creating request:", err)
 
 		return
 	}
@@ -223,7 +223,7 @@ func (e *evm) getBlockByNumber(a any) {
 	if err != nil {
 		conf.SetBlockFail(e.Network)
 		e.blockScanQueue.In <- b
-		log.Warn("eth_getBlockByNumber Error sending request:", err)
+		log.Task.Warn("eth_getBlockByNumber Error sending request:", err)
 
 		return
 	}
@@ -234,7 +234,7 @@ func (e *evm) getBlockByNumber(a any) {
 	if err != nil {
 		conf.SetBlockFail(e.Network)
 		e.blockScanQueue.In <- b
-		log.Warn("eth_getBlockByNumber Error reading response body:", err)
+		log.Task.Warn("eth_getBlockByNumber Error reading response body:", err)
 
 		return
 	}
@@ -244,7 +244,7 @@ func (e *evm) getBlockByNumber(a any) {
 		if itm.Get("error").Exists() {
 			conf.SetBlockFail(e.Network)
 			e.blockScanQueue.In <- b
-			log.Warn(fmt.Sprintf("%s eth_getBlockByNumber response error %s", e.Network, itm.Get("error").String()))
+			log.Task.Warn(fmt.Sprintf("%s eth_getBlockByNumber response error %s", e.Network, itm.Get("error").String()))
 
 			return
 		}
@@ -256,7 +256,7 @@ func (e *evm) getBlockByNumber(a any) {
 	if err != nil {
 		conf.SetBlockFail(e.Network)
 		e.blockScanQueue.In <- b
-		log.Warn("evmBlockParse Error parsing block transfer:", err)
+		log.Task.Warn("evmBlockParse Error parsing block transfer:", err)
 
 		return
 	}
@@ -266,7 +266,7 @@ func (e *evm) getBlockByNumber(a any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Info("区块扫描完成", b, conf.GetBlockSuccRate(e.Network), e.Network)
+	log.Task.Info("区块扫描完成", b, conf.GetBlockSuccRate(e.Network), e.Network)
 }
 
 func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
@@ -321,7 +321,7 @@ func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 
 		blockNum, err := strconv.ParseInt(itm.Get("blockNumber").String(), 0, 64)
 		if err != nil {
-			log.Warn("evmBlockParse Error parsing block number:", err)
+			log.Task.Warn("evmBlockParse Error parsing block number:", err)
 
 			continue
 		}
@@ -349,7 +349,7 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":1}`, o.RefHash))
 		req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
 		if err != nil {
-			log.Warn("evm tradeConfirmHandle Error creating request:", err)
+			log.Task.Warn("evm tradeConfirmHandle Error creating request:", err)
 
 			return
 		}
@@ -357,7 +357,7 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Warn("evm tradeConfirmHandle Error sending request:", err)
+			log.Task.Warn("evm tradeConfirmHandle Error sending request:", err)
 
 			return
 		}
@@ -366,14 +366,14 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Warn("evm tradeConfirmHandle Error reading response body:", err)
+			log.Task.Warn("evm tradeConfirmHandle Error reading response body:", err)
 
 			return
 		}
 
 		data := gjson.ParseBytes(body)
 		if data.Get("error").Exists() {
-			log.Warn(fmt.Sprintf("%s eth_getTransactionReceipt response error %s", e.Network, data.Get("error").String()))
+			log.Task.Warn(fmt.Sprintf("%s eth_getTransactionReceipt response error %s", e.Network, data.Get("error").String()))
 
 			return
 		}
