@@ -6,6 +6,7 @@ import (
 
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/model"
 )
 
 func ethInit() {
@@ -15,6 +16,11 @@ func ethInit() {
 		Block: block{
 			InitStartOffset: -100,
 			ConfirmedOffset: 12,
+		},
+		Native: evmNative{
+			Parse:     true,
+			TradeType: model.EthereumEth,
+			Decimal:   conf.EthereumEthDecimals,
 		},
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}

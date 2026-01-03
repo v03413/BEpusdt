@@ -29,6 +29,8 @@ type authPasswordReq struct {
 }
 
 var types = map[model.TradeType]string{
+	model.BscBnb:       "BSC・BNB",
+	model.EthereumEth:  "Ethereum・ETH",
 	model.TronTrx:      "TRON・TRX",
 	model.UsdtTrc20:    "USDT・TRC20",
 	model.UsdtErc20:    "USDT・ERC20",

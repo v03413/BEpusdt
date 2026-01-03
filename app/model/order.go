@@ -23,7 +23,16 @@ const (
 	OrderStatusConfirming = 5 // 等待交易确认
 	OrderStatusFailed     = 6 // 交易确认失败
 
+	BscBnb       TradeType = "bsc.bnb"
+	EthereumEth  TradeType = "ethereum.eth"
+	SolanaSol    TradeType = "solana.sol"
+	PolygonMatic TradeType = "polygon.matic"
+	AptosApt     TradeType = "aptos.apt"
+	ArbitrumEth  TradeType = "arbitrum.eth"
+	BaseEth      TradeType = "base.eth"
+	XlayerOkb    TradeType = "xlayer.okb"
 	TronTrx      TradeType = "tron.trx"
+
 	UsdtTrc20    TradeType = "usdt.trc20"
 	UsdcTrc20    TradeType = "usdc.trc20"
 	UsdtPolygon  TradeType = "usdt.polygon"
@@ -184,7 +193,7 @@ func (o *Order) GetStatusEmoji() string {
 
 func (o *Order) GetDetailUrl() string {
 
-	return GetDetailUrl(TradeType(o.TradeType), o.RefHash)
+	return GetDetailUrl(o.TradeType, o.RefHash)
 }
 
 func (o *Order) TableName() string {

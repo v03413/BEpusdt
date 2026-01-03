@@ -44,11 +44,11 @@ var contractMap = map[string]model.TradeType{
 	conf.UsdcBase:     model.UsdcBase,
 }
 var networkTokenMap = map[string][]model.TradeType{
-	conf.Bsc:      {model.UsdtBep20, model.UsdcBep20},
+	conf.Bsc:      {model.UsdtBep20, model.UsdcBep20, model.BscBnb},
 	conf.Xlayer:   {model.UsdtXlayer, model.UsdcXlayer},
 	conf.Polygon:  {model.UsdtPolygon, model.UsdcPolygon},
 	conf.Arbitrum: {model.UsdtArbitrum, model.UsdcArbitrum},
-	conf.Ethereum: {model.UsdtErc20, model.UsdcErc20},
+	conf.Ethereum: {model.UsdtErc20, model.UsdcErc20, model.EthereumEth},
 	conf.Base:     {model.UsdcBase},
 	conf.Solana:   {model.UsdtSolana, model.UsdcSolana},
 	conf.Aptos:    {model.UsdtAptos, model.UsdcAptos},
@@ -76,9 +76,16 @@ type block struct {
 	ConfirmedOffset int64 // 确认偏移量，开启交易确认后，区块高度需要减去此值认为交易已确认
 }
 
+type evmNative struct {
+	Parse     bool
+	Decimal   int32
+	TradeType model.TradeType
+}
+
 type evm struct {
 	Network        string
 	Block          block
+	Native         evmNative
 	blockScanQueue *chanx.UnboundedChan[evmBlock]
 }
 
@@ -198,14 +205,14 @@ func (e *evm) blockDispatch(ctx context.Context) {
 func (e *evm) getBlockByNumber(a any) {
 	b, ok := a.(evmBlock)
 	if !ok {
-		log.Task.Warn("evmBlockParse Error: expected []int64, got", a)
+		log.Task.Warn("Evm Block Parse Error: expected []int64, got", a)
 
 		return
 	}
 
 	items := make([]string, 0)
 	for i := b.From; i <= b.To; i++ {
-		items = append(items, fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x",false],"id":%d}`, i, i))
+		items = append(items, fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x",%t],"id":%d}`, i, e.Native.Parse, i))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
@@ -239,6 +246,7 @@ func (e *evm) getBlockByNumber(a any) {
 		return
 	}
 
+	nativeTransfers := make([]transfer, 0)
 	timestamp := make(map[string]time.Time)
 	for _, itm := range gjson.ParseBytes(body).Array() {
 		if itm.Get("error").Exists() {
@@ -250,15 +258,62 @@ func (e *evm) getBlockByNumber(a any) {
 		}
 
 		timestamp[itm.Get("result.number").String()] = time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
+		blockNumHex := itm.Get("result.number").String()
+		blockTime := time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
+		timestamp[blockNumHex] = blockTime
+		if e.Native.Parse {
+			for _, tx := range itm.Get("result.transactions").Array() {
+				if tx.Get("input").String() != "0x" {
+					// 非原生币交易
+
+					continue
+				}
+
+				valStr := tx.Get("value").String()
+				if valStr == "0x0" || len(valStr) < 3 {
+					// 过滤 0 值交易
+
+					continue
+				}
+
+				amount, ok := big.NewInt(0).SetString(valStr[2:], 16)
+				if !ok || amount.Sign() <= 0 {
+
+					continue
+				}
+
+				toAddress := tx.Get("to").String()
+				if toAddress == "" { // 合约创建交易 to 为空
+
+					continue
+				}
+
+				nativeTransfers = append(nativeTransfers, transfer{
+					Network:     e.Network,
+					FromAddress: tx.Get("from").String(),
+					RecvAddress: toAddress,
+					Amount:      decimal.NewFromBigInt(amount, e.Native.Decimal),
+					TxHash:      tx.Get("hash").String(),
+					BlockNum:    utils.HexStr2Int(blockNumHex).Int64(),
+					Timestamp:   blockTime,
+					TradeType:   e.Native.TradeType,
+				})
+			}
+		}
 	}
 
 	transfers, err := e.parseBlockTransfer(b, timestamp)
 	if err != nil {
 		conf.SetBlockFail(e.Network)
 		e.blockScanQueue.In <- b
-		log.Task.Warn("evmBlockParse Error parsing block transfer:", err)
+		log.Task.Warn("Evm Block Parse Error parsing block transfer:", err)
 
 		return
+	}
+
+	if len(nativeTransfers) > 0 {
+
+		transferQueue.In <- nativeTransfers
 	}
 
 	if len(transfers) >= 0 {
@@ -266,7 +321,7 @@ func (e *evm) getBlockByNumber(a any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Task.Info("区块扫描完成", b, conf.GetBlockSuccRate(e.Network), e.Network)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(%s): %d → %d 成功率：%s", e.Network, b.From, b.To, conf.GetBlockSuccRate(e.Network)))
 }
 
 func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
@@ -406,18 +461,18 @@ func rollBreak(network string) bool {
 		return true
 	}
 
-	var count int64 = 0
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, token).Count(&count)
+	var count int64
+	model.Db.Model(&model.Order{}).
+		Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, token).
+		Count(&count)
 	if count > 0 {
 
 		return false
 	}
 
-	model.Db.Model(&model.Wallet{}).Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, token).Count(&count)
-	if count > 0 {
+	model.Db.Model(&model.Wallet{}).
+		Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, token).
+		Count(&count)
 
-		return false
-	}
-
-	return true
+	return count == 0
 }

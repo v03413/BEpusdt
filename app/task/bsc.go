@@ -6,6 +6,7 @@ import (
 
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/model"
 )
 
 func bscInit() {
@@ -15,6 +16,11 @@ func bscInit() {
 		Block: block{
 			InitStartOffset: -400,
 			ConfirmedOffset: 15,
+		},
+		Native: evmNative{
+			Parse:     true,
+			Decimal:   conf.BscBnbDecimals,
+			TradeType: model.BscBnb,
 		},
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}

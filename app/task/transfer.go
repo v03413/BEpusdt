@@ -58,7 +58,7 @@ func orderTransferHandle(context.Context) {
 		var orders = getAllWaitingOrders()
 		for _, t := range transfers {
 			// debug
-			//if t.TradeType == model.UsdcBep20 {
+			//if t.TradeType == model.BscBnb {
 			//	fmt.Println(t.TradeType, t.TxHash, t.FromAddress, "=>", t.RecvAddress, t.Amount.String())
 			//}
 

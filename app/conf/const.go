@@ -54,4 +54,7 @@ const (
 	UsdcTronDecimals     = -6  // USDC Tron小数位数
 	UsdcAptosDecimals    = -6  // USDC Aptos小数位数
 	UsdcSolanaDecimals   = -6  // USDC Solana小数位数
+
+	BscBnbDecimals      = -18 // BSC BNB 小数位数
+	EthereumEthDecimals = -18 // Ethereum ETH 小数位数
 )
