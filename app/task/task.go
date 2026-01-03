@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/v03413/bepusdt/app/model"
 )
 
 type Task struct {
@@ -17,6 +19,8 @@ var (
 )
 
 func Init() error {
+	model.RefreshC()
+
 	bscInit()
 	ethInit()
 	polygonInit()

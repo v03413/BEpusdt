@@ -112,7 +112,7 @@ func ConfInit() {
 		MonitorMinAmount:    "0.01",
 		PaymentMinAmount:    "0.01",
 		PaymentMaxAmount:    "99999",
-		RpcEndpointTron:     "18.141.79.38:50051",
+		RpcEndpointTron:     "grpc.trongrid.io:50051",
 		RpcEndpointBsc:      "https://binance-smart-chain-public.nodies.app/",
 		RpcEndpointSolana:   "https://solana-rpc.publicnode.com/",
 		RpcEndpointXlayer:   "https://xlayerrpc.okx.com/",

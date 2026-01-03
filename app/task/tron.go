@@ -65,7 +65,7 @@ func (t *tron) blockRoll(context.Context) {
 		return
 	}
 
-	conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey))
+	conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
 	if err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
@@ -133,7 +133,7 @@ func (t *tron) blockParse(n any) {
 
 	var conn *grpc.ClientConn
 	var err error
-	if conn, err = utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey)); err != nil {
+	if conn, err = utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey)); err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
 		return
@@ -398,7 +398,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
-		conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronApiKey))
+		conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
 		if err != nil {
 			log.Task.Error("grpc.NewClient", err)
 

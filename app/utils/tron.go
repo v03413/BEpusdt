@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -11,56 +13,49 @@ import (
 )
 
 func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
-	var grpcParams = grpc.ConnectParams{
-		Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
-		MinConnectTimeout: 1 * time.Minute,
+	apiNode = strings.TrimSpace(apiNode)
+	if apiNode == "" {
+		return nil, errors.New("tron api node address is empty")
 	}
 
-	// 创建拦截器来添加API key
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithConnectParams(grpcParams))
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if !strings.Contains(apiNode, "://") {
+		apiNode = "passthrough:///" + apiNode
+	}
 
-	// 如果配置了API key，添加unary和stream拦截器
+	opts := []grpc.DialOption{
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
+			MinConnectTimeout: 1 * time.Minute,
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
 	if apiKey != "" {
-		// Unary拦截器（用于普通RPC调用）
-		unaryInterceptor := func(
-			ctx context.Context,
-			method string,
-			req, reply interface{},
-			cc *grpc.ClientConn,
-			invoker grpc.UnaryInvoker,
-			opts ...grpc.CallOption,
-		) error {
-			// 添加API key到metadata，同时支持多种格式
-			// TronGrid 支持这些 header 名称
-			ctx = metadata.AppendToOutgoingContext(ctx,
-				"TRON-PRO-API-KEY", apiKey,
-				"tron-pro-api-key", apiKey, // 小写版本
-			)
-			return invoker(ctx, method, req, reply, cc, opts...)
-		}
-
-		// Stream拦截器（用于流式RPC调用）
-		streamInterceptor := func(
-			ctx context.Context,
-			desc *grpc.StreamDesc,
-			cc *grpc.ClientConn,
-			method string,
-			streamer grpc.Streamer,
-			opts ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			// 添加API key到metadata，同时支持多种格式
-			ctx = metadata.AppendToOutgoingContext(ctx,
-				"TRON-PRO-API-KEY", apiKey,
-				"tron-pro-api-key", apiKey, // 小写版本
-			)
-			return streamer(ctx, desc, cc, method, opts...)
-		}
-
-		opts = append(opts, grpc.WithUnaryInterceptor(unaryInterceptor))
-		opts = append(opts, grpc.WithStreamInterceptor(streamInterceptor))
+		opts = append(opts,
+			grpc.WithUnaryInterceptor(tronGridApiKeyUnaryInterceptor(apiKey)),
+			grpc.WithStreamInterceptor(tronGridApiKeyStreamInterceptor(apiKey)),
+		)
 	}
 
 	return grpc.NewClient(apiNode, opts...)
+}
+
+func tronGridApiKeyUnaryInterceptor(apiKey string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{},
+		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		ctx = addTronGridApiKeyToContext(ctx, apiKey)
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+func tronGridApiKeyStreamInterceptor(apiKey string) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn,
+		method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		ctx = addTronGridApiKeyToContext(ctx, apiKey)
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}
+
+func addTronGridApiKeyToContext(ctx context.Context, apiKey string) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, "TRON-PRO-API-KEY", apiKey, "tron-pro-api-key", apiKey)
 }

@@ -21,16 +21,16 @@ const (
 	PaymentTimeout    ConfKey = "payment_timeout"     // 订单支付超时时间，单位秒
 	PaymentStaticPath ConfKey = "payment_static_path" // 收银台静态资源路径
 
-	RpcEndpointTron       ConfKey = "rpc_endpoint_tron"         // TRON RPC节点
-	RpcEndpointTronApiKey ConfKey = "rpc_endpoint_tron_api_key" // TRON RPC节点 API Key
-	RpcEndpointBsc        ConfKey = "rpc_endpoint_bsc"          // BSC RPC节点
-	RpcEndpointSolana     ConfKey = "rpc_endpoint_solana"       // Solana RPC节点
-	RpcEndpointXlayer     ConfKey = "rpc_endpoint_xlayer"       // Xlayer RPC节点
-	RpcEndpointPolygon    ConfKey = "rpc_endpoint_polygon"      // Polygon RPC节点
-	RpcEndpointArbitrum   ConfKey = "rpc_endpoint_arbitrum"     // Arbitrum RPC节点
-	RpcEndpointEthereum   ConfKey = "rpc_endpoint_ethereum"     // Ethereum RPC节点
-	RpcEndpointBase       ConfKey = "rpc_endpoint_base"         // Base RPC节点
-	RpcEndpointAptos      ConfKey = "rpc_endpoint_aptos"        // APTOS RPC节点
+	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点
+	RpcEndpointSolana         ConfKey = "rpc_endpoint_solana"            // Solana RPC节点
+	RpcEndpointXlayer         ConfKey = "rpc_endpoint_xlayer"            // Xlayer RPC节点
+	RpcEndpointPolygon        ConfKey = "rpc_endpoint_polygon"           // Polygon RPC节点
+	RpcEndpointArbitrum       ConfKey = "rpc_endpoint_arbitrum"          // Arbitrum RPC节点
+	RpcEndpointEthereum       ConfKey = "rpc_endpoint_ethereum"          // Ethereum RPC节点
+	RpcEndpointBase           ConfKey = "rpc_endpoint_base"              // Base RPC节点
+	RpcEndpointAptos          ConfKey = "rpc_endpoint_aptos"             // APTOS RPC节点
+	RpcEndpointTron           ConfKey = "rpc_endpoint_tron"              // TRON RPC节点
+	RpcEndpointTronGridApiKey ConfKey = "rpc_endpoint_tron_grid_api_key" // TRON RPC节点 TronGrid Api Key
 
 	RateSyncInterval ConfKey = "rate_sync_interval" // 汇率同步间隔，单位秒
 
