@@ -40,8 +40,3 @@ const (
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email
 )
-
-const (
-	DefaultUsername = "admin"
-	DefaultPassword = "$2a$10$GHecK2k0JICojz4rg4G6nO6AHi6r3lgocRp.Ob4JB/O8JTQ13Obly" // 123456
-)

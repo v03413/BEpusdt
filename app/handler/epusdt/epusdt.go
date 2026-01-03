@@ -91,7 +91,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		req.Fiat = model.FiatCNY
 	}
 	if req.TradeType == "" {
-		req.TradeType = model.TradeTypeUsdtTrc20
+		req.TradeType = string(model.UsdtTrc20)
 	}
 	money := decimal.NewFromFloat(req.Amount)
 	if money.LessThanOrEqual(decimal.Zero) {
@@ -107,7 +107,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		ApiType:     model.OrderApiTypeEpusdt,
 		Address:     req.Address,
 		OrderId:     req.OrderID,
-		TradeType:   req.TradeType,
+		TradeType:   model.TradeType(req.TradeType),
 		RedirectUrl: req.RedirectURL,
 		NotifyUrl:   req.NotifyURL,
 		Name:        req.Name,
@@ -183,7 +183,7 @@ func (Epusdt) CheckoutCounter(ctx *gin.Context) {
 		return
 	}
 
-	ctx.HTML(200, order.TradeType+".html", gin.H{
+	ctx.HTML(200, string(order.TradeType+".html"), gin.H{
 		"http_host":  uri.Host,
 		"amount":     order.Amount,
 		"address":    order.Address,

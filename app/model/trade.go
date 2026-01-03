@@ -11,10 +11,10 @@ import (
 
 type OrderParams struct {
 	Money       decimal.Decimal `json:"money"`        // 交易金额 (单位：法币)s
-	ApiType     string          `json:"api_type"`     // 支付API类型
+	ApiType     string          `json:"api_type"`     // 支付 API 类型
 	Address     string          `json:"address"`      // 收款地址
-	OrderId     string          `json:"order_id"`     // 商户订单ID
-	TradeType   string          `json:"trade_type"`   // 交易类型
+	OrderId     string          `json:"order_id"`     // 商户订单 ID
+	TradeType   TradeType       `json:"trade_type"`   // 交易类型
 	RedirectUrl string          `json:"redirect_url"` // 成功跳转地址
 	NotifyUrl   string          `json:"notify_url"`   // 异步通知地址
 	Name        string          `json:"name"`         // 商品名称
@@ -42,7 +42,7 @@ func BuildOrder(p OrderParams) (Order, error) {
 			return order, fmt.Errorf("钱包地址格式错误：%s", p.Address)
 		}
 	}
-	if !utils.InStrings(p.TradeType, SupportTradeTypes) {
+	if _, ok := SupportTradeTypes[p.TradeType]; !ok {
 
 		return order, fmt.Errorf("不支持的交易类型：%s", p.TradeType)
 	}
@@ -132,8 +132,10 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 }
 
 func BuildTrade(p OrderParams) (Trade, error) {
+	var t = TradeType(p.TradeType)
+
 	// 获取代币类型
-	tokenType, err := GetTokenType(p.TradeType)
+	tokenType, err := GetTokenType(t)
 	if err != nil {
 		return Trade{}, fmt.Errorf("代币类型(%s)不支持：%v", p.TradeType, err)
 	}
@@ -157,7 +159,7 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	}
 
 	// 计算交易金额
-	address, amount := CalcTradeAmount(wallet, rate, p.Money, p.TradeType)
+	address, amount := CalcTradeAmount(wallet, rate, p.Money, t)
 
 	return Trade{
 		TokenType: tokenType,

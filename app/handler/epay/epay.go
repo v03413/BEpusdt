@@ -78,7 +78,7 @@ func (e Epay) Submit(ctx *gin.Context) {
 		ApiType:     model.OrderApiTypeEpay,
 		Address:     data.Address,
 		OrderId:     data.OutTradeNo,
-		TradeType:   data.Type,
+		TradeType:   model.TradeType(data.Type),
 		RedirectUrl: data.ReturnURL,
 		NotifyUrl:   data.NotifyURL,
 		Name:        data.Name,
@@ -107,7 +107,7 @@ func (e Epay) fillDefaultParams(data *submit) {
 		data.Pid = Pid
 	}
 	if data.Type == "" {
-		data.Type = model.TradeTypeUsdtTrc20
+		data.Type = string(model.UsdtTrc20)
 	}
 	if data.Fiat == "" {
 		data.Fiat = model.FiatCNY

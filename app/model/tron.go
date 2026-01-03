@@ -14,7 +14,7 @@ type TronTransfer struct {
 	FromAddress string
 	RecvAddress string
 	Timestamp   time.Time
-	TradeType   string
+	TradeType   TradeType
 	BlockNum    int64
 }
 

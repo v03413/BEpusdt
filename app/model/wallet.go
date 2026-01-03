@@ -23,51 +23,91 @@ const (
 )
 
 // SupportTradeTypes 目前支持的收款交易类型
-var SupportTradeTypes = []string{
-	TradeTypeTronTrx,
-	TradeTypeUsdtTrc20,
-	TradeTypeUsdtErc20,
-	TradeTypeUsdtBep20,
-	TradeTypeUsdtAptos,
-	TradeTypeUsdtXlayer,
-	TradeTypeUsdtSolana,
-	TradeTypeUsdtPolygon,
-	TradeTypeUsdtArbitrum,
-	TradeTypeUsdcErc20,
-	TradeTypeUsdcBep20,
-	TradeTypeUsdcXlayer,
-	TradeTypeUsdcPolygon,
-	TradeTypeUsdcArbitrum,
-	TradeTypeUsdcBase,
-	TradeTypeUsdcTrc20,
-	TradeTypeUsdcSolana,
-	TradeTypeUsdcAptos,
+var SupportTradeTypes = map[TradeType]struct{}{
+	TronTrx:      {},
+	UsdtTrc20:    {},
+	UsdtErc20:    {},
+	UsdtBep20:    {},
+	UsdtAptos:    {},
+	UsdtXlayer:   {},
+	UsdtSolana:   {},
+	UsdtPolygon:  {},
+	UsdtArbitrum: {},
+	UsdcErc20:    {},
+	UsdcBep20:    {},
+	UsdcXlayer:   {},
+	UsdcPolygon:  {},
+	UsdcArbitrum: {},
+	UsdcBase:     {},
+	UsdcTrc20:    {},
+	UsdcSolana:   {},
+	UsdcAptos:    {},
 }
 
-var TradeTypeTable = map[string]TokenType{
+var TradeTypeTable = map[TradeType]TokenType{
 	// USDT
-	TradeTypeUsdtTrc20:    TokenTypeUSDT,
-	TradeTypeUsdtErc20:    TokenTypeUSDT,
-	TradeTypeUsdtBep20:    TokenTypeUSDT,
-	TradeTypeUsdtAptos:    TokenTypeUSDT,
-	TradeTypeUsdtXlayer:   TokenTypeUSDT,
-	TradeTypeUsdtSolana:   TokenTypeUSDT,
-	TradeTypeUsdtPolygon:  TokenTypeUSDT,
-	TradeTypeUsdtArbitrum: TokenTypeUSDT,
+	UsdtTrc20:    TokenTypeUSDT,
+	UsdtErc20:    TokenTypeUSDT,
+	UsdtBep20:    TokenTypeUSDT,
+	UsdtAptos:    TokenTypeUSDT,
+	UsdtXlayer:   TokenTypeUSDT,
+	UsdtSolana:   TokenTypeUSDT,
+	UsdtPolygon:  TokenTypeUSDT,
+	UsdtArbitrum: TokenTypeUSDT,
 
 	// USDC
-	TradeTypeUsdcErc20:    TokenTypeUSDC,
-	TradeTypeUsdcBep20:    TokenTypeUSDC,
-	TradeTypeUsdcXlayer:   TokenTypeUSDC,
-	TradeTypeUsdcPolygon:  TokenTypeUSDC,
-	TradeTypeUsdcArbitrum: TokenTypeUSDC,
-	TradeTypeUsdcBase:     TokenTypeUSDC,
-	TradeTypeUsdcTrc20:    TokenTypeUSDC,
-	TradeTypeUsdcSolana:   TokenTypeUSDC,
-	TradeTypeUsdcAptos:    TokenTypeUSDC,
+	UsdcErc20:    TokenTypeUSDC,
+	UsdcBep20:    TokenTypeUSDC,
+	UsdcXlayer:   TokenTypeUSDC,
+	UsdcPolygon:  TokenTypeUSDC,
+	UsdcArbitrum: TokenTypeUSDC,
+	UsdcBase:     TokenTypeUSDC,
+	UsdcTrc20:    TokenTypeUSDC,
+	UsdcSolana:   TokenTypeUSDC,
+	UsdcAptos:    TokenTypeUSDC,
 
 	// TRX
-	TradeTypeTronTrx: TokenTypeTRX,
+	TronTrx: TokenTypeTRX,
+}
+
+// tokenContractMap Token 合约地址映射表
+var tokenContractMap = map[TradeType]string{
+	UsdtPolygon:  conf.UsdtPolygon,
+	UsdtArbitrum: conf.UsdtArbitrum,
+	UsdtErc20:    conf.UsdtErc20,
+	UsdtBep20:    conf.UsdtBep20,
+	UsdtXlayer:   conf.UsdtXlayer,
+	UsdtAptos:    conf.UsdtAptos,
+	UsdtSolana:   conf.UsdtSolana,
+	UsdcErc20:    conf.UsdcErc20,
+	UsdcBep20:    conf.UsdcBep20,
+	UsdcXlayer:   conf.UsdcXlayer,
+	UsdcPolygon:  conf.UsdcPolygon,
+	UsdcArbitrum: conf.UsdcArbitrum,
+	UsdcBase:     conf.UsdcBase,
+	UsdcAptos:    conf.UsdcAptos,
+	UsdcSolana:   conf.UsdcSolana,
+}
+
+// tokenDecimalsMap Token 精度映射表
+var tokenDecimalsMap = map[TradeType]int32{
+	UsdtPolygon:  conf.UsdtPolygonDecimals,
+	UsdtArbitrum: conf.UsdtArbitrumDecimals,
+	UsdtErc20:    conf.UsdtEthDecimals,
+	UsdtBep20:    conf.UsdtBscDecimals,
+	UsdtAptos:    conf.UsdtAptosDecimals,
+	UsdtXlayer:   conf.UsdtXlayerDecimals,
+	UsdtSolana:   conf.UsdtSolanaDecimals,
+	UsdtTrc20:    conf.UsdtTronDecimals,
+	UsdcErc20:    conf.UsdcEthDecimals,
+	UsdcBep20:    conf.UsdcBscDecimals,
+	UsdcXlayer:   conf.UsdcXlayerDecimals,
+	UsdcPolygon:  conf.UsdcPolygonDecimals,
+	UsdcArbitrum: conf.UsdcArbitrumDecimals,
+	UsdcBase:     conf.UsdcBaseDecimals,
+	UsdcSolana:   conf.UsdcSolanaDecimals,
+	UsdcAptos:    conf.UsdcAptosDecimals,
+	UsdcTrc20:    conf.UsdcTronDecimals,
 }
 
 type Wallet struct {
@@ -92,19 +132,24 @@ func (wa *Wallet) SetStatus(status uint8) {
 }
 
 func (wa *Wallet) IsValid() bool {
-	if utils.InStrings(wa.TradeType, []string{TradeTypeTronTrx, TradeTypeUsdtTrc20, TradeTypeUsdcTrc20}) {
+	tradeType := TradeType(wa.TradeType)
 
+	// Tron 地址验证
+	if tradeType == TronTrx || tradeType == UsdtTrc20 || tradeType == UsdcTrc20 {
 		return utils.IsValidTronAddress(wa.Address)
 	}
-	if utils.InStrings(wa.TradeType, []string{TradeTypeUsdtSolana, TradeTypeUsdcSolana}) {
 
+	// Solana 地址验证
+	if tradeType == UsdtSolana || tradeType == UsdcSolana {
 		return utils.IsValidSolanaAddress(wa.Address)
 	}
-	if utils.InStrings(wa.TradeType, []string{TradeTypeUsdtAptos, TradeTypeUsdcAptos}) {
 
+	// Aptos 地址验证
+	if tradeType == UsdtAptos || tradeType == UsdcAptos {
 		return utils.IsValidAptosAddress(wa.Address)
 	}
 
+	// 默认使用 EVM 地址验证（Ethereum, BSC, Polygon, Arbitrum, Base, X Layer）
 	return utils.IsValidEvmAddress(wa.Address)
 }
 
@@ -119,92 +164,35 @@ func (wa *Wallet) Delete() {
 }
 
 func (wa *Wallet) GetTokenContract() string {
-	switch wa.TradeType {
-	case TradeTypeUsdtPolygon:
-		return conf.UsdtPolygon
-	case TradeTypeUsdtArbitrum:
-		return conf.UsdtArbitrum
-	case TradeTypeUsdtErc20:
-		return conf.UsdtErc20
-	case TradeTypeUsdtBep20:
-		return conf.UsdtBep20
-	case TradeTypeUsdtXlayer:
-		return conf.UsdtXlayer
-	case TradeTypeUsdtAptos:
-		return conf.UsdtAptos
-	case TradeTypeUsdtSolana:
-		return conf.UsdtSolana
-	case TradeTypeUsdcErc20:
-		return conf.UsdcErc20
-	case TradeTypeUsdcBep20:
-		return conf.UsdcBep20
-	case TradeTypeUsdcXlayer:
-		return conf.UsdcXlayer
-	case TradeTypeUsdcPolygon:
-		return conf.UsdcPolygon
-	case TradeTypeUsdcArbitrum:
-		return conf.UsdcArbitrum
-	case TradeTypeUsdcBase:
-		return conf.UsdcBase
-	case TradeTypeUsdcAptos:
-		return conf.UsdcAptos
-	case TradeTypeUsdcSolana:
-		return conf.UsdcSolana
-	default:
-		return ""
+	if contract, ok := tokenContractMap[TradeType(wa.TradeType)]; ok {
+
+		return contract
 	}
+
+	return ""
 }
 
 func (wa *Wallet) GetTokenDecimals() int32 {
-	switch wa.TradeType {
-	case TradeTypeUsdtPolygon:
-		return conf.UsdtPolygonDecimals
-	case TradeTypeUsdtArbitrum:
-		return conf.UsdtArbitrumDecimals
-	case TradeTypeUsdtErc20:
-		return conf.UsdtEthDecimals
-	case TradeTypeUsdtBep20:
-		return conf.UsdtBscDecimals
-	case TradeTypeUsdtAptos:
-		return conf.UsdtAptosDecimals
-	case TradeTypeUsdtXlayer:
-		return conf.UsdtXlayerDecimals
-	case TradeTypeUsdtSolana:
-		return conf.UsdtSolanaDecimals
-	case TradeTypeUsdcErc20:
-		return conf.UsdcEthDecimals
-	case TradeTypeUsdcBep20:
-		return conf.UsdcBscDecimals
-	case TradeTypeUsdcXlayer:
-		return conf.UsdcXlayerDecimals
-	case TradeTypeUsdcPolygon:
-		return conf.UsdcPolygonDecimals
-	case TradeTypeUsdcArbitrum:
-		return conf.UsdcArbitrumDecimals
-	case TradeTypeUsdcBase:
-		return conf.UsdcBaseDecimals
-	case TradeTypeUsdcSolana:
-		return conf.UsdcSolanaDecimals
-	case TradeTypeUsdcAptos:
-		return conf.UsdcAptosDecimals
-	default:
-		return -6
+	if decimals, ok := tokenDecimalsMap[TradeType(wa.TradeType)]; ok {
+
+		return decimals
 	}
+
+	return -6
 }
 
-func GetTokenType(tradeType string) (TokenType, error) {
-	if f, ok := TradeTypeTable[tradeType]; ok {
+func GetTokenType(t TradeType) (TokenType, error) {
+	if f, ok := TradeTypeTable[t]; ok {
 		return f, nil
 	}
-	return "", fmt.Errorf("unsupported trade type: %s", tradeType)
+	return "", fmt.Errorf("unsupported trade type: %s", t)
 }
 
-func GetAvailableAddress(tradeType string) []string {
+func GetAvailableAddress(t TradeType) []string {
 	var rows []Wallet
-
-	Db.Where("trade_type = ? and status = ?", tradeType, WaStatusEnable).Find(&rows)
-
-	var wallets = make([]string, 0)
+	Db.Where("trade_type = ? and status = ?", t, WaStatusEnable).Find(&rows)
+	
+	wallets := make([]string, 0, len(rows))
 	for _, w := range rows {
 		wallets = append(wallets, w.Address)
 	}

@@ -28,25 +28,25 @@ type authPasswordReq struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
-var types = map[string]string{
-	model.TradeTypeTronTrx:      "TRON・TRX",
-	model.TradeTypeUsdtTrc20:    "USDT・TRC20",
-	model.TradeTypeUsdtErc20:    "USDT・ERC20",
-	model.TradeTypeUsdtBep20:    "USDT・BEP20",
-	model.TradeTypeUsdtAptos:    "USDT・APTOS",
-	model.TradeTypeUsdtXlayer:   "USDT・Xlayer",
-	model.TradeTypeUsdtSolana:   "USDT・Solana",
-	model.TradeTypeUsdtPolygon:  "USDT・Polygon",
-	model.TradeTypeUsdtArbitrum: "USDT・Arbitrum",
-	model.TradeTypeUsdcErc20:    "USDC・ERC20",
-	model.TradeTypeUsdcBep20:    "USDC・BEP20",
-	model.TradeTypeUsdcXlayer:   "USDC・Xlayer",
-	model.TradeTypeUsdcPolygon:  "USDC・Polygon",
-	model.TradeTypeUsdcArbitrum: "USDC・Arbitrum",
-	model.TradeTypeUsdcBase:     "USDC・Base",
-	model.TradeTypeUsdcTrc20:    "USDC・TRC20",
-	model.TradeTypeUsdcSolana:   "USDC・Solana",
-	model.TradeTypeUsdcAptos:    "USDC・APTOS",
+var types = map[model.TradeType]string{
+	model.TronTrx:      "TRON・TRX",
+	model.UsdtTrc20:    "USDT・TRC20",
+	model.UsdtErc20:    "USDT・ERC20",
+	model.UsdtBep20:    "USDT・BEP20",
+	model.UsdtAptos:    "USDT・APTOS",
+	model.UsdtXlayer:   "USDT・Xlayer",
+	model.UsdtSolana:   "USDT・Solana",
+	model.UsdtPolygon:  "USDT・Polygon",
+	model.UsdtArbitrum: "USDT・Arbitrum",
+	model.UsdcErc20:    "USDC・ERC20",
+	model.UsdcBep20:    "USDC・BEP20",
+	model.UsdcXlayer:   "USDC・Xlayer",
+	model.UsdcPolygon:  "USDC・Polygon",
+	model.UsdcArbitrum: "USDC・Arbitrum",
+	model.UsdcBase:     "USDC・Base",
+	model.UsdcTrc20:    "USDC・TRC20",
+	model.UsdcSolana:   "USDC・Solana",
+	model.UsdcAptos:    "USDC・APTOS",
 }
 
 func (Auth) Info(ctx *gin.Context) {

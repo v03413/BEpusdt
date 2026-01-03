@@ -21,7 +21,7 @@ type transfer struct {
 	FromAddress string
 	RecvAddress string
 	Timestamp   time.Time
-	TradeType   string
+	TradeType   model.TradeType
 	BlockNum    int64
 }
 
@@ -58,7 +58,7 @@ func orderTransferHandle(context.Context) {
 		var orders = getAllWaitingOrders()
 		for _, t := range transfers {
 			// debug
-			//if t.TradeType == model.TradeTypeUsdcBep20 {
+			//if t.TradeType == model.UsdcBep20 {
 			//	fmt.Println(t.TradeType, t.TxHash, t.FromAddress, "=>", t.RecvAddress, t.Amount.String())
 			//}
 
@@ -127,7 +127,7 @@ func notOrderTransferHandle(context.Context) {
 func tronResourceHandle(context.Context) {
 	for resources := range resourceQueue.Out {
 		var was []model.Wallet
-		var types = []string{model.TradeTypeTronTrx, model.TradeTypeUsdtTrc20}
+		var types = []model.TradeType{model.TronTrx, model.UsdtTrc20}
 
 		model.Db.Where("status = ? and other_notify = ? and trade_type in (?)", model.WaStatusEnable, model.WaOtherEnable, types).Find(&was)
 
@@ -168,18 +168,18 @@ func getAllWaitingOrders() map[string]model.Order {
 			continue
 		}
 
-		if order.TradeType == model.TradeTypeUsdtPolygon {
+		if order.TradeType == model.UsdtPolygon {
 
 			order.Address = strings.ToLower(order.Address)
 		}
 
-		data[order.Address+order.Amount+order.TradeType] = order
+		data[order.Address+order.Amount+string(order.TradeType)] = order
 	}
 
 	return data
 }
 
-func getConfirmingOrders(tradeType []string) []model.Order {
+func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
 	var orders = make([]model.Order, 0)
 	var data = make([]model.Order, 0)
 	var db = model.Db.Where("status = ?", model.OrderStatusConfirming)

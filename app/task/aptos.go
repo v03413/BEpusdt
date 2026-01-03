@@ -34,9 +34,9 @@ type version struct {
 
 var apt aptos
 
-var aptDecimals = map[string]int32{
-	model.TradeTypeUsdtAptos: conf.UsdtAptosDecimals,
-	model.TradeTypeUsdcAptos: conf.UsdcAptosDecimals,
+var aptDecimals = map[model.TradeType]int32{
+	model.UsdtAptos: conf.UsdtAptosDecimals,
+	model.UsdcAptos: conf.UsdcAptosDecimals,
 }
 
 type aptEvent struct {
@@ -48,7 +48,7 @@ type aptEvent struct {
 
 type aptAmount struct {
 	Amount string
-	Type   string
+	Type   model.TradeType
 }
 
 func init() {
@@ -139,7 +139,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 func (a *aptos) versionDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(3, a.versionParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("aptos versionDispatch Error:", err)
 
 		return
 	}
@@ -236,7 +236,7 @@ func (a *aptos) versionParse(n any) {
 		ver := trans.Get("version").Int()
 		hash := trans.Get("hash").String()
 		addrOwner := make(map[string]string)                                         // [address] => owner address
-		addrType := make(map[string]string)                                          // [address] => tradeType
+		addrType := make(map[string]model.TradeType)                                 // [address] => tradeType
 		amtAddrMap := map[string]map[aptAmount]string{"deposit": {}, "withdraw": {}} // [amount] => address
 		aptEvents := make([]aptEvent, 0)
 		trans.Get("changes").ForEach(func(_, v gjson.Result) bool {
@@ -250,9 +250,9 @@ func (a *aptos) versionParse(n any) {
 				addr := v.Get("address").String()
 				switch data.Get("data.metadata.inner").String() {
 				case conf.UsdtAptos:
-					addrType[addr] = model.TradeTypeUsdtAptos
+					addrType[addr] = model.UsdtAptos
 				case conf.UsdcAptos:
-					addrType[addr] = model.TradeTypeUsdcAptos
+					addrType[addr] = model.UsdcAptos
 				}
 			}
 			if data.Get("type").String() == "0x1::object::ObjectCore" {
@@ -304,7 +304,7 @@ func (a *aptos) versionParse(n any) {
 			transfers = append(transfers, transfer{
 				Network:     net,
 				TxHash:      hash,
-				Amount:      decimal.NewFromBigInt(amount, aptDecimals[tradeType]),
+				Amount:      decimal.NewFromBigInt(amount, aptDecimals[model.TradeType(tradeType)]),
 				FromAddress: a.padAddressLeadingZeros(addrOwner[from]),
 				RecvAddress: a.padAddressLeadingZeros(addrOwner[to]),
 				Timestamp:   timestamp,
@@ -314,7 +314,7 @@ func (a *aptos) versionParse(n any) {
 		}
 
 		// 针对 一个withdraw 对应 多个deposit(数额累计等于 withdraw) 的情况
-		processEvents := func(tradeType string, events []aptEvent) ([]aptEvent, map[string]string) {
+		processEvents := func(tradeType model.TradeType, events []aptEvent) ([]aptEvent, map[string]string) {
 			deposits := make([]aptEvent, 0)
 			withdraws := make(map[decimal.Decimal]aptEvent)
 			fromMap := make(map[string]string)
@@ -348,7 +348,7 @@ func (a *aptos) versionParse(n any) {
 
 			return deposits, fromMap
 		}
-		generateTransfers := func(deposits []aptEvent, fromMap map[string]string, tradeType string, decimals int32) {
+		generateTransfers := func(deposits []aptEvent, fromMap map[string]string, t model.TradeType, decimals int32) {
 			for _, to := range deposits {
 				if from, ok := fromMap[to.Address]; ok {
 					transfers = append(transfers, transfer{
@@ -358,7 +358,7 @@ func (a *aptos) versionParse(n any) {
 						FromAddress: a.padAddressLeadingZeros(addrOwner[from]),
 						RecvAddress: a.padAddressLeadingZeros(addrOwner[to.Address]),
 						Timestamp:   timestamp,
-						TradeType:   tradeType,
+						TradeType:   t,
 						BlockNum:    ver,
 					})
 				}
@@ -366,12 +366,12 @@ func (a *aptos) versionParse(n any) {
 		}
 
 		// 处理 USDT
-		usdtDeposits, usdtFrom := processEvents(model.TradeTypeUsdtAptos, aptEvents)
-		generateTransfers(usdtDeposits, usdtFrom, model.TradeTypeUsdtAptos, aptDecimals[model.TradeTypeUsdtAptos])
+		usdtDeposits, usdtFrom := processEvents(model.UsdtAptos, aptEvents)
+		generateTransfers(usdtDeposits, usdtFrom, model.UsdtAptos, aptDecimals[model.UsdtAptos])
 
 		// 处理 USDC
-		usdcDeposits, usdcFrom := processEvents(model.TradeTypeUsdcAptos, aptEvents)
-		generateTransfers(usdcDeposits, usdcFrom, model.TradeTypeUsdcAptos, aptDecimals[model.TradeTypeUsdcAptos])
+		usdcDeposits, usdcFrom := processEvents(model.UsdcAptos, aptEvents)
+		generateTransfers(usdcDeposits, usdcFrom, model.UsdcAptos, aptDecimals[model.UsdcAptos])
 	}
 
 	if len(transfers) > 0 {

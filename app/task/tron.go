@@ -29,9 +29,9 @@ var gasFreeOwnerAddress = []byte{0x41, 0x3b, 0x41, 0x50, 0x50, 0xb1, 0xe7, 0x9e,
 var gasFreeContractAddress = []byte{0x41, 0x39, 0xdd, 0x12, 0xa5, 0x4e, 0x2b, 0xab, 0x7c, 0x82, 0xaa, 0x14, 0xa1, 0xe1, 0x58, 0xb3, 0x42, 0x63, 0xd2, 0xd5, 0x10}
 var usdtTrc20ContractAddress = []byte{0x41, 0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 0x78, 0x09, 0x86, 0xa4, 0x2c, 0x78, 0xec, 0x9c, 0x7f, 0x77, 0xe6, 0xde, 0xd1, 0x3c}
 var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 0xb2, 0xc8, 0x7f, 0xb7, 0xff, 0xa8, 0xbc, 0xfa, 0xde, 0x38, 0xea, 0xac, 0x1a, 0xbe}
-var trc20TokenDecimals = map[string]int32{
-	model.TradeTypeUsdtTrc20: conf.UsdtTronDecimals,
-	model.TradeTypeUsdcTrc20: conf.UsdcTronDecimals,
+var trc20TokenDecimals = map[model.TradeType]int32{
+	model.UsdtTrc20: conf.UsdtTronDecimals,
+	model.UsdcTrc20: conf.UsdcTronDecimals,
 }
 
 type tron struct {
@@ -112,7 +112,7 @@ func (t *tron) blockRoll(context.Context) {
 func (t *tron) blockDispatch(context.Context) {
 	p, err := ants.NewPoolWithFunc(3, t.blockParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("Error creating pool:", err)
 
 		return
 	}
@@ -223,7 +223,7 @@ func (t *tron) blockParse(n any) {
 					FromAddress: t.base58CheckEncode(foo.OwnerAddress),
 					RecvAddress: t.base58CheckEncode(foo.ToAddress),
 					Timestamp:   timestamp,
-					TradeType:   model.TradeTypeTronTrx,
+					TradeType:   model.TronTrx,
 					BlockNum:    cast.ToInt64(num),
 				})
 			}
@@ -249,18 +249,18 @@ func (t *tron) blockParse(n any) {
 							FromAddress: from,
 							RecvAddress: receiver,
 							Timestamp:   timestamp,
-							TradeType:   model.TradeTypeUsdtTrc20,
+							TradeType:   model.UsdtTrc20,
 							BlockNum:    cast.ToInt64(num),
 						})
 					}
 				}
 
 				// trc20 合约解析
-				var tradeType = "None"
+				var tradeType model.TradeType = "None"
 				if bytes.Equal(foo.GetContractAddress(), usdtTrc20ContractAddress) {
-					tradeType = model.TradeTypeUsdtTrc20
+					tradeType = model.UsdtTrc20
 				} else if bytes.Equal(foo.GetContractAddress(), usdcTrc20ContractAddress) {
-					tradeType = model.TradeTypeUsdcTrc20
+					tradeType = model.UsdcTrc20
 				}
 
 				exp, ok := trc20TokenDecimals[tradeType]
@@ -393,7 +393,7 @@ func (t *tron) gasFreePermitTransfer(data []byte) (string, string, *big.Int) {
 }
 
 func (t *tron) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders([]string{model.TradeTypeTronTrx, model.TradeTypeUsdtTrc20, model.TradeTypeUsdcTrc20})
+	var orders = getConfirmingOrders([]model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20})
 
 	var wg sync.WaitGroup
 
@@ -416,7 +416,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 			return
 		}
 
-		if o.TradeType == model.TradeTypeTronTrx {
+		if o.TradeType == model.TronTrx {
 			trans, err := c.GetTransactionById(ctx, &api.BytesMessage{Value: idBytes})
 			if err != nil {
 				log.Task.Error("GetTransactionById", err)
@@ -466,7 +466,7 @@ func (t *tron) base58CheckEncode(input []byte) string {
 
 func (t *tron) rollBreak() bool {
 	var count int64 = 0
-	trade := []string{model.TradeTypeTronTrx, model.TradeTypeUsdtTrc20, model.TradeTypeUsdcTrc20}
+	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
 	if count > 0 {
 

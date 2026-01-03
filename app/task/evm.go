@@ -30,28 +30,28 @@ const (
 )
 
 var chainBlockNum sync.Map
-var contractMap = map[string]string{
-	conf.UsdtXlayer:   model.TradeTypeUsdtXlayer,
-	conf.UsdtBep20:    model.TradeTypeUsdtBep20,
-	conf.UsdtPolygon:  model.TradeTypeUsdtPolygon,
-	conf.UsdtArbitrum: model.TradeTypeUsdtArbitrum,
-	conf.UsdtErc20:    model.TradeTypeUsdtErc20,
-	conf.UsdcErc20:    model.TradeTypeUsdcErc20,
-	conf.UsdcPolygon:  model.TradeTypeUsdcPolygon,
-	conf.UsdcXlayer:   model.TradeTypeUsdcXlayer,
-	conf.UsdcArbitrum: model.TradeTypeUsdcArbitrum,
-	conf.UsdcBep20:    model.TradeTypeUsdcBep20,
-	conf.UsdcBase:     model.TradeTypeUsdcBase,
+var contractMap = map[string]model.TradeType{
+	conf.UsdtXlayer:   model.UsdtXlayer,
+	conf.UsdtBep20:    model.UsdtBep20,
+	conf.UsdtPolygon:  model.UsdtPolygon,
+	conf.UsdtArbitrum: model.UsdtArbitrum,
+	conf.UsdtErc20:    model.UsdtErc20,
+	conf.UsdcErc20:    model.UsdcErc20,
+	conf.UsdcPolygon:  model.UsdcPolygon,
+	conf.UsdcXlayer:   model.UsdcXlayer,
+	conf.UsdcArbitrum: model.UsdcArbitrum,
+	conf.UsdcBep20:    model.UsdcBep20,
+	conf.UsdcBase:     model.UsdcBase,
 }
-var networkTokenMap = map[string][]string{
-	conf.Bsc:      {model.TradeTypeUsdtBep20, model.TradeTypeUsdcBep20},
-	conf.Xlayer:   {model.TradeTypeUsdtXlayer, model.TradeTypeUsdcXlayer},
-	conf.Polygon:  {model.TradeTypeUsdtPolygon, model.TradeTypeUsdcPolygon},
-	conf.Arbitrum: {model.TradeTypeUsdtArbitrum, model.TradeTypeUsdcArbitrum},
-	conf.Ethereum: {model.TradeTypeUsdtErc20, model.TradeTypeUsdcErc20},
-	conf.Base:     {model.TradeTypeUsdcBase},
-	conf.Solana:   {model.TradeTypeUsdtSolana, model.TradeTypeUsdcSolana},
-	conf.Aptos:    {model.TradeTypeUsdtAptos, model.TradeTypeUsdcAptos},
+var networkTokenMap = map[string][]model.TradeType{
+	conf.Bsc:      {model.UsdtBep20, model.UsdcBep20},
+	conf.Xlayer:   {model.UsdtXlayer, model.UsdcXlayer},
+	conf.Polygon:  {model.UsdtPolygon, model.UsdcPolygon},
+	conf.Arbitrum: {model.UsdtArbitrum, model.UsdcArbitrum},
+	conf.Ethereum: {model.UsdtErc20, model.UsdcErc20},
+	conf.Base:     {model.UsdcBase},
+	conf.Solana:   {model.UsdtSolana, model.UsdcSolana},
+	conf.Aptos:    {model.UsdtAptos, model.UsdcAptos},
 }
 var client = &http.Client{Timeout: time.Second * 30}
 var decimals = map[string]int32{
@@ -174,7 +174,7 @@ func (e *evm) blockInitOffset(now, offset int64) int64 {
 func (e *evm) blockDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(2, e.getBlockByNumber)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("Error creating pool:", err)
 
 		return
 	}

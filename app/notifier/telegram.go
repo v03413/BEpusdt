@@ -46,22 +46,23 @@ func (t *Telegram) Success(o model.Order) {
 		return
 	}
 
+	tradeType := string(o.TradeType)
 	tokenType, err := model.GetTokenType(o.TradeType)
 	if err != nil {
-		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + o.TradeType})
+		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + tradeType})
 
 		return
 	}
 
-	tradeType := string(tokenType)
+	token := string(tokenType)
 
 	var text = `
-\#收款成功 \#订单交易 \#` + tradeType + `
+\#收款成功 \#订单交易 \#` + token + `
 \-\-\-
 ` + "```" + `
 🚦商户订单：%v
 💰请求金额：%v CNY(%v)
-💲支付数额：%v ` + o.TradeType + `
+💲支付数额：%v ` + tradeType + `
 💎交易哈希：%s
 ✅收款地址：%s
 ⏱️创建时间：%s
@@ -93,17 +94,18 @@ func (t *Telegram) Success(o model.Order) {
 }
 
 func (t *Telegram) NotifyFail(o model.Order, reason string) {
-	tokenType, err := model.GetTokenType(o.TradeType)
+	tradeType := string(o.TradeType)
+	tokenT, err := model.GetTokenType(o.TradeType)
 	if err != nil {
-		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + o.TradeType})
+		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + tradeType})
 
 		return
 	}
 
-	tradeType := string(tokenType)
+	token := string(tokenT)
 
 	var text = fmt.Sprintf(`
-\#回调失败 \#订单交易 \#`+tradeType+`
+\#回调失败 \#订单交易 \#`+token+`
 \-\-\-
 `+"```"+`
 🚦商户订单：%v
@@ -118,7 +120,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 		utils.Ec(o.OrderId),
 		o.Amount,
 		o.Money, o.Rate,
-		strings.ToUpper(o.TradeType),
+		strings.ToUpper(tradeType),
 		o.ConfirmedAt.Format(time.DateTime),
 		utils.CalcNextNotifyTime(o.ConfirmedAt, o.NotifyNum+1).Format(time.DateTime),
 		reason,
@@ -144,7 +146,7 @@ func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
 	}
 
 	var text = fmt.Sprintf(
-		"\\#账户%s \\#非订单交易\n\\-\\-\\-\n```\n💲交易数额：%v \n💍交易类别："+strings.ToUpper(trans.TradeType)+"\n⏱️交易时间：%v\n✅接收地址：%v\n🅾️发送地址：%v```\n",
+		"\\#账户%s \\#非订单交易\n\\-\\-\\-\n```\n💲交易数额：%v \n💍交易类别："+strings.ToUpper(string(trans.TradeType))+"\n⏱️交易时间：%v\n✅接收地址：%v\n🅾️发送地址：%v```\n",
 		title,
 		trans.Amount.String(),
 		trans.Timestamp.Format(time.DateTime),
@@ -158,7 +160,7 @@ func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
-					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: model.GetDetailUrl(trans.TradeType, trans.TxHash)},
+					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: model.GetDetailUrl(model.TradeType(trans.TradeType), trans.TxHash)},
 				},
 			},
 		},

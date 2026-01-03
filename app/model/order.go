@@ -8,8 +8,9 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
-	"github.com/v03413/bepusdt/app/utils"
 )
+
+type TradeType string
 
 const (
 	OrderNotifyStateSucc = 1 // 回调成功
@@ -22,24 +23,24 @@ const (
 	OrderStatusConfirming = 5 // 等待交易确认
 	OrderStatusFailed     = 6 // 交易确认失败
 
-	TradeTypeTronTrx      = "tron.trx"
-	TradeTypeUsdtTrc20    = "usdt.trc20"
-	TradeTypeUsdcTrc20    = "usdc.trc20"
-	TradeTypeUsdtPolygon  = "usdt.polygon"
-	TradeTypeUsdcPolygon  = "usdc.polygon"
-	TradeTypeUsdtArbitrum = "usdt.arbitrum"
-	TradeTypeUsdcArbitrum = "usdc.arbitrum"
-	TradeTypeUsdtErc20    = "usdt.erc20"
-	TradeTypeUsdcErc20    = "usdc.erc20"
-	TradeTypeUsdtBep20    = "usdt.bep20"
-	TradeTypeUsdcBep20    = "usdc.bep20"
-	TradeTypeUsdtXlayer   = "usdt.xlayer"
-	TradeTypeUsdcXlayer   = "usdc.xlayer"
-	TradeTypeUsdcBase     = "usdc.base"
-	TradeTypeUsdtSolana   = "usdt.solana"
-	TradeTypeUsdcSolana   = "usdc.solana"
-	TradeTypeUsdtAptos    = "usdt.aptos"
-	TradeTypeUsdcAptos    = "usdc.aptos"
+	TronTrx      TradeType = "tron.trx"
+	UsdtTrc20    TradeType = "usdt.trc20"
+	UsdcTrc20    TradeType = "usdc.trc20"
+	UsdtPolygon  TradeType = "usdt.polygon"
+	UsdcPolygon  TradeType = "usdc.polygon"
+	UsdtArbitrum TradeType = "usdt.arbitrum"
+	UsdcArbitrum TradeType = "usdc.arbitrum"
+	UsdtErc20    TradeType = "usdt.erc20"
+	UsdcErc20    TradeType = "usdc.erc20"
+	UsdtBep20    TradeType = "usdt.bep20"
+	UsdcBep20    TradeType = "usdc.bep20"
+	UsdtXlayer   TradeType = "usdt.xlayer"
+	UsdcXlayer   TradeType = "usdc.xlayer"
+	UsdcBase     TradeType = "usdc.base"
+	UsdtSolana   TradeType = "usdt.solana"
+	UsdcSolana   TradeType = "usdc.solana"
+	UsdtAptos    TradeType = "usdt.aptos"
+	UsdcAptos    TradeType = "usdc.aptos"
 )
 
 const (
@@ -49,11 +50,41 @@ const (
 
 var calcMutex sync.Mutex
 
+var explorerUrlMap = map[TradeType]string{
+	// Ethereum
+	UsdtErc20: "https://etherscan.io/tx/",
+	UsdcErc20: "https://etherscan.io/tx/",
+	// BSC
+	UsdtBep20: "https://bscscan.com/tx/",
+	UsdcBep20: "https://bscscan.com/tx/",
+	// X Layer
+	UsdtXlayer: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/",
+	UsdcXlayer: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/",
+	// Polygon
+	UsdtPolygon: "https://polygonscan.com/tx/",
+	UsdcPolygon: "https://polygonscan.com/tx/",
+	// Arbitrum
+	UsdtArbitrum: "https://arbiscan.io/tx/",
+	UsdcArbitrum: "https://arbiscan.io/tx/",
+	// Base
+	UsdcBase: "https://basescan.org/tx/",
+	// Solana
+	UsdtSolana: "https://solscan.io/tx/",
+	UsdcSolana: "https://solscan.io/tx/",
+	// Aptos
+	UsdtAptos: "https://explorer.aptoslabs.com/txn/",
+	UsdcAptos: "https://explorer.aptoslabs.com/txn/",
+	// Tron
+	TronTrx:   "https://tronscan.org/#/transaction/",
+	UsdtTrc20: "https://tronscan.org/#/transaction/",
+	UsdcTrc20: "https://tronscan.org/#/transaction/",
+}
+
 type Order struct {
 	Id
 	OrderId     string    `Gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
 	TradeId     string    `Gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
-	TradeType   string    `Gorm:"column:trade_type;type:varchar(20);not null;comment:交易类型" json:"trade_type"`
+	TradeType   TradeType `Gorm:"column:trade_type;type:varchar(20);not null;comment:交易类型" json:"trade_type"`
 	Fiat        string    `Gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法币" json:"fiat"`
 	Rate        string    `Gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`
 	Amount      string    `Gorm:"column:amount;type:varchar(32);not null;default:0.00;comment:交易数额" json:"amount"`
@@ -153,7 +184,7 @@ func (o *Order) GetStatusEmoji() string {
 
 func (o *Order) GetDetailUrl() string {
 
-	return GetDetailUrl(o.TradeType, o.RefHash)
+	return GetDetailUrl(TradeType(o.TradeType), o.RefHash)
 }
 
 func (o *Order) TableName() string {
@@ -161,30 +192,14 @@ func (o *Order) TableName() string {
 	return "bep_order"
 }
 
-func GetDetailUrl(tradeType, hash string) string {
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtErc20, TradeTypeUsdcErc20}) {
-		return "https://etherscan.io/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtBep20, TradeTypeUsdcBep20}) {
-		return "https://bscscan.com/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtXlayer, TradeTypeUsdcXlayer}) {
-		return "https://web3.okx.com/zh-hans/explorer/x-layer/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtPolygon, TradeTypeUsdcPolygon}) {
-		return "https://polygonscan.com/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtArbitrum, TradeTypeUsdcArbitrum}) {
-		return "https://arbiscan.io/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdcBase}) {
-		return "https://basescan.org/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtSolana, TradeTypeUsdcSolana}) {
-		return "https://solscan.io/tx/" + hash
-	}
-	if utils.InStrings(tradeType, []string{TradeTypeUsdtAptos, TradeTypeUsdcAptos}) {
-		return fmt.Sprintf("https://explorer.aptoslabs.com/txn/%s?network=mainnet", hash)
+func GetDetailUrl(t TradeType, hash string) string {
+	if baseUrl, ok := explorerUrlMap[t]; ok {
+		if t == UsdtAptos || t == UsdcAptos {
+
+			return fmt.Sprintf("%s%s?network=mainnet", baseUrl, hash)
+		}
+
+		return baseUrl + hash
 	}
 
 	return "https://tronscan.org/#/transaction/" + hash
@@ -215,19 +230,19 @@ func GetNotifyFailedTradeOrders() ([]Order, error) {
 }
 
 // CalcTradeAmount 计算当前实际可用的交易金额
-func CalcTradeAmount(address []string, rate, money decimal.Decimal, tradeType string) (string, string) {
+func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType) (string, string) {
 	calcMutex.Lock()
 	defer calcMutex.Unlock()
 
 	var orders []Order
 	var lock = make(map[string]bool)
 	var status = []int{OrderStatusConfirming, OrderStatusWaiting}
-	Db.Where("status in (?) and trade_type = ?", status, tradeType).Find(&orders)
+	Db.Where("status in (?) and trade_type = ?", status, t).Find(&orders)
 	for _, order := range orders {
 		lock[order.Address+order.Amount] = true
 	}
 
-	var atom, precision = getAtomicity(tradeType)
+	var atom, precision = getAtomicity(t)
 	var amount = money.DivRound(rate, precision)
 	for {
 		for _, addr := range address {
@@ -255,8 +270,8 @@ func CalcTradeExpiredAt(sec int64) time.Time {
 	return time.Now().Add(time.Duration(cast.ToUint64(GetK(PaymentTimeout))) * time.Second)
 }
 
-func getAtomicity(tradeType string) (decimal.Decimal, int32) {
-	token, ok := TradeTypeTable[tradeType]
+func getAtomicity(t TradeType) (decimal.Decimal, int32) {
+	token, ok := TradeTypeTable[t]
 	if !ok {
 		token = TokenTypeUSDT
 	}

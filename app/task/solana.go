@@ -34,15 +34,15 @@ type solana struct {
 }
 
 type solanaTokenOwner struct {
-	TradeType string
+	TradeType model.TradeType
 	Address   string
 }
 
 var sol solana
 
-var solSplToken = map[string]string{
-	conf.UsdtSolana: model.TradeTypeUsdtSolana,
-	conf.UsdcSolana: model.TradeTypeUsdcSolana,
+var solSplToken = map[string]model.TradeType{
+	conf.UsdtSolana: model.UsdtSolana,
+	conf.UsdcSolana: model.UsdcSolana,
 }
 
 func init() {
@@ -121,7 +121,7 @@ func (s *solana) slotRoll(ctx context.Context) {
 func (s *solana) slotDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(3, s.slotParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("Error creating pool:", err)
 
 		return
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
-	"github.com/v03413/bepusdt/app/utils"
 )
 
 type Wallet struct {
@@ -45,7 +44,7 @@ func (Wallet) Add(ctx *gin.Context) {
 		return
 	}
 
-	if !utils.InStrings(req.TradeType, model.SupportTradeTypes) {
+	if _, ok := model.SupportTradeTypes[model.TradeType(req.TradeType)]; !ok {
 		base.BadRequest(ctx, fmt.Sprintf("不支持的交易类型: %s", req.TradeType))
 
 		return
@@ -136,7 +135,7 @@ func (Wallet) Mod(ctx *gin.Context) {
 		w.Address = strings.TrimSpace(*req.Address)
 	}
 	if req.TradeType != nil {
-		if !utils.InStrings(*req.TradeType, model.SupportTradeTypes) {
+		if _, ok := model.SupportTradeTypes[model.TradeType(*req.TradeType)]; !ok {
 			base.BadRequest(ctx, fmt.Sprintf("不支持的交易类型: %s", *req.TradeType))
 
 			return
