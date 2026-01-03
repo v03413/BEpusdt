@@ -24,9 +24,6 @@ import (
 	"github.com/v03413/go-cache"
 	api2 "github.com/v03413/tronprotocol/api"
 	"github.com/v03413/tronprotocol/core"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/gorm"
 )
 
@@ -396,11 +393,7 @@ func dbMarkOrderSuccAction(ctx context.Context, b *bot.Bot, u *models.Update) {
 }
 
 func getTronWalletInfo(address string) string {
-	var grpcParams = grpc.ConnectParams{
-		Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
-		MinConnectTimeout: 1 * time.Minute,
-	}
-	conn, err := grpc.NewClient(conf.GetTronGrpcNode(), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := help.NewTronGrpcClient()
 	if err != nil {
 		log.Warn("getTronWalletInfo Error NewClient:", err)
 
@@ -433,11 +426,7 @@ func getTronWalletInfo(address string) string {
 }
 
 func getTronUsdtBalance(address string) string {
-	var grpcParams = grpc.ConnectParams{
-		Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
-		MinConnectTimeout: 1 * time.Minute,
-	}
-	conn, err := grpc.NewClient(conf.GetTronGrpcNode(), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := help.NewTronGrpcClient()
 	if err != nil {
 		log.Warn("getTronUsdtBalance Error NewClient:", err)
 
