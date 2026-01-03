@@ -7,8 +7,6 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
-    copy: typeof import('./components/s-layout-search/index copy.vue')['default']
-    'Index copy': typeof import('./components/s-layout-search/index copy.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SBarcodeDraw: typeof import('./components/s-barcode-draw/index.vue')['default']
