@@ -13,6 +13,7 @@ import (
 
 	"github.com/v03413/bepusdt/app"
 	"github.com/v03413/bepusdt/app/log"
+	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/router"
 	"github.com/v03413/bepusdt/app/task"
 )
@@ -24,19 +25,18 @@ import (
 var Start = &cli.Command{
 	Name:  "start",
 	Usage: "启动收款网关",
+	Flags: []cli.Flag{SQLiteLogFlag, LogFlag, ListenFlag},
 	Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+		if err := model.Init(c.String("sqlite")); err != nil {
+
+			return ctx, fmt.Errorf("数据库初始化失败 %w", err)
+		}
+
 		if err := log.Init(c.String("log")); err != nil {
 			return ctx, fmt.Errorf("日志初始化失败 %w", err)
 		}
 
 		return ctx, task.Init()
-	},
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "listen",
-			Value: ":8080",
-			Usage: "监听地址，格式为 ip:port，例如 :8080",
-		},
 	},
 	Action: start,
 }

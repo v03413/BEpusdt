@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,6 +39,11 @@ func newLogger(file string) (*logrus.Logger, error) {
 }
 
 func Init(dir string) error {
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+
+		return fmt.Errorf("创建日志目录失败：%w", err)
+	}
+
 	var err error
 
 	bepusdt, err = newLogger(filepath.Join(dir, "bepusdt.log"))
