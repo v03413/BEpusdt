@@ -261,48 +261,15 @@ func (e *evm) getBlockByNumber(a any) {
 		blockNumHex := itm.Get("result.number").String()
 		blockTime := time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
 		timestamp[blockNumHex] = blockTime
-		if e.Native.Parse {
-			for _, tx := range itm.Get("result.transactions").Array() {
-				if tx.Get("input").String() != "0x" {
-					// 非原生币交易
 
-					continue
-				}
+		var array = itm.Get("result.transactions").Array()
+		if e.Native.Parse && len(array) != 0 {
 
-				valStr := tx.Get("value").String()
-				if valStr == "0x0" || len(valStr) < 3 {
-					// 过滤 0 值交易
-
-					continue
-				}
-
-				amount, ok := big.NewInt(0).SetString(valStr[2:], 16)
-				if !ok || amount.Sign() <= 0 {
-
-					continue
-				}
-
-				toAddress := tx.Get("to").String()
-				if toAddress == "" { // 合约创建交易 to 为空
-
-					continue
-				}
-
-				nativeTransfers = append(nativeTransfers, transfer{
-					Network:     e.Network,
-					FromAddress: tx.Get("from").String(),
-					RecvAddress: toAddress,
-					Amount:      decimal.NewFromBigInt(amount, e.Native.Decimal),
-					TxHash:      tx.Get("hash").String(),
-					BlockNum:    utils.HexStr2Int(blockNumHex).Int64(),
-					Timestamp:   blockTime,
-					TradeType:   e.Native.TradeType,
-				})
-			}
+			nativeTransfers = append(nativeTransfers, e.parseNativeTransfer(array, utils.HexStr2Int(blockNumHex).Int64(), blockTime)...)
 		}
 	}
 
-	transfers, err := e.parseBlockTransfer(b, timestamp)
+	transfers, err := e.parseEventTransfer(b, timestamp)
 	if err != nil {
 		conf.SetBlockFail(e.Network)
 		e.blockScanQueue.In <- b
@@ -312,19 +279,59 @@ func (e *evm) getBlockByNumber(a any) {
 	}
 
 	if len(nativeTransfers) > 0 {
-
 		transferQueue.In <- nativeTransfers
 	}
-
-	if len(transfers) >= 0 {
-
+	if len(transfers) > 0 {
 		transferQueue.In <- transfers
 	}
 
 	log.Task.Info(fmt.Sprintf("区块扫描完成(%s): %d → %d 成功率：%s", e.Network, b.From, b.To, conf.GetBlockSuccRate(e.Network)))
 }
 
-func (e *evm) parseBlockTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
+func (e *evm) parseNativeTransfer(array []gjson.Result, num int64, timestamp time.Time) []transfer {
+	nativeTransfers := make([]transfer, 0)
+	for _, tx := range array {
+		if tx.Get("input").String() != "0x" {
+			// 非原生币交易
+
+			continue
+		}
+
+		valStr := tx.Get("value").String()
+		if valStr == "0x0" || len(valStr) < 3 {
+			// 过滤 0 值交易
+
+			continue
+		}
+
+		amount, ok := big.NewInt(0).SetString(valStr[2:], 16)
+		if !ok || amount.Sign() <= 0 {
+
+			continue
+		}
+
+		toAddress := tx.Get("to").String()
+		if toAddress == "" { // 合约创建交易 to 为空
+
+			continue
+		}
+
+		nativeTransfers = append(nativeTransfers, transfer{
+			Network:     e.Network,
+			FromAddress: tx.Get("from").String(),
+			RecvAddress: toAddress,
+			Amount:      decimal.NewFromBigInt(amount, e.Native.Decimal),
+			TxHash:      tx.Get("hash").String(),
+			BlockNum:    num,
+			Timestamp:   timestamp,
+			TradeType:   e.Native.TradeType,
+		})
+	}
+
+	return nativeTransfers
+}
+
+func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
 	transfers := make([]transfer, 0)
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x%x","toBlock":"0x%x","topics":["%s"]}],"id":1}`, b.From, b.To, evmTransferEvent))
 	resp, err := client.Post(e.rpcEndpoint(), "application/json", bytes.NewBuffer(post))
