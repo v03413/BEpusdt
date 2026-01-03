@@ -193,6 +193,8 @@ func (Epusdt) CheckoutCounter(ctx *gin.Context) {
 		"trade_id":   tradeId,
 		"order_id":   order.OrderId,
 		"trade_type": order.TradeType,
+		"money":      order.Money,
+		"fiat":       order.Fiat,
 	})
 }
 

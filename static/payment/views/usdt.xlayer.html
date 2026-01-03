@@ -4,48 +4,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USDT・X Layer 一款更好用的个人USDT收款网关 BEpusdt</title>
+    <title>USDT・Aptos 一款更好用的个人USDT收款网关 BEpusdt</title>
     <link rel="shortcut icon" href="/payment/img/tether.svg">
-    <link rel="stylesheet" href="/payment/css/usdt.min.css">
+    <link rel="stylesheet" href="/payment/css/core.min.css">
     <script src="/payment/js/jquery.min.js"></script>
     <script src="/payment/js/jquery.qrcode_1.0.min.js"></script>
-    <script src="/payment/js/usdt.min.js"></script>
+    <script src="/payment/i18n/i18next.min.js"></script>
+    <script src="/payment/js/core.min.js"></script>
 </head>
 
 <body>
     <div class="payment-container">
+        <div class="language-switcher">
+            <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
         <div class="crypto-icon">USDT</div>
-        <h1 class="payment-title">USDT 支付</h1>
+        <h1 class="payment-title" data-i18n="payment.title">USDT 支付</h1>
         <p class="payment-subtitle">
             <span class="status-indicator"></span>
-            请使用 <strong>OKX (X Layer)</strong> 网络进行转账
-            <span class="network-badge">X Layer</span>
+            <span data-i18n="payment.subtitle">请使用 <strong>Aptos</strong> 网络进行转账</span>
+            <span class="network-badge" data-i18n="payment.networkBadge">Aptos</span>
         </p>
+
         <div class="order-info">
             <div class="order-item">
-                <span class="order-label">转账金额:</span>
-                <span class="order-value amount-highlight" id="payAmount">{{.amount}} USDT</span>
+                <span class="order-label" data-i18n="payment.paymentAmount">付款数额:</span>
+                <span class="order-value amount-value" id="payAmount" onclick="copyAmount()" data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USDT</span>
             </div>
             <div class="order-item">
-                <span class="order-label">商户订单:</span>
-                <span class="order-value" id="orderNumber">{{.order_id}}</span>
+                <span class="order-label" data-i18n="payment.merchantOrder">商户订单:</span>
+                <span class="order-value">{{.order_id}}</span>
+            </div>
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.orderAmount">订单金额:</span>
+                <span class="order-value">
+                    <span class="fiat-amount"><span data-i18n="payment.amountPrefix">约</span> {{.money}} {{.fiat}}</span>
+                </span>
             </div>
         </div>
         <div class="countdown-banner">
             <div class="countdown-content">
                 <div class="countdown-info">
-                    <div class="countdown-title">⏰ 支付倒计时</div>
-                    <div class="countdown-subtitle">请在指定时间内完成转账，超时勿付请重新下单</div>
+                    <div class="countdown-title" data-i18n="payment.countdownTitle">⏰ 支付倒计时</div>
+                    <div class="countdown-subtitle" data-i18n="payment.countdownSubtitle">请在指定时间内完成转账，超时勿付请重新下单</div>
                 </div>
                 <div class="countdown-timer" id="countdown">
                     <div class="time-unit">
                         <span class="time-number" id="minutes">15</span>
-                        <span class="time-label">分</span>
+                        <span class="time-label" data-i18n="payment.minutes">分</span>
                     </div>
                     <span class="time-separator">:</span>
                     <div class="time-unit">
                         <span class="time-number" id="seconds">00</span>
-                        <span class="time-label">秒</span>
+                        <span class="time-label" data-i18n="payment.seconds">秒</span>
                     </div>
                 </div>
             </div>
@@ -53,36 +68,38 @@
         <div class="qr-section">
             <div class="qr-code" id="qrcode"></div>
             <div class="address-section">
-                <div class="address-label">收款地址 (X Layer 网络)</div>
+                <div class="address-label" data-i18n="payment.addressLabel">收款地址 (X Layer 网络)</div>
                 <div class="address-text" id="walletAddress">{{.address}}</div>
-                <button class="copy-btn" onclick="copyAddress()">复制地址</button>
+                <button class="copy-btn" onclick="copyAddress()" data-i18n="payment.copyAddress">复制地址</button>
             </div>
         </div>
         <div class="instructions">
-            <h4>📋 转账说明</h4>
+            <h4 data-i18n="payment.instructionsTitle">📋 转账说明</h4>
             <ol>
-                <li>必须使用 <strong>X Layer 网络</strong> 进行转账，请勿转入 OKB！</li>
-                <li>转账完成后系统会自动确认到账</li>
-                <li>转账金额必须与显示金额完全一致</li>
-                <li>如果有其它疑问，请联系客服处理</li>
+                <li data-i18n="[html]payment.instruction1">必须使用 <strong>X Layer 网络</strong> 进行转账，请勿转入 OKB！</li>
+                <li data-i18n="payment.instruction2">转账完成后系统会自动确认到账</li>
+                <li data-i18n="payment.instruction3">转账金额必须与显示金额完全一致</li>
+                <li data-i18n="payment.instruction4">如果有其它疑问，请联系客服处理</li>
             </ol>
         </div>
         <div class="footer-info">
             <div class="project-info">
-                <span class="powered-by">Powered by</span>
+                <span class="powered-by" data-i18n="payment.poweredBy">Powered by</span>
                 <a href="https://github.com/v03413/BEpusdt" target="_blank" class="project-link">
                     <strong>BEpusdt</strong>
                 </a>
-                <span class="open-source">Github</span>
+                <span class="open-source" data-i18n="payment.github">Github</span>
             </div>
         </div>
     </div>
 
     <script>
+
         document.addEventListener('DOMContentLoaded', function () {
             Payment.init({
                 expire: "{{.expire}}",
                 address: "{{.address}}",
+                amount: "{{.amount}}",
                 trade_id: "{{.trade_id}}",
                 return_url: "{{.return_url}}"
             });
@@ -91,3 +108,4 @@
 </body>
 
 </html>
+
