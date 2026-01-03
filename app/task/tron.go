@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -80,7 +81,7 @@ func (t *tron) blockRoll(context.Context) {
 
 	var client = api.NewWalletClient(conn)
 
-	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*15)
 	block, err1 := client.GetNowBlock2(ctx, nil)
 	defer cancel()
 
@@ -315,7 +316,7 @@ func (t *tron) blockParse(n any) {
 		resourceQueue.In <- resources
 	}
 
-	log.Task.Info("区块扫描完成", num, conf.GetBlockSuccRate(conf.Tron), conf.Tron)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Tron): %d 成功率：%s", num, conf.GetBlockSuccRate(conf.Tron)))
 }
 
 func (t *tron) blockInitOffset(now int64) {
