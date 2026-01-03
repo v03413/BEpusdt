@@ -385,10 +385,13 @@ func (Auth) SetPassword(ctx *gin.Context) {
 		return
 	}
 
+	session := sessions.Default(ctx)
 	hash, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 
 	model.SetK(model.AdminPassword, string(hash))
-	model.SetK(model.AdminToken, "")
+	session.Delete(conf.AdminTokenK)
+
+	defer session.Save()
 
 	base.Ok(ctx, "修改成功，请重新登录")
 }

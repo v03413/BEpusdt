@@ -2,12 +2,15 @@ package model
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/utils"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type ConfKey string
@@ -25,7 +28,20 @@ func (c Conf) TableName() string {
 }
 
 func SetK(k ConfKey, v string) {
-	Db.Exec("REPLACE INTO bep_conf (k, v) VALUES (?, ?)", k, v)
+	if err = Db.Transaction(func(db *gorm.DB) error {
+		if err2 := db.Where("`k` = ?", k).Delete(&Conf{}).Error; err2 != nil {
+
+			return err2
+		}
+		if err2 := db.Create(&Conf{K: k, V: v}).Error; err2 != nil {
+
+			return err2
+		}
+
+		return nil
+	}); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("设置配置项 %s 错误：%s", k, err.Error()))
+	}
 }
 
 func GetK(k ConfKey) string {
@@ -36,6 +52,8 @@ func GetK(k ConfKey) string {
 
 		return row.V
 	}
+
+	_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("获取配置项 %s 错误：%s", k, tx.Error.Error()))
 
 	return ""
 }
@@ -99,12 +117,18 @@ func CheckoutCounter(host, id string) string {
 }
 
 func ConfInit() {
+	var hash = utils.StrSha256(utils.Md5String(time.Now().String()))
+	var secure = "/" + hash[:10]
+	var token = utils.Md5String(hash[18:28])
+	var username = hash[10:20]
+	var password = hash[20:30]
+	var encrypt, _ = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	var data = map[ConfKey]string{
 		ApiAppUri:           "",
-		ApiAuthToken:        utils.Md5String(time.Now().String()),
-		AdminUsername:       DefaultUsername,
-		AdminPassword:       DefaultPassword,
-		AdminSecure:         utils.Md5String(time.Now().String())[:10],
+		ApiAuthToken:        token,
+		AdminSecure:         secure,
+		AdminUsername:       username,
+		AdminPassword:       string(encrypt),
 		RateSyncInterval:    "3600",
 		AtomUSDT:            "0.01",
 		AtomUSDC:            "0.01",
@@ -131,6 +155,34 @@ func ConfInit() {
 	for k, v := range data {
 		rows = append(rows, Conf{K: k, V: v})
 	}
+
+	fmt.Println()
+	fmt.Println("╔═══════════════════════════════════════════════════════════════════════")
+	fmt.Println("║  🎉  欢迎使用 BEpusdt  -  首次运行检测，初始化配置完成")
+	fmt.Println("╚═══════════════════════════════════════════════════════════════════════")
+	fmt.Println()
+	fmt.Println("┏━━  🔐  后台登录信息 (请立即保存！)")
+	fmt.Println("┃")
+	fmt.Printf("┃    👤  登录账号:  %s\n", username)
+	fmt.Printf("┃    🔑  登录密码:  %s\n", password)
+	fmt.Printf("┃    🛡️   安全入口:  %s\n", secure)
+	fmt.Println("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("┏━━  🔌  API 对接信息")
+	fmt.Println("┃")
+	fmt.Printf("┃    🎫  对接令牌:  %s\n", token)
+	fmt.Println("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("⚠️   重要提示:")
+	fmt.Println("    •  以上信息仅显示一次，请务必妥善保存至安全位置")
+	fmt.Println("    •  登录密码遗忘可通过 'reset' 命令重置")
+	fmt.Println("    •  API 令牌可在网页后台进行修改")
+	fmt.Println("    •  建议定期更换密码以确保账户安全")
+	fmt.Println()
+	fmt.Println("🚀  快速开始:  http://your-domain" + secure)
+	fmt.Println()
+	fmt.Println("═══════════════════════════════════════════════════════════════════════")
+	fmt.Println()
 
 	Db.Create(&rows)
 }
