@@ -288,7 +288,7 @@ func (s *solana) slotParse(n any) {
 		}
 	}
 
-	log.Task.Info("区块扫描完成", slot, conf.GetBlockSuccRate(network), network)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Solana) %d 成功率：%s", slot, conf.GetBlockSuccRate(network)))
 }
 
 func (s *solana) parseTransfer(instr gjson.Result, accountKeys []string, tokenAccountMap map[string]solanaTokenOwner) transfer {
