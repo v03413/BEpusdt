@@ -31,10 +31,12 @@ func (Dashboard) Home(ctx *gin.Context) {
 	var totalMoney, todayMoney float64
 	var totalCount, todayCount int64
 	var monthly = make(map[string]float64)
-	var tokenMap = map[string]float64{
-		string(model.USDT): 0,
-		string(model.USDC): 0,
-		string(model.TRX):  0,
+	var tokenMap = map[model.Crypto]float64{
+		model.USDT: 0,
+		model.USDC: 0,
+		model.TRX:  0,
+		model.BNB:  0,
+		model.ETH:  0,
 	}
 
 	for _, itm := range rows {
@@ -47,14 +49,12 @@ func (Dashboard) Home(ctx *gin.Context) {
 			todayCount++
 		}
 
-		if _, ok := model.TradeTypeTable[itm.TradeType]; ok {
-			var token = string(model.TradeTypeTable[itm.TradeType])
-
-			if _, ok := tokenMap[token]; !ok {
-				tokenMap[token] = 0
+		if crypto, err := model.GetCrypto(itm.TradeType); err == nil {
+			if _, ok := tokenMap[crypto]; !ok {
+				tokenMap[crypto] = 0
 			}
 
-			tokenMap[token] += money
+			tokenMap[crypto] += money
 		}
 
 		var month = itm.CreatedAt.Time().Format("2006/01")

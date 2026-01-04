@@ -57,16 +57,17 @@ func orderTransferHandle(context.Context) {
 		var other = make([]transfer, 0)
 		var orders = getAllWaitingOrders()
 		for _, t := range transfers {
-			// debug
-			//if t.TradeType == model.BscBnb {
-			//	fmt.Println(t.TradeType, t.TxHash, t.FromAddress, "=>", t.RecvAddress, t.Amount.String())
-			//}
-
-			// 判断金额是否在允许范围内
-			if !inAmountRange(t.Amount) {
+			// 判断数额是否在允许范围内
+			if !model.IsAmountValid(t.TradeType, t.Amount) {
 
 				continue
 			}
+
+			// debug
+			//if t.Network == conf.Plasma {
+			//
+			//	fmt.Println(t.TradeType, t.TxHash, t.FromAddress, "=>", t.RecvAddress, t.Amount.String())
+			//}
 
 			// 判断是否存在对应订单
 			o, ok := orders[fmt.Sprintf("%s%v%s", t.RecvAddress, t.Amount.String(), t.TradeType)]
@@ -101,11 +102,6 @@ func notOrderTransferHandle(context.Context) {
 		for _, wa := range was {
 			for _, t := range transfers {
 				if t.RecvAddress != wa.Address && t.FromAddress != wa.Address {
-
-					continue
-				}
-
-				if !inAmountRange(t.Amount) {
 
 					continue
 				}
@@ -201,20 +197,4 @@ func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
 	}
 
 	return data
-}
-
-func inAmountRange(payAmount decimal.Decimal) bool {
-	var payMin, payMax = model.Payment()
-
-	if payAmount.GreaterThan(payMax) {
-
-		return false
-	}
-
-	if payAmount.LessThan(payMin) {
-
-		return false
-	}
-
-	return true
 }

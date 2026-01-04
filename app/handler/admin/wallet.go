@@ -44,7 +44,7 @@ func (Wallet) Add(ctx *gin.Context) {
 		return
 	}
 
-	if _, ok := model.SupportTradeTypes[model.TradeType(req.TradeType)]; !ok {
+	if !model.IsSupportedTradeType(model.TradeType(req.TradeType)) {
 		base.BadRequest(ctx, fmt.Sprintf("不支持的交易类型: %s", req.TradeType))
 
 		return
@@ -135,7 +135,7 @@ func (Wallet) Mod(ctx *gin.Context) {
 		w.Address = strings.TrimSpace(*req.Address)
 	}
 	if req.TradeType != nil {
-		if _, ok := model.SupportTradeTypes[model.TradeType(*req.TradeType)]; !ok {
+		if !model.IsSupportedTradeType(model.TradeType(*req.TradeType)) {
 			base.BadRequest(ctx, fmt.Sprintf("不支持的交易类型: %s", *req.TradeType))
 
 			return

@@ -347,7 +347,7 @@ func (s *solana) parseTransfer(instr gjson.Result, accountKeys []string, tokenAc
 }
 
 func (s *solana) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders(networkTokenMap[conf.Solana])
+	var orders = getConfirmingOrders(model.GetNetworkTrades(conf.Solana))
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {

@@ -7,13 +7,10 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/utils"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
-
-type ConfKey string
 
 var confCache sync.Map
 
@@ -147,6 +144,7 @@ func ConfInit() {
 		RpcEndpointEthereum: "https://ethereum-public.nodies.app/",
 		RpcEndpointBase:     "https://base-public.nodies.app/",
 		RpcEndpointAptos:    "https://aptos-rest.publicnode.com/",
+		RpcEndpointPlasma:   "https://9745.rpc.thirdweb.com/",
 		NotifyMaxRetry:      "10",
 		BlockHeightMaxDiff:  "1000",
 		PaymentTimeout:      "1200", // 20分钟
@@ -192,29 +190,4 @@ func ConfInit() {
 func AuthToken() string {
 
 	return GetK(ApiAuthToken)
-}
-
-func Endpoint(net string) string {
-	switch net {
-	case conf.Tron:
-		return GetC(RpcEndpointTron)
-	case conf.Bsc:
-		return GetC(RpcEndpointBsc)
-	case conf.Solana:
-		return GetC(RpcEndpointSolana)
-	case conf.Xlayer:
-		return GetC(RpcEndpointXlayer)
-	case conf.Polygon:
-		return GetC(RpcEndpointPolygon)
-	case conf.Arbitrum:
-		return GetC(RpcEndpointArbitrum)
-	case conf.Ethereum:
-		return GetC(RpcEndpointEthereum)
-	case conf.Base:
-		return GetC(RpcEndpointBase)
-	case conf.Aptos:
-		return GetC(RpcEndpointAptos)
-	}
-
-	return ""
 }

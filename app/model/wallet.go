@@ -1,9 +1,6 @@
 package model
 
 import (
-	"fmt"
-
-	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/utils"
 )
 
@@ -14,8 +11,6 @@ const (
 	WaOtherDisable  uint8 = 0
 )
 
-type Crypto string
-
 const (
 	USDT Crypto = "USDT"
 	USDC Crypto = "USDC"
@@ -23,98 +18,6 @@ const (
 	BNB  Crypto = "BNB"
 	ETH  Crypto = "ETH"
 )
-
-// SupportTradeTypes 目前支持的收款交易类型
-var SupportTradeTypes = map[TradeType]struct{}{
-	EthereumEth:  {},
-	BscBnb:       {},
-	TronTrx:      {},
-	UsdtTrc20:    {},
-	UsdtErc20:    {},
-	UsdtBep20:    {},
-	UsdtAptos:    {},
-	UsdtXlayer:   {},
-	UsdtSolana:   {},
-	UsdtPolygon:  {},
-	UsdtArbitrum: {},
-	UsdcErc20:    {},
-	UsdcBep20:    {},
-	UsdcXlayer:   {},
-	UsdcPolygon:  {},
-	UsdcArbitrum: {},
-	UsdcBase:     {},
-	UsdcTrc20:    {},
-	UsdcSolana:   {},
-	UsdcAptos:    {},
-}
-
-var TradeTypeTable = map[TradeType]Crypto{
-	// USDT
-	UsdtTrc20:    USDT,
-	UsdtErc20:    USDT,
-	UsdtBep20:    USDT,
-	UsdtAptos:    USDT,
-	UsdtXlayer:   USDT,
-	UsdtSolana:   USDT,
-	UsdtPolygon:  USDT,
-	UsdtArbitrum: USDT,
-
-	// USDC
-	UsdcErc20:    USDC,
-	UsdcBep20:    USDC,
-	UsdcXlayer:   USDC,
-	UsdcPolygon:  USDC,
-	UsdcArbitrum: USDC,
-	UsdcBase:     USDC,
-	UsdcTrc20:    USDC,
-	UsdcSolana:   USDC,
-	UsdcAptos:    USDC,
-
-	// 原生代币
-	TronTrx:     TRX,
-	EthereumEth: ETH,
-	BscBnb:      BNB,
-}
-
-// tokenContractMap Crypto 合约地址映射表
-var tokenContractMap = map[TradeType]string{
-	UsdtPolygon:  conf.UsdtPolygon,
-	UsdtArbitrum: conf.UsdtArbitrum,
-	UsdtErc20:    conf.UsdtErc20,
-	UsdtBep20:    conf.UsdtBep20,
-	UsdtXlayer:   conf.UsdtXlayer,
-	UsdtAptos:    conf.UsdtAptos,
-	UsdtSolana:   conf.UsdtSolana,
-	UsdcErc20:    conf.UsdcErc20,
-	UsdcBep20:    conf.UsdcBep20,
-	UsdcXlayer:   conf.UsdcXlayer,
-	UsdcPolygon:  conf.UsdcPolygon,
-	UsdcArbitrum: conf.UsdcArbitrum,
-	UsdcBase:     conf.UsdcBase,
-	UsdcAptos:    conf.UsdcAptos,
-	UsdcSolana:   conf.UsdcSolana,
-}
-
-// tokenDecimalsMap Crypto 精度映射表
-var tokenDecimalsMap = map[TradeType]int32{
-	UsdtPolygon:  conf.UsdtPolygonDecimals,
-	UsdtArbitrum: conf.UsdtArbitrumDecimals,
-	UsdtErc20:    conf.UsdtEthDecimals,
-	UsdtBep20:    conf.UsdtBscDecimals,
-	UsdtAptos:    conf.UsdtAptosDecimals,
-	UsdtXlayer:   conf.UsdtXlayerDecimals,
-	UsdtSolana:   conf.UsdtSolanaDecimals,
-	UsdtTrc20:    conf.UsdtTronDecimals,
-	UsdcErc20:    conf.UsdcEthDecimals,
-	UsdcBep20:    conf.UsdcBscDecimals,
-	UsdcXlayer:   conf.UsdcXlayerDecimals,
-	UsdcPolygon:  conf.UsdcPolygonDecimals,
-	UsdcArbitrum: conf.UsdcArbitrumDecimals,
-	UsdcBase:     conf.UsdcBaseDecimals,
-	UsdcSolana:   conf.UsdcSolanaDecimals,
-	UsdcAptos:    conf.UsdcAptosDecimals,
-	UsdcTrc20:    conf.UsdcTronDecimals,
-}
 
 type Wallet struct {
 	Id
@@ -170,28 +73,21 @@ func (wa *Wallet) Delete() {
 }
 
 func (wa *Wallet) GetTokenContract() string {
-	if contract, ok := tokenContractMap[TradeType(wa.TradeType)]; ok {
+	if c, ok := registry[TradeType(wa.TradeType)]; ok {
 
-		return contract
+		return c.Contract
 	}
 
 	return ""
 }
 
 func (wa *Wallet) GetTokenDecimals() int32 {
-	if decimals, ok := tokenDecimalsMap[TradeType(wa.TradeType)]; ok {
+	if c, ok := registry[TradeType(wa.TradeType)]; ok {
 
-		return decimals
+		return c.Decimal
 	}
 
 	return -18
-}
-
-func GetCrypto(t TradeType) (Crypto, error) {
-	if f, ok := TradeTypeTable[t]; ok {
-		return f, nil
-	}
-	return "", fmt.Errorf("unsupported trade type: %s", t)
 }
 
 func GetAvailableAddress(t TradeType) []string {

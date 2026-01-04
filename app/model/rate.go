@@ -17,9 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type Fiat string
-type coinId string
-
 const (
 	FiatCNY Fiat = "CNY"
 	FiatUSD Fiat = "USD"

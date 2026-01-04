@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cast"
 )
 
-type TradeType string
-
 const (
 	OrderNotifyStateSucc = 1 // 回调成功
 	OrderNotifyStateFail = 0 // 回调失败
@@ -23,15 +21,9 @@ const (
 	OrderStatusConfirming = 5 // 等待交易确认
 	OrderStatusFailed     = 6 // 交易确认失败
 
-	BscBnb       TradeType = "bsc.bnb"
-	EthereumEth  TradeType = "ethereum.eth"
-	SolanaSol    TradeType = "solana.sol"
-	PolygonMatic TradeType = "polygon.matic"
-	AptosApt     TradeType = "aptos.apt"
-	ArbitrumEth  TradeType = "arbitrum.eth"
-	BaseEth      TradeType = "base.eth"
-	XlayerOkb    TradeType = "xlayer.okb"
-	TronTrx      TradeType = "tron.trx"
+	BscBnb      TradeType = "bsc.bnb"
+	EthereumEth TradeType = "ethereum.eth"
+	TronTrx     TradeType = "tron.trx"
 
 	UsdtTrc20    TradeType = "usdt.trc20"
 	UsdcTrc20    TradeType = "usdc.trc20"
@@ -50,6 +42,7 @@ const (
 	UsdcSolana   TradeType = "usdc.solana"
 	UsdtAptos    TradeType = "usdt.aptos"
 	UsdcAptos    TradeType = "usdc.aptos"
+	UsdtPlasma   TradeType = "usdt.plasma"
 )
 
 const (
@@ -292,9 +285,10 @@ func CalcTradeExpiredAt(sec int64) time.Time {
 }
 
 func getAtomicity(t TradeType) (decimal.Decimal, int32) {
-	crypto, ok := TradeTypeTable[t]
-	if !ok {
-		crypto = USDT
+	var crypto = USDT
+	c, ok := registry[t]
+	if ok {
+		crypto = c.Crypto
 	}
 
 	confKey, ok2 := cryptoAtomKeys[crypto]

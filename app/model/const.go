@@ -1,5 +1,12 @@
 package model
 
+type ConfKey string
+type Fiat string
+type coinId string
+type Crypto string
+type TradeType string
+type Network string
+
 const (
 	AdminUsername ConfKey = "admin_username"
 	AdminPassword ConfKey = "admin_password"
@@ -23,6 +30,7 @@ const (
 	PaymentTimeout    ConfKey = "payment_timeout"     // 订单支付超时时间，单位秒
 	PaymentStaticPath ConfKey = "payment_static_path" // 收银台静态资源路径
 
+	RpcEndpointPlasma         ConfKey = "rpc_endpoint_plasma"            // Plasma RPC节点
 	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点
 	RpcEndpointSolana         ConfKey = "rpc_endpoint_solana"            // Solana RPC节点
 	RpcEndpointXlayer         ConfKey = "rpc_endpoint_xlayer"            // Xlayer RPC节点

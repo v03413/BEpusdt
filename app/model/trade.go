@@ -42,7 +42,7 @@ func BuildOrder(p OrderParams) (Order, error) {
 			return order, fmt.Errorf("钱包地址格式错误：%s", p.Address)
 		}
 	}
-	if _, ok := SupportTradeTypes[p.TradeType]; !ok {
+	if _, ok := registry[p.TradeType]; !ok {
 
 		return order, fmt.Errorf("不支持的交易类型：%s", p.TradeType)
 	}

@@ -30,45 +30,7 @@ const (
 )
 
 var chainBlockNum sync.Map
-var contractMap = map[string]model.TradeType{
-	conf.UsdtXlayer:   model.UsdtXlayer,
-	conf.UsdtBep20:    model.UsdtBep20,
-	conf.UsdtPolygon:  model.UsdtPolygon,
-	conf.UsdtArbitrum: model.UsdtArbitrum,
-	conf.UsdtErc20:    model.UsdtErc20,
-	conf.UsdcErc20:    model.UsdcErc20,
-	conf.UsdcPolygon:  model.UsdcPolygon,
-	conf.UsdcXlayer:   model.UsdcXlayer,
-	conf.UsdcArbitrum: model.UsdcArbitrum,
-	conf.UsdcBep20:    model.UsdcBep20,
-	conf.UsdcBase:     model.UsdcBase,
-}
-var networkTokenMap = map[string][]model.TradeType{
-	conf.Bsc:      {model.UsdtBep20, model.UsdcBep20, model.BscBnb},
-	conf.Xlayer:   {model.UsdtXlayer, model.UsdcXlayer},
-	conf.Polygon:  {model.UsdtPolygon, model.UsdcPolygon},
-	conf.Arbitrum: {model.UsdtArbitrum, model.UsdcArbitrum},
-	conf.Ethereum: {model.UsdtErc20, model.UsdcErc20, model.EthereumEth},
-	conf.Base:     {model.UsdcBase},
-	conf.Solana:   {model.UsdtSolana, model.UsdcSolana},
-	conf.Aptos:    {model.UsdtAptos, model.UsdcAptos},
-}
 var client = &http.Client{Timeout: time.Second * 30}
-var decimals = map[string]int32{
-	conf.UsdtXlayer:   conf.UsdtXlayerDecimals,
-	conf.UsdtBep20:    conf.UsdtBscDecimals,
-	conf.UsdtPolygon:  conf.UsdtPolygonDecimals,
-	conf.UsdtArbitrum: conf.UsdtArbitrumDecimals,
-	conf.UsdtErc20:    conf.UsdtEthDecimals,
-	conf.UsdcErc20:    conf.UsdcEthDecimals,
-	conf.UsdcPolygon:  conf.UsdcPolygonDecimals,
-	conf.UsdcXlayer:   conf.UsdcXlayerDecimals,
-	conf.UsdcArbitrum: conf.UsdcArbitrumDecimals,
-	conf.UsdcBep20:    conf.UsdcBscDecimals,
-	conf.UsdcBase:     conf.UsdcBaseDecimals,
-	conf.UsdcAptos:    conf.UsdcAptosDecimals,
-	conf.UsdtAptos:    conf.UsdtAptosDecimals,
-}
 
 type block struct {
 	InitStartOffset int64 // 首次偏移量，第一次启动时，区块高度需要叠加此值，设置为负值可解决部分已创建但未超时(未扫描)的订单问题
@@ -356,7 +318,7 @@ func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 
 	for _, itm := range data.Get("result").Array() {
 		to := itm.Get("address").String()
-		tradeType, ok := contractMap[to]
+		tradeType, ok := model.GetContractTrade(to)
 		if !ok {
 
 			continue
@@ -392,7 +354,7 @@ func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 			Network:     e.Network,
 			FromAddress: from,
 			RecvAddress: recv,
-			Amount:      decimal.NewFromBigInt(amount, decimals[to]),
+			Amount:      decimal.NewFromBigInt(amount, model.GetContractDecimal(to)),
 			TxHash:      itm.Get("transactionHash").String(),
 			BlockNum:    blockNum,
 			Timestamp:   timestamp[itm.Get("blockNumber").String()],
@@ -404,7 +366,7 @@ func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 }
 
 func (e *evm) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders(networkTokenMap[e.Network])
+	var orders = getConfirmingOrders(model.GetNetworkTrades(model.Network(e.Network)))
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
@@ -458,12 +420,12 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 
 func (e *evm) rpcEndpoint() string {
 
-	return model.Endpoint(e.Network)
+	return model.Endpoint(model.Network(e.Network))
 }
 
 func rollBreak(network string) bool {
-	token, ok := networkTokenMap[network]
-	if !ok {
+	token := model.GetNetworkTrades(model.Network(network))
+	if len(token) == 0 {
 
 		return true
 	}

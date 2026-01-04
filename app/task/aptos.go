@@ -390,7 +390,7 @@ func (a *aptos) padAddressLeadingZeros(addr string) string {
 }
 
 func (a *aptos) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders(networkTokenMap[conf.Aptos])
+	var orders = getConfirmingOrders(model.GetNetworkTrades(conf.Aptos))
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {

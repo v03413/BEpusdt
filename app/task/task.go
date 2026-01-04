@@ -23,6 +23,7 @@ func Init() error {
 
 	bscInit()
 	ethInit()
+	plasmaInit()
 	polygonInit()
 	arbitrumInit()
 	xlayerInit()

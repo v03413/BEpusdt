@@ -28,33 +28,10 @@ type authPasswordReq struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
-var types = map[model.TradeType]string{
-	model.BscBnb:       "BSC・BNB",
-	model.EthereumEth:  "Ethereum・ETH",
-	model.TronTrx:      "TRON・TRX",
-	model.UsdtTrc20:    "USDT・TRC20",
-	model.UsdtErc20:    "USDT・ERC20",
-	model.UsdtBep20:    "USDT・BEP20",
-	model.UsdtAptos:    "USDT・APTOS",
-	model.UsdtXlayer:   "USDT・Xlayer",
-	model.UsdtSolana:   "USDT・Solana",
-	model.UsdtPolygon:  "USDT・Polygon",
-	model.UsdtArbitrum: "USDT・Arbitrum",
-	model.UsdcErc20:    "USDC・ERC20",
-	model.UsdcBep20:    "USDC・BEP20",
-	model.UsdcXlayer:   "USDC・Xlayer",
-	model.UsdcPolygon:  "USDC・Polygon",
-	model.UsdcArbitrum: "USDC・Arbitrum",
-	model.UsdcBase:     "USDC・Base",
-	model.UsdcTrc20:    "USDC・TRC20",
-	model.UsdcSolana:   "USDC・Solana",
-	model.UsdcAptos:    "USDC・APTOS",
-}
-
 func (Auth) Info(ctx *gin.Context) {
 	base.Ok(ctx, gin.H{
 		"admin_username": model.GetK(model.AdminUsername),
-		"trade_type":     types,
+		"trade_type":     model.GetAllAlias(),
 		"trade_fiat":     model.SupportFiat,
 		"trade_crypto":   model.SupportCrypto,
 	})
@@ -350,7 +327,7 @@ func (Auth) Login(ctx *gin.Context) {
 	model.SetK(model.AdminLoginIP, ctx.ClientIP())
 	model.SetK(model.AdminLoginAt, cast.ToString(time.Now().Format(time.DateTime)))
 
-	base.Response(ctx, 200, gin.H{"token": token, "types": types})
+	base.Response(ctx, 200, gin.H{"token": token, "types": model.GetAllAlias()})
 }
 
 func (Auth) Logout(ctx *gin.Context) {

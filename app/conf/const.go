@@ -10,6 +10,7 @@ const (
 	Aptos    = "aptos"
 	Solana   = "solana"
 	Xlayer   = "xlayer"
+	Plasma   = "plasma"
 	Polygon  = "polygon"
 	Arbitrum = "arbitrum"
 	Ethereum = "ethereum"
