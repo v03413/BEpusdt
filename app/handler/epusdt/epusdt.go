@@ -93,17 +93,9 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 	if req.TradeType == "" {
 		req.TradeType = string(model.UsdtTrc20)
 	}
-	money := decimal.NewFromFloat(req.Amount)
-	if money.LessThanOrEqual(decimal.Zero) {
-		ctx.JSON(200, respFailJson("参数 amount 格式错误，必须是一个大于0的数字"))
-
-		return
-	}
-
-	money.Float64()
 
 	order, err := model.BuildOrder(model.OrderParams{
-		Money:       money,
+		Money:       decimal.NewFromFloat(req.Amount),
 		ApiType:     model.OrderApiTypeEpusdt,
 		Address:     req.Address,
 		OrderId:     req.OrderID,

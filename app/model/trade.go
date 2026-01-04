@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/shopspring/decimal"
+	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/utils"
 )
@@ -49,6 +50,13 @@ func BuildOrder(p OrderParams) (Order, error) {
 	if _, ok := SupportFiat[p.Fiat]; !ok {
 
 		return order, fmt.Errorf("不支持的法币类型：%s", p.Fiat)
+	}
+
+	maxAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMaxAmount)))
+	minAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMinAmount)))
+	if p.Money.GreaterThan(maxAmount) || p.Money.LessThan(minAmount) {
+		
+		return order, fmt.Errorf("交易金额必须在 %s - %s 之间", minAmount.String(), maxAmount.String())
 	}
 
 	Db.Where("order_id = ?", p.OrderId).Find(&order)
