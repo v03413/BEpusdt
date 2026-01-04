@@ -34,11 +34,6 @@ type version struct {
 
 var apt aptos
 
-var aptDecimals = map[model.TradeType]int32{
-	model.UsdtAptos: conf.UsdtAptosDecimals,
-	model.UsdcAptos: conf.UsdcAptosDecimals,
-}
-
 type aptEvent struct {
 	Type    string
 	Action  string
@@ -304,7 +299,7 @@ func (a *aptos) versionParse(n any) {
 			transfers = append(transfers, transfer{
 				Network:     net,
 				TxHash:      hash,
-				Amount:      decimal.NewFromBigInt(amount, aptDecimals[model.TradeType(tradeType)]),
+				Amount:      decimal.NewFromBigInt(amount, model.GetTradeDecimal(tradeType)),
 				FromAddress: a.padAddressLeadingZeros(addrOwner[from]),
 				RecvAddress: a.padAddressLeadingZeros(addrOwner[to]),
 				Timestamp:   timestamp,
@@ -367,11 +362,11 @@ func (a *aptos) versionParse(n any) {
 
 		// 处理 USDT
 		usdtDeposits, usdtFrom := processEvents(model.UsdtAptos, aptEvents)
-		generateTransfers(usdtDeposits, usdtFrom, model.UsdtAptos, aptDecimals[model.UsdtAptos])
+		generateTransfers(usdtDeposits, usdtFrom, model.UsdtAptos, model.GetTradeDecimal(model.UsdtAptos))
 
 		// 处理 USDC
 		usdcDeposits, usdcFrom := processEvents(model.UsdcAptos, aptEvents)
-		generateTransfers(usdcDeposits, usdcFrom, model.UsdcAptos, aptDecimals[model.UsdcAptos])
+		generateTransfers(usdcDeposits, usdcFrom, model.UsdcAptos, model.GetTradeDecimal(model.UsdcAptos))
 	}
 
 	if len(transfers) > 0 {

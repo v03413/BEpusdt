@@ -40,11 +40,6 @@ type solanaTokenOwner struct {
 
 var sol solana
 
-var solSplToken = map[string]model.TradeType{
-	conf.UsdtSolana: model.UsdtSolana,
-	conf.UsdcSolana: model.UsdcSolana,
-}
-
 func init() {
 	sol = newSolana()
 	Register(Task{Callback: sol.slotDispatch})
@@ -235,7 +230,7 @@ func (s *solana) slotParse(n any) {
 		tokenAccountMap := make(map[string]solanaTokenOwner)
 		for _, v := range []string{"postTokenBalances", "preTokenBalances"} {
 			for _, itm := range trans.Get("meta." + v).Array() {
-				tradeType, ok := solSplToken[itm.Get("mint").String()]
+				tradeType, ok := model.GetContractTrade(itm.Get("mint").String())
 				if !ok || itm.Get("programId").String() != conf.SolSplToken {
 
 					continue

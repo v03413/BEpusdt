@@ -44,7 +44,7 @@ var registry = map[TradeType]TradeTypeConf{
 		Alias:       "USDT・TRC20",
 		Network:     conf.Tron,
 		Crypto:      USDT,
-		Contract:    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+		Contract:    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // 占位，目前实际没使用
 		Decimal:     conf.UsdtTronDecimals,
 		AmountRange: usdGeneralRange,
 		EndpointKey: RpcEndpointTron,
@@ -170,7 +170,7 @@ var registry = map[TradeType]TradeTypeConf{
 		Alias:       "USDC・TRC20",
 		Network:     conf.Tron,
 		Crypto:      USDC,
-		Contract:    "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8",
+		Contract:    "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", // 占位，目前实际没使用
 		Decimal:     conf.UsdcTronDecimals,
 		AmountRange: usdGeneralRange,
 		EndpointKey: RpcEndpointTron,
@@ -296,6 +296,16 @@ func GetContractDecimal(addr string) int32 {
 	}
 
 	return -6
+}
+
+func GetTradeDecimal(t TradeType) int32 {
+	c, ok := registry[t]
+	if !ok {
+
+		return -6
+	}
+
+	return c.Decimal
 }
 
 func IsAmountValid(t TradeType, d decimal.Decimal) bool {
