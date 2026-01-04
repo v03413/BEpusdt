@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
@@ -9,6 +10,7 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 var engine *gin.Engine
@@ -19,7 +21,7 @@ func Handler() *gin.Engine {
 
 	engine = gin.New()
 
-	session := memstore.NewStore([]byte(conf.Secret))
+	session := memstore.NewStore([]byte(utils.StrSha256(time.Now().String())))
 	session.Options(sessions.Options{MaxAge: 86400, HttpOnly: true})
 
 	engine.Use(sessions.Sessions("session", session))
@@ -28,7 +30,7 @@ func Handler() *gin.Engine {
 	engine.NoRoute(noRoute())
 	engine.GET("/", func(ctx *gin.Context) {
 		sess := sessions.Default(ctx)
-		if secure, ok := sess.Get(conf.AdminSecure).(bool); ok && secure {
+		if secure, ok := sess.Get(conf.AdminSecureK).(bool); ok && secure {
 			ctx.HTML(200, "secure.html", gin.H{})
 
 			return
@@ -75,7 +77,7 @@ func noRoute() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.URL.Path == model.GetC(model.AdminSecure) {
 			session := sessions.Default(ctx)
-			session.Set(conf.AdminSecure, true)
+			session.Set(conf.AdminSecureK, true)
 			_ = session.Save()
 
 			ctx.Redirect(302, "/#/login")

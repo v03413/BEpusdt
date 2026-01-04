@@ -82,19 +82,22 @@ func epay(ctx context.Context, order model.Order) {
 		return
 	}
 
-	// 判断是否包含 success
-	if !strings.Contains(strings.ToLower(string(all)), "success") {
-		markNotifyFail(order, fmt.Sprintf("body not contains success (%s)", string(all)))
+	var bodyStr = strings.ToLower(strings.TrimSpace(string(all)))
+
+	// 判断是否包含 success 或 ok
+	if !strings.Contains(bodyStr, "success") && !strings.Contains(bodyStr, "ok") {
+		markNotifyFail(order, "商户系统必须响应 success 或 ok 才会认定回调成功")
 
 		return
 	}
 
-	err = order.SetNotifyState(model.OrderNotifyStateSucc)
-	if err != nil {
+	if err = order.SetNotifyState(model.OrderNotifyStateSucc); err != nil {
 		log.Error("订单标记通知成功错误：", err, order.OrderId)
-	} else {
-		log.Info("订单通知成功：", order.OrderId)
+
+		return
 	}
+
+	log.Info("订单通知成功：", order.OrderId)
 }
 
 func epusdt(ctx context.Context, order model.Order) {
@@ -146,30 +149,18 @@ func epusdt(ctx context.Context, order model.Order) {
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		markNotifyFail(order, fmt.Sprintf("resp.StatusCode != 200"))
+		markNotifyFail(order, fmt.Sprintf("商户系统返回状态码错误：%d（必须是200）", resp.StatusCode))
 
 		return
 	}
 
-	all, err := io.ReadAll(resp.Body)
-	if err != nil {
-		markNotifyFail(order, fmt.Sprintf("io.ReadAll(resp.Body) Error: %v", err))
-
-		return
-	}
-
-	if string(all) != "ok" {
-		markNotifyFail(order, fmt.Sprintf("body != ok (%s)", string(all)))
-
-		return
-	}
-
-	err = order.SetNotifyState(model.OrderNotifyStateSucc)
-	if err != nil {
+	if err = order.SetNotifyState(model.OrderNotifyStateSucc); err != nil {
 		log.Error("订单标记通知成功错误：", err, order.OrderId)
-	} else {
-		log.Info("订单通知成功：", order.OrderId)
+
+		return
 	}
+
+	log.Info("订单通知成功：", order.OrderId)
 }
 
 func Bepusdt(order model.Order) {

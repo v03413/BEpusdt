@@ -25,10 +25,10 @@ type OrderParams struct {
 }
 
 type Trade struct {
-	TokenType Crypto
-	Rate      decimal.Decimal
-	Address   string
-	Amount    string
+	Crypto  Crypto
+	Rate    decimal.Decimal
+	Address string
+	Amount  string
 }
 
 func BuildOrder(p OrderParams) (Order, error) {
@@ -55,7 +55,7 @@ func BuildOrder(p OrderParams) (Order, error) {
 	maxAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMaxAmount)))
 	minAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMinAmount)))
 	if p.Money.GreaterThan(maxAmount) || p.Money.LessThan(minAmount) {
-		
+
 		return order, fmt.Errorf("交易金额必须在 %s - %s 之间", minAmount.String(), maxAmount.String())
 	}
 
@@ -168,9 +168,9 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	address, amount := CalcTradeAmount(wallet, rate, p.Money, p.TradeType)
 
 	return Trade{
-		TokenType: crypto,
-		Rate:      rate,
-		Address:   address,
-		Amount:    amount,
+		Crypto:  crypto,
+		Rate:    rate,
+		Address: address,
+		Amount:  amount,
 	}, nil
 }
