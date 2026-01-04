@@ -12,15 +12,15 @@ func (nr NotifyRecord) TableName() string {
 }
 
 func IsNeedNotifyByTxid(txid string) bool {
-	var row NotifyRecord
-	var res = Db.Where("txid = ?", txid).Limit(1).Find(&row)
+	var record NotifyRecord
+	var res = Db.Where("txid = ?", txid).Limit(1).Find(&record)
 	if res.RowsAffected > 0 {
 
 		return false
 	}
 
-	var row2 Order
-	var res2 = Db.Where("trade_hash = ?", txid).Limit(1).Find(&row2)
+	var order Order
+	var res2 = Db.Where("ref_hash = ?", txid).Limit(1).Find(&order)
 	if res2.RowsAffected > 0 {
 
 		return false
