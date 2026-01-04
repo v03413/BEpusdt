@@ -94,7 +94,6 @@ const getConf = async () => {
         "payment_min_amount",
         "payment_static_path",
         "payment_timeout",
-        "monitor_min_amount",
         "notifier_params",
         "notifier_channel"
       ]

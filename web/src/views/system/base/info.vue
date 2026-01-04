@@ -30,30 +30,14 @@
                 <a-input v-model="form.notify_max_retry" placeholder="推荐 10" />
               </a-col>
               <a-col :span="16">
-                <div class="field-description">支付回调失败时的最大重试次数，重试分钟间隔数：2 4 8 16 32 64 ...</div>
-              </a-col>
-            </a-row>
-          </a-form-item>
-
-          <a-form-item
-            field="monitor_min_amount"
-            label="监控最小金额"
-            :label-col-props="{ span: 6 }"
-            :wrapper-col-props="{ span: 18 }"
-          >
-            <a-row :gutter="16" align="center">
-              <a-col :span="8">
-                <a-input v-model="form.monitor_min_amount" placeholder="推荐 0.01" />
-              </a-col>
-              <a-col :span="16">
-                <div class="field-description">低于此金额的非订单转账交易不进行通知，可用于防范诱导式诈骗交易</div>
+                <div class="field-description">支付回调失败时的最大重试次数,重试分钟间隔数:2 4 8 16 32 64 ...</div>
               </a-col>
             </a-row>
           </a-form-item>
 
           <a-form-item
             field="payment_min_amount"
-            label="单笔支付金额"
+            label="单笔最小金额"
             :label-col-props="{ span: 6 }"
             :wrapper-col-props="{ span: 18 }"
           >
@@ -120,8 +104,7 @@ const form = ref({
   block_height_max_diff: "",
   notify_max_retry: "",
   payment_max_amount: "",
-  payment_min_amount: "",
-  monitor_min_amount: ""
+  payment_min_amount: ""
 });
 const rules = {
   block_height_max_diff: [
@@ -156,14 +139,6 @@ const rules = {
       message: "单笔支付最大金额不能为空"
     }
   ],
-  monitor_min_amount: [
-    {
-      required: true,
-      type: "number",
-      positive: true,
-      message: "监控最小金额不能为空"
-    }
-  ],
   payment_timeout: [
     {
       required: true,
@@ -184,7 +159,6 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
     { key: "notify_max_retry", value: form.value.notify_max_retry },
     { key: "payment_max_amount", value: form.value.payment_max_amount },
     { key: "payment_min_amount", value: form.value.payment_min_amount },
-    { key: "monitor_min_amount", value: form.value.monitor_min_amount },
     { key: "payment_timeout", value: form.value.payment_timeout }
   ]);
 
@@ -200,7 +174,6 @@ watch(
     form.value.notify_max_retry = data.value.notify_max_retry;
     form.value.payment_max_amount = data.value.payment_max_amount;
     form.value.payment_min_amount = data.value.payment_min_amount;
-    form.value.monitor_min_amount = data.value.monitor_min_amount;
     form.value.payment_timeout = data.value.payment_timeout;
   }
 );
