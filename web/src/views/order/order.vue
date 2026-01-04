@@ -162,7 +162,10 @@ const getOrderList = async () => {
       page: pagination.value.current,
       size: pagination.value.pageSize,
       sort: "desc",
-      keyword: ""
+      keyword: "",
+      name: formData.form.name,
+      address: formData.form.address,
+      trade_type: formData.form.trade_type
     });
 
     data.length = 0;

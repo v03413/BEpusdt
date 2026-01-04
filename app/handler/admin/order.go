@@ -11,14 +11,14 @@ type Order struct {
 
 type oListReq struct {
 	base.ListRequest
-	Name      *string `json:"name"`
+	Name      string  `json:"name"`
 	Money     *string `json:"money"`
 	Amount    *string `json:"amount"`
 	OrderId   *string `json:"order_id"`
 	TradeId   *string `json:"trade_id"`
 	Status    *uint8  `json:"status"`
-	Address   *string `json:"address"`
-	TradeType *string `json:"trade_type"`
+	Address   string  `json:"address"`
+	TradeType string  `json:"trade_type"`
 }
 
 func (Order) List(ctx *gin.Context) {
@@ -32,8 +32,8 @@ func (Order) List(ctx *gin.Context) {
 	var data []model.Order
 	var db = model.Db
 
-	if req.Name != nil {
-		db = db.Where("name LIKE ?", "%"+*req.Name+"%")
+	if req.Name != "" {
+		db = db.Where("name LIKE ?", "%"+req.Name+"%")
 	}
 	if req.Money != nil {
 		db = db.Where("money = ?", *req.Money)
@@ -50,11 +50,11 @@ func (Order) List(ctx *gin.Context) {
 	if req.Status != nil {
 		db = db.Where("status = ?", *req.Status)
 	}
-	if req.Address != nil {
-		db = db.Where("address like ?", "%"+*req.Address+"%")
+	if req.Address != "" {
+		db = db.Where("address like ?", "%"+req.Address+"%")
 	}
-	if req.TradeType != nil {
-		db = db.Where("trade_type = ?", *req.TradeType)
+	if req.TradeType != "" {
+		db = db.Where("trade_type = ?", req.TradeType)
 	}
 
 	var total int64
