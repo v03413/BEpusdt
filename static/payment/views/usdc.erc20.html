@@ -1,178 +1,111 @@
 <!DOCTYPE html>
-</html>
+<html lang="zh-CN">
 
-</body>
-    </script>
-        });
-            });
-                return_url: "{{.return_url}}"
-                trade_id: "{{.trade_id}}",
-                amount: "{{.amount}}",
-                address: "{{.address}}",
-                expire: "{{.expire}}",
-            Payment.init({
-        document.addEventListener('DOMContentLoaded', function () {
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDC・ERC20 一款更好用的个人USDC收款网关 BEpusdt</title>
+    <link rel="shortcut icon" href="/payment/img/tether.svg">
+    <link rel="stylesheet" href="/payment/css/core.min.css">
+    <script src="/payment/js/jquery.min.js"></script>
+    <script src="/payment/js/jquery.qrcode_1.0.min.js"></script>
+    <script src="/payment/i18n/i18next.min.js"></script>
+    <script src="/payment/js/core.min.js"></script>
+</head>
 
-        }
-            });
-                updateContent();
-                localStorage.setItem('payment_language', lang);
-                currentLang = lang;
-                }
-                    return;
-                    console.error('Language change failed:', err);
-                if (err) {
-            i18next.changeLanguage(lang, function(err, t) {
-        function changeLanguage(lang) {
+<body>
+    <div class="payment-container" data-token="USDC" data-network="ERC20" data-network-name="以太坊 (Ethereum)" data-warning-token="ETH">
+        <div class="language-switcher">
+            <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+            </select>
+        </div>
 
-        }
-            });
-                }
-                    }
-                        element.innerHTML = translation;
-                    } else {
-                        element.placeholder = translation;
-                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                    const translation = i18next.t(key);
-                } else {
-                    }
-                        }
-                            element.setAttribute(attr, i18next.t(transKey));
-                        } else {
-                            element.innerHTML = i18next.t(transKey);
-                        if (attr === 'html') {
-                        const transKey = matches[2];
-                        const attr = matches[1];
-                    if (matches) {
-                    const matches = key.match(/\[(.+?)\](.+)/);
-                if (key.startsWith('[')) {
-                const key = element.getAttribute('data-i18n');
-            document.querySelectorAll('[data-i18n]').forEach(function(element) {
-        function updateContent() {
+        <div class="crypto-icon">USDC</div>
+        <h1 class="payment-title" data-i18n="payment.title">USDC 支付</h1>
+        <p class="payment-subtitle">
+            <span class="status-indicator"></span>
+            <span data-i18n="payment.subtitle">请使用 <strong>以太坊 (Ethereum)</strong> ERC20 网络进行转账</span>
+            <span class="network-badge" data-i18n="payment.networkBadge">ERC20</span>
+        </p>
 
-        });
-            });
-                console.error('Failed to load language files:', error);
-            }).catch(function(error) {
-                document.getElementById('languageSwitcher').value = currentLang;
-                updateContent();
-                i18next.addResourceBundle('en', 'translation', enData);
-                i18next.addResourceBundle('zh', 'translation', zhData);
-            ]).then(function([zhData, enData]) {
-                fetch('/payment/locales/en.json').then(r => r.json())
-                fetch('/payment/locales/zh.json').then(r => r.json()),
-            Promise.all([
+        <div class="order-info">
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.paymentAmount">付款数额:</span>
+                <span class="order-value amount-value" id="payAmount" onclick="copyAmount()" data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USDC</span>
+            </div>
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.merchantOrder">商户订单:</span>
+                <span class="order-value">{{.order_id}}</span>
+            </div>
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.orderAmount">订单金额:</span>
+                <span class="order-value">
+                    <span class="fiat-amount"><span data-i18n="payment.amountPrefix">约</span> {{.money}} {{.fiat}}</span>
+                </span>
+            </div>
+        </div>
+        <div class="countdown-banner">
+            <div class="countdown-content">
+                <div class="countdown-info">
+                    <div class="countdown-title" data-i18n="payment.countdownTitle">⏰ 支付倒计时</div>
+                    <div class="countdown-subtitle" data-i18n="payment.countdownSubtitle">请在指定时间内完成转账，超时勿付请重新下单</div>
+                </div>
+                <div class="countdown-timer" id="countdown">
+                    <div class="time-unit">
+                        <span class="time-number" id="minutes">15</span>
+                        <span class="time-label" data-i18n="payment.minutes">分</span>
+                    </div>
+                    <span class="time-separator">:</span>
+                    <div class="time-unit">
+                        <span class="time-number" id="seconds">00</span>
+                        <span class="time-label" data-i18n="payment.seconds">秒</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="qr-section">
+            <div class="qr-code" id="qrcode"></div>
+            <div class="address-section">
+                <div class="address-label" data-i18n="payment.addressLabel">收款地址 (ERC20 网络)</div>
+                <div class="address-text" id="walletAddress">{{.address}}</div>
+                <button class="copy-btn" onclick="copyAddress()" data-i18n="payment.copyAddress">复制地址</button>
+            </div>
+        </div>
+        <div class="instructions">
+            <h4 data-i18n="payment.instructionsTitle">📋 转账说明</h4>
+            <ol>
+                <li data-i18n="[html]payment.instruction1">必须使用 <strong>ERC20 网络</strong> 进行转账，请勿转入 ETH！</li>
+                <li data-i18n="payment.instruction2">转账完成后系统会自动确认到账</li>
+                <li data-i18n="payment.instruction3">转账金额必须与显示金额完全一致</li>
+                <li data-i18n="payment.instruction4">如果有其它疑问，请联系客服处理</li>
+            </ol>
+        </div>
+        <div class="footer-info">
+            <div class="project-info">
+                <span class="powered-by" data-i18n="payment.poweredBy">Powered by</span>
+                <a href="https://github.com/v03413/BEpusdt" target="_blank" class="project-link">
+                    <strong>BEpusdt</strong>
+                </a>
+                <span class="open-source" data-i18n="payment.github">Github</span>
+            </div>
+        </div>
+    </div>
 
-            }
-                return;
-                console.error('i18next initialization failed:', err);
-            if (err) {
-        }, function(err, t) {
-            }
-                en: { translation: {} }
-                zh: { translation: {} },
-            resources: {
-            debug: false,
-            lng: currentLang,
-        i18next.init({
-
-        }
-            currentLang = 'en';
-        if (currentLang !== 'zh' && currentLang !== 'en') {
-        let currentLang = localStorage.getItem('payment_language') || navigator.language.split('-')[0] || 'en';
     <script>
 
-    </div>
-        </div>
-            </div>
-                <span class="open-source" data-i18n="payment.github">Github</span>
-                </a>
-                    <strong>BEpusdt</strong>
-                <a href="https://github.com/v03413/BEpusdt" target="_blank" class="project-link">
-                <span class="powered-by" data-i18n="payment.poweredBy">Powered by</span>
-            <div class="project-info">
-        <div class="footer-info">
-        </div>
-            </ol>
-                <li data-i18n="payment.instruction4">如果有其它疑问，请联系客服处理</li>
-                <li data-i18n="payment.instruction3">转账金额必须与显示金额完全一致</li>
-                <li data-i18n="payment.instruction2">转账完成后系统会自动确认到账</li>
-                <li data-i18n="[html]payment.instruction1">必须使用 <strong>ERC20 网络</strong> 进行转账，请勿转入 ETH！</li>
-            <ol>
-            <h4 data-i18n="payment.instructionsTitle">📋 转账说明</h4>
-        <div class="instructions">
-        </div>
-            </div>
-                <button class="copy-btn" onclick="copyAddress()" data-i18n="payment.copyAddress">复制地址</button>
-                <div class="address-text" id="walletAddress">{{.address}}</div>
-                <div class="address-label" data-i18n="payment.addressLabel">收款地址 (ERC20 网络)</div>
-            <div class="address-section">
-            <div class="qr-code" id="qrcode"></div>
-        <div class="qr-section">
-        </div>
-            </div>
-                </div>
-                    </div>
-                        <span class="time-label" data-i18n="payment.seconds">秒</span>
-                        <span class="time-number" id="seconds">00</span>
-                    <div class="time-unit">
-                    <span class="time-separator">:</span>
-                    </div>
-                        <span class="time-label" data-i18n="payment.minutes">分</span>
-                        <span class="time-number" id="minutes">15</span>
-                    <div class="time-unit">
-                <div class="countdown-timer" id="countdown">
-                </div>
-                    <div class="countdown-subtitle" data-i18n="payment.countdownSubtitle">请在指定时间内完成转账，超时勿付请重新下单</div>
-                    <div class="countdown-title" data-i18n="payment.countdownTitle">⏰ 支付倒计时</div>
-                <div class="countdown-info">
-            <div class="countdown-content">
-        <div class="countdown-banner">
-        </div>
-            </div>
-                </span>
-                    <span class="fiat-amount"><span data-i18n="payment.amountPrefix">约</span> {{.money}} {{.fiat}}</span>
-                <span class="order-value">
-                <span class="order-label" data-i18n="payment.orderAmount">订单金额:</span>
-            <div class="order-item">
-            </div>
-                <span class="order-value">{{.order_id}}</span>
-                <span class="order-label" data-i18n="payment.merchantOrder">商户订单:</span>
-            <div class="order-item">
-            </div>
-                <span class="order-value amount-value" id="payAmount" onclick="copyAmount()" data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USDC</span>
-                <span class="order-label" data-i18n="payment.paymentAmount">付款数额:</span>
-            <div class="order-item">
-        <div class="order-info">
+        document.addEventListener('DOMContentLoaded', function () {
+            Payment.init({
+                expire: "{{.expire}}",
+                address: "{{.address}}",
+                amount: "{{.amount}}",
+                trade_id: "{{.trade_id}}",
+                return_url: "{{.return_url}}"
+            });
+        });
+    </script>
+</body>
 
-        </p>
-            <span class="network-badge" data-i18n="payment.networkBadge">ERC20</span>
-            <span data-i18n="payment.subtitle">请使用 <strong>以太坊 (Ethereum)</strong> ERC20 网络进行转账</span>
-            <span class="status-indicator"></span>
-        <p class="payment-subtitle">
-        <h1 class="payment-title" data-i18n="payment.title">USDC 支付</h1>
-        <div class="crypto-icon">USDC</div>
-
-        </div>
-            </select>
-                <option value="en">English</option>
-                <option value="zh">中文</option>
-            <select id="languageSwitcher" onchange="changeLanguage(this.value)">
-        <div class="language-switcher">
-    <div class="payment-container">
-<body>
-
-</head>
-    <script src="/payment/js/core.min.js"></script>
-    <script src="/payment/i18n/i18next.min.js"></script>
-    <script src="/payment/js/jquery.qrcode_1.0.min.js"></script>
-    <script src="/payment/js/jquery.min.js"></script>
-    <link rel="stylesheet" href="/payment/css/core.min.css">
-    <link rel="shortcut icon" href="/payment/img/tether.svg">
-    <title>USDC・ERC20 一款更好用的个人USDC收款网关 BEpusdt</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="UTF-8">
-<head>
-
-<html lang="zh-CN">
+</html>
 

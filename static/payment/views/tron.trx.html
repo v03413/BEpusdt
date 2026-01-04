@@ -14,7 +14,7 @@
 </head>
 
 <body>
-    <div class="payment-container">
+    <div class="payment-container" data-token="TRX" data-network="TRC20" data-network-name="波场 (TRON)" data-warning-token="USDT">
         <div class="language-switcher">
             <select id="languageSwitcher" onchange="changeLanguage(this.value)">
                 <option value="zh">中文</option>
@@ -94,73 +94,7 @@
     </div>
 
     <script>
-        let currentLang = localStorage.getItem('payment_language') || navigator.language.split('-')[0] || 'en';
-        if (currentLang !== 'zh' && currentLang !== 'en') {
-            currentLang = 'en';
-        }
 
-        i18next.init({
-            lng: currentLang,
-            debug: false,
-            resources: {
-                zh: { translation: {} },
-                en: { translation: {} }
-            }
-        }, function(err, t) {
-            if (err) {
-                console.error('i18next initialization failed:', err);
-                return;
-            }
-
-            Promise.all([
-                fetch('/payment/locales/zh.json').then(r => r.json()),
-                fetch('/payment/locales/en.json').then(r => r.json())
-            ]).then(function([zhData, enData]) {
-                i18next.addResourceBundle('zh', 'translation', zhData);
-                i18next.addResourceBundle('en', 'translation', enData);
-                updateContent();
-                document.getElementById('languageSwitcher').value = currentLang;
-            }).catch(function(error) {
-                console.error('Failed to load language files:', error);
-            });
-        });
-
-        function updateContent() {
-            document.querySelectorAll('[data-i18n]').forEach(function(element) {
-                const key = element.getAttribute('data-i18n');
-                if (key.startsWith('[')) {
-                    const matches = key.match(/\[(.+?)\](.+)/);
-                    if (matches) {
-                        const attr = matches[1];
-                        const transKey = matches[2];
-                        if (attr === 'html') {
-                            element.innerHTML = i18next.t(transKey);
-                        } else {
-                            element.setAttribute(attr, i18next.t(transKey));
-                        }
-                    }
-                } else {
-                    const translation = i18next.t(key);
-                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                        element.placeholder = translation;
-                    } else {
-                        element.innerHTML = translation;
-                    }
-                }
-            });
-        }
-
-        function changeLanguage(lang) {
-            i18next.changeLanguage(lang, function(err, t) {
-                if (err) {
-                    console.error('Language change failed:', err);
-                    return;
-                }
-                currentLang = lang;
-                localStorage.setItem('payment_language', lang);
-                updateContent();
-            });
-        }
 
         document.addEventListener('DOMContentLoaded', function () {
             Payment.init({
