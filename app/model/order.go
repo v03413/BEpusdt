@@ -89,12 +89,20 @@ var explorerUrlMap = map[TradeType]string{
 	UsdcTrc20: "https://tronscan.org/#/transaction/",
 }
 
+var cryptoAtomKeys = map[Crypto]ConfKey{
+	USDT: AtomUSDT,
+	USDC: AtomUSDC,
+	TRX:  AtomTRX,
+	BNB:  AtomBNB,
+	ETH:  AtomETH,
+}
+
 type Order struct {
 	Id
 	OrderId     string    `Gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
 	TradeId     string    `Gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
 	TradeType   TradeType `Gorm:"column:trade_type;type:varchar(20);not null;comment:交易类型" json:"trade_type"`
-	Fiat        string    `Gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法币" json:"fiat"`
+	Fiat        Fiat      `Gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法币" json:"fiat"`
 	Rate        string    `Gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`
 	Amount      string    `Gorm:"column:amount;type:varchar(32);not null;default:0.00;comment:交易数额" json:"amount"`
 	Money       string    `Gorm:"column:money;type:varchar(32);not null;default:0.00;comment:订单交易金额" json:"money"`
@@ -253,10 +261,14 @@ func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType)
 
 	var atom, precision = getAtomicity(t)
 	var amount = money.DivRound(rate, precision)
+	if amount.LessThan(atom) { // 低于最小原子精度，从最小原子精度开始计算
+		amount = atom
+	}
+
 	for {
 		for _, addr := range address {
-			_key := addr + amount.String()
-			if _, ok := lock[_key]; ok {
+			k := addr + amount.String()
+			if _, ok := lock[k]; ok {
 
 				continue
 			}
@@ -280,19 +292,14 @@ func CalcTradeExpiredAt(sec int64) time.Time {
 }
 
 func getAtomicity(t TradeType) (decimal.Decimal, int32) {
-	token, ok := TradeTypeTable[t]
+	crypto, ok := TradeTypeTable[t]
 	if !ok {
-		token = TokenTypeUSDT
+		crypto = USDT
 	}
 
-	var confKey = AtomUSDT
-	switch token {
-	case TokenTypeUSDT:
+	confKey, ok2 := cryptoAtomKeys[crypto]
+	if !ok2 {
 		confKey = AtomUSDT
-	case TokenTypeUSDC:
-		confKey = AtomUSDC
-	case TokenTypeTRX:
-		confKey = AtomTRX
 	}
 
 	var atom, _ = decimal.NewFromString(GetK(confKey))

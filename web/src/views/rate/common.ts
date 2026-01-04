@@ -10,13 +10,15 @@ const getFiatFlag = (fiat: string) => {
   return fiatFlagMap[fiat] || "🌍";
 };
 
-const getCryptoColor = (crypto: string) => {
-  const cryptoColorMap: Record<string, string> = {
-    USDT: "blue",
-    USDC: "green",
-    TRX: "red"
+export const getCryptoColor = (crypto: string): string => {
+  const colors: Record<string, string> = {
+    USDT: "green",
+    USDC: "blue",
+    TRX: "red",
+    ETH: "purple",
+    BNB: "orange"
   };
-  return cryptoColorMap[crypto] || "#0fc6c2";
+  return colors[crypto] || "gray";
 };
 
-export { getFiatFlag, getCryptoColor };
+export { getFiatFlag };

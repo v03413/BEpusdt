@@ -14,16 +14,20 @@ const (
 	WaOtherDisable  uint8 = 0
 )
 
-type TokenType string
+type Crypto string
 
 const (
-	TokenTypeUSDT TokenType = "USDT"
-	TokenTypeUSDC TokenType = "USDC"
-	TokenTypeTRX  TokenType = "TRX"
+	USDT Crypto = "USDT"
+	USDC Crypto = "USDC"
+	TRX  Crypto = "TRX"
+	BNB  Crypto = "BNB"
+	ETH  Crypto = "ETH"
 )
 
 // SupportTradeTypes 目前支持的收款交易类型
 var SupportTradeTypes = map[TradeType]struct{}{
+	EthereumEth:  {},
+	BscBnb:       {},
 	TronTrx:      {},
 	UsdtTrc20:    {},
 	UsdtErc20:    {},
@@ -44,33 +48,35 @@ var SupportTradeTypes = map[TradeType]struct{}{
 	UsdcAptos:    {},
 }
 
-var TradeTypeTable = map[TradeType]TokenType{
+var TradeTypeTable = map[TradeType]Crypto{
 	// USDT
-	UsdtTrc20:    TokenTypeUSDT,
-	UsdtErc20:    TokenTypeUSDT,
-	UsdtBep20:    TokenTypeUSDT,
-	UsdtAptos:    TokenTypeUSDT,
-	UsdtXlayer:   TokenTypeUSDT,
-	UsdtSolana:   TokenTypeUSDT,
-	UsdtPolygon:  TokenTypeUSDT,
-	UsdtArbitrum: TokenTypeUSDT,
+	UsdtTrc20:    USDT,
+	UsdtErc20:    USDT,
+	UsdtBep20:    USDT,
+	UsdtAptos:    USDT,
+	UsdtXlayer:   USDT,
+	UsdtSolana:   USDT,
+	UsdtPolygon:  USDT,
+	UsdtArbitrum: USDT,
 
 	// USDC
-	UsdcErc20:    TokenTypeUSDC,
-	UsdcBep20:    TokenTypeUSDC,
-	UsdcXlayer:   TokenTypeUSDC,
-	UsdcPolygon:  TokenTypeUSDC,
-	UsdcArbitrum: TokenTypeUSDC,
-	UsdcBase:     TokenTypeUSDC,
-	UsdcTrc20:    TokenTypeUSDC,
-	UsdcSolana:   TokenTypeUSDC,
-	UsdcAptos:    TokenTypeUSDC,
+	UsdcErc20:    USDC,
+	UsdcBep20:    USDC,
+	UsdcXlayer:   USDC,
+	UsdcPolygon:  USDC,
+	UsdcArbitrum: USDC,
+	UsdcBase:     USDC,
+	UsdcTrc20:    USDC,
+	UsdcSolana:   USDC,
+	UsdcAptos:    USDC,
 
-	// TRX
-	TronTrx: TokenTypeTRX,
+	// 原生代币
+	TronTrx:     TRX,
+	EthereumEth: ETH,
+	BscBnb:      BNB,
 }
 
-// tokenContractMap Token 合约地址映射表
+// tokenContractMap Crypto 合约地址映射表
 var tokenContractMap = map[TradeType]string{
 	UsdtPolygon:  conf.UsdtPolygon,
 	UsdtArbitrum: conf.UsdtArbitrum,
@@ -89,7 +95,7 @@ var tokenContractMap = map[TradeType]string{
 	UsdcSolana:   conf.UsdcSolana,
 }
 
-// tokenDecimalsMap Token 精度映射表
+// tokenDecimalsMap Crypto 精度映射表
 var tokenDecimalsMap = map[TradeType]int32{
 	UsdtPolygon:  conf.UsdtPolygonDecimals,
 	UsdtArbitrum: conf.UsdtArbitrumDecimals,
@@ -178,10 +184,10 @@ func (wa *Wallet) GetTokenDecimals() int32 {
 		return decimals
 	}
 
-	return -6
+	return -18
 }
 
-func GetTokenType(t TradeType) (TokenType, error) {
+func GetCrypto(t TradeType) (Crypto, error) {
 	if f, ok := TradeTypeTable[t]; ok {
 		return f, nil
 	}
@@ -191,7 +197,7 @@ func GetTokenType(t TradeType) (TokenType, error) {
 func GetAvailableAddress(t TradeType) []string {
 	var rows []Wallet
 	Db.Where("trade_type = ? and status = ?", t, WaStatusEnable).Find(&rows)
-	
+
 	wallets := make([]string, 0, len(rows))
 	for _, w := range rows {
 		wallets = append(wallets, w.Address)

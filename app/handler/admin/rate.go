@@ -19,8 +19,8 @@ type rateListReq struct {
 }
 
 type rateSetSyntaxReq struct {
-	Fiat   string `json:"fiat" binding:"required,oneof=CNY USD JPY EUR GBP"`
-	Crypto string `json:"crypto" binding:"required,oneof=USDT USDC TRX"`
+	Fiat   string `json:"fiat"`
+	Crypto string `json:"crypto"`
 	Syntax string `json:"syntax"`
 }
 
@@ -68,13 +68,13 @@ func (Rate) Syntax(ctx *gin.Context) {
 
 	var data = make([]Syntax, 0)
 
-	for _, fiat := range model.SupportTradeFiat {
-		for _, crypto := range model.SupportTradeCrypto {
-			var k = fmt.Sprintf("rate_float_%s_%s", crypto, fiat)
+	for fiat := range model.SupportFiat {
+		for token := range model.SupportCrypto {
+			var k = fmt.Sprintf("rate_float_%s_%s", token, fiat)
 			data = append(data, Syntax{
 				Key:    k,
-				Fiat:   fiat,
-				Crypto: crypto,
+				Fiat:   string(fiat),
+				Crypto: string(token),
 				Syntax: model.GetK(model.ConfKey(k)),
 			})
 		}

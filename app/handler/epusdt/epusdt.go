@@ -19,17 +19,17 @@ import (
 type Epusdt struct{}
 
 type createReq struct {
-	Amount      float64 `json:"amount" binding:"required"`
-	OrderID     string  `json:"order_id" binding:"required"`
-	NotifyURL   string  `json:"notify_url" binding:"required"`
-	RedirectURL string  `json:"redirect_url" binding:"required"`
-	Signature   string  `json:"signature" binding:"required"`
-	Name        string  `json:"name"`
-	Fiat        string  `json:"fiat"`
-	TradeType   string  `json:"trade_type"`
-	Address     string  `json:"address"`
-	Timeout     int64   `json:"timeout"`
-	Rate        string  `json:"rate"`
+	Amount      float64    `json:"amount" binding:"required"`
+	OrderID     string     `json:"order_id" binding:"required"`
+	NotifyURL   string     `json:"notify_url" binding:"required"`
+	RedirectURL string     `json:"redirect_url" binding:"required"`
+	Signature   string     `json:"signature" binding:"required"`
+	Name        string     `json:"name"`
+	Fiat        model.Fiat `json:"fiat"`
+	TradeType   string     `json:"trade_type"`
+	Address     string     `json:"address"`
+	Timeout     int64      `json:"timeout"`
+	Rate        string     `json:"rate"`
 }
 
 type cancelReq struct {

@@ -55,8 +55,8 @@ func (Auth) Info(ctx *gin.Context) {
 	base.Ok(ctx, gin.H{
 		"admin_username": model.GetK(model.AdminUsername),
 		"trade_type":     types,
-		"trade_fiat":     model.SupportTradeFiat,
-		"trade_crypto":   model.SupportTradeCrypto,
+		"trade_fiat":     model.SupportFiat,
+		"trade_crypto":   model.SupportCrypto,
 	})
 }
 

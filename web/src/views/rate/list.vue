@@ -85,9 +85,11 @@ import { Message } from "@arco-design/web-vue";
 
 const userStores = useUserInfoStore();
 const tradeCryptoOptions = computed(() =>
-  (userStores.trade_crypto ?? []).map((crypto: string) => ({ value: crypto, label: crypto }))
+  Object.keys(userStores.trade_crypto ?? {}).map((crypto: string) => ({ value: crypto, label: crypto }))
 );
-const tradeFiatOptions = computed(() => (userStores.trade_fiat ?? []).map((fiat: string) => ({ value: fiat, label: fiat })));
+const tradeFiatOptions = computed(() =>
+  Object.keys(userStores.trade_fiat ?? {}).map((fiat: string) => ({ value: fiat, label: fiat }))
+);
 
 const formData = reactive<FormData>({
   form: { fiat: "", crypto: "", datetime: [] },

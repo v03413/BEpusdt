@@ -20,11 +20,11 @@ type OrderParams struct {
 	Name        string          `json:"name"`         // 商品名称
 	Timeout     int64           `json:"timeout"`      // 订单超时时间（秒）
 	Rate        string          `json:"rate"`         // 强制指定汇率
-	Fiat        string          `json:"fiat"`         // 法币类型
+	Fiat        Fiat            `json:"fiat"`         // 法币类型
 }
 
 type Trade struct {
-	TokenType TokenType
+	TokenType Crypto
 	Rate      decimal.Decimal
 	Address   string
 	Amount    string
@@ -46,7 +46,7 @@ func BuildOrder(p OrderParams) (Order, error) {
 
 		return order, fmt.Errorf("不支持的交易类型：%s", p.TradeType)
 	}
-	if !utils.InStrings(p.Fiat, SupportTradeFiat) {
+	if _, ok := SupportFiat[p.Fiat]; !ok {
 
 		return order, fmt.Errorf("不支持的法币类型：%s", p.Fiat)
 	}
@@ -132,21 +132,19 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 }
 
 func BuildTrade(p OrderParams) (Trade, error) {
-	var t = TradeType(p.TradeType)
-
 	// 获取代币类型
-	tokenType, err := GetTokenType(t)
+	crypto, err := GetCrypto(p.TradeType)
 	if err != nil {
 		return Trade{}, fmt.Errorf("代币类型(%s)不支持：%v", p.TradeType, err)
 	}
 
 	// 获取订单汇率
-	rate, err := getOrderRate(tokenType, p.Fiat, p.Rate)
+	rate, err := getOrderRate(crypto, p.Fiat, p.Rate)
 	if err != nil {
 		return Trade{}, err
 	}
 	if rate.LessThanOrEqual(decimal.Zero) {
-		return Trade{}, fmt.Errorf("%s %s 汇率异常", tokenType, p.Fiat)
+		return Trade{}, fmt.Errorf("%s %s 汇率异常", crypto, p.Fiat)
 	}
 
 	var wallet = GetAvailableAddress(p.TradeType)
@@ -159,10 +157,10 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	}
 
 	// 计算交易金额
-	address, amount := CalcTradeAmount(wallet, rate, p.Money, t)
+	address, amount := CalcTradeAmount(wallet, rate, p.Money, p.TradeType)
 
 	return Trade{
-		TokenType: tokenType,
+		TokenType: crypto,
 		Rate:      rate,
 		Address:   address,
 		Amount:    amount,

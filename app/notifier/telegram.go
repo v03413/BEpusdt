@@ -47,7 +47,7 @@ func (t *Telegram) Success(o model.Order) {
 	}
 
 	tradeType := string(o.TradeType)
-	tokenType, err := model.GetTokenType(o.TradeType)
+	tokenType, err := model.GetCrypto(o.TradeType)
 	if err != nil {
 		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + tradeType})
 
@@ -95,7 +95,7 @@ func (t *Telegram) Success(o model.Order) {
 
 func (t *Telegram) NotifyFail(o model.Order, reason string) {
 	tradeType := string(o.TradeType)
-	tokenT, err := model.GetTokenType(o.TradeType)
+	tokenT, err := model.GetCrypto(o.TradeType)
 	if err != nil {
 		t.sendMessage(&bot.SendMessageParams{Text: "❌交易类型不支持：" + tradeType})
 

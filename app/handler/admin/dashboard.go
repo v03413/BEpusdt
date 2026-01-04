@@ -32,9 +32,9 @@ func (Dashboard) Home(ctx *gin.Context) {
 	var totalCount, todayCount int64
 	var monthly = make(map[string]float64)
 	var tokenMap = map[string]float64{
-		string(model.TokenTypeUSDT): 0,
-		string(model.TokenTypeUSDC): 0,
-		string(model.TokenTypeTRX):  0,
+		string(model.USDT): 0,
+		string(model.USDC): 0,
+		string(model.TRX):  0,
 	}
 
 	for _, itm := range rows {

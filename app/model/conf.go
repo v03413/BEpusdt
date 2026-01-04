@@ -133,6 +133,8 @@ func ConfInit() {
 		AtomUSDT:            "0.01",
 		AtomUSDC:            "0.01",
 		AtomTRX:             "0.01",
+		AtomBNB:             "0.00001",
+		AtomETH:             "0.000001",
 		MonitorMinAmount:    "0.01",
 		PaymentMinAmount:    "0.01",
 		PaymentMaxAmount:    "99999",

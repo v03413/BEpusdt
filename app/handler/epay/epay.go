@@ -23,18 +23,18 @@ type Epay struct {
 }
 
 type submit struct {
-	Pid        string  `form:"pid" json:"pid" binding:"required"` // 商户号
-	Type       string  `form:"type" json:"type" binding:"required"`
-	NotifyURL  string  `form:"notify_url" json:"notify_url" binding:"required"`
-	ReturnURL  string  `form:"return_url" json:"return_url" binding:"required"`
-	OutTradeNo string  `form:"out_trade_no" json:"out_trade_no" binding:"required"`
-	Name       string  `form:"name" json:"name" binding:"required"`
-	Money      float64 `form:"money" json:"money" binding:"required,gt=0"`
-	Sign       string  `form:"sign" json:"sign" binding:"required"`
-	Fiat       string  `form:"fiat" json:"fiat"`
-	Rate       string  `form:"rate" json:"rate"`
-	Timeout    string  `form:"timeout" json:"timeout"`
-	Address    string  `form:"address" json:"address"`
+	Pid        string     `form:"pid" json:"pid" binding:"required"` // 商户号
+	Type       string     `form:"type" json:"type" binding:"required"`
+	NotifyURL  string     `form:"notify_url" json:"notify_url" binding:"required"`
+	ReturnURL  string     `form:"return_url" json:"return_url" binding:"required"`
+	OutTradeNo string     `form:"out_trade_no" json:"out_trade_no" binding:"required"`
+	Name       string     `form:"name" json:"name" binding:"required"`
+	Money      float64    `form:"money" json:"money" binding:"required,gt=0"`
+	Sign       string     `form:"sign" json:"sign" binding:"required"`
+	Fiat       model.Fiat `form:"fiat" json:"fiat"`
+	Rate       string     `form:"rate" json:"rate"`
+	Timeout    string     `form:"timeout" json:"timeout"`
+	Address    string     `form:"address" json:"address"`
 }
 
 // Submit 【兼容】易支付提交

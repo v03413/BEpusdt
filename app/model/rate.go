@@ -17,18 +17,34 @@ import (
 	"gorm.io/gorm"
 )
 
+type Fiat string
+type coinId string
+
 const (
-	FiatCNY = "CNY"
-	FiatUSD = "USD"
-	FiatJPY = "JPY"
-	FiatEUR = "EUR"
-	FiatGBP = "GBP"
+	FiatCNY Fiat = "CNY"
+	FiatUSD Fiat = "USD"
+	FiatJPY Fiat = "JPY"
+	FiatEUR Fiat = "EUR"
+	FiatGBP Fiat = "GBP"
 )
 
-// SupportTradeFiat 支持的法币交易类型
-var SupportTradeFiat = []string{FiatCNY, FiatUSD, FiatJPY, FiatEUR, FiatGBP}
+// SupportFiat 支持的法币
+var SupportFiat = map[Fiat]struct{}{
+	FiatCNY: {},
+	FiatUSD: {},
+	FiatJPY: {},
+	FiatEUR: {},
+	FiatGBP: {},
+}
 
-var SupportTradeCrypto = []string{string(TokenTypeUSDT), string(TokenTypeUSDC), string(TokenTypeTRX)}
+// SupportCrypto 支持的加密货币，不能瞎定义；参考来源：https://docs.coingecko.com/v3.0.1/reference/coins-list
+var SupportCrypto = map[Crypto]coinId{
+	USDT: "tether",
+	USDC: "usd-coin",
+	TRX:  "tron",
+	BNB:  "binancecoin",
+	ETH:  "ethereum",
+}
 
 type Rate struct {
 	Id
@@ -44,7 +60,7 @@ func (r *Rate) TableName() string {
 	return "bep_rate"
 }
 
-func (r *Rate) BeforeCreate(tx *gorm.DB) error {
+func (r *Rate) BeforeCreate(*gorm.DB) error {
 	var syntax = GetK(ConfKey(fmt.Sprintf("rate_float_%s_%s", r.Crypto, r.Fiat)))
 	if syntax == "" {
 
@@ -58,8 +74,21 @@ func (r *Rate) BeforeCreate(tx *gorm.DB) error {
 }
 
 func CoingeckoRate() {
-	var c = &http.Client{Timeout: 15 * time.Second}
-	resp, err := c.Get(fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=tron,tether,usd-coin&vs_currencies=%s", strings.Join(SupportTradeFiat, ",")))
+	var fiats = make([]string, 0)
+	for k := range SupportFiat {
+		fiats = append(fiats, string(k))
+	}
+
+	var ids = make([]string, 0)
+	var tokens = make(map[coinId]Crypto)
+	for token, id := range SupportCrypto {
+		ids = append(ids, string(id))
+		tokens[id] = token
+	}
+
+	var url = fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=%s", strings.Join(ids, ","), strings.Join(fiats, ","))
+	var client = &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(url)
 	if err != nil {
 		log.Warn("汇率同步错误", err)
 
@@ -80,14 +109,16 @@ func CoingeckoRate() {
 		return
 	}
 
-	var rows = make([]Rate, 0)
-	var tokenTypes = map[string]TokenType{
-		"tron":     TokenTypeTRX,
-		"tether":   TokenTypeUSDT,
-		"usd-coin": TokenTypeUSDC,
+	var data = gjson.ParseBytes(body)
+	if data.Get("status.error_code").Exists() {
+		log.Warn(fmt.Sprintf("汇率同步错误 %s", data.Get("status.error_message").String()))
+
+		return
 	}
-	for k, v := range gjson.ParseBytes(body).Map() {
-		var token, ok = tokenTypes[k]
+
+	var rows = make([]Rate, 0)
+	for id, v := range data.Map() {
+		var token, ok = tokens[coinId(id)]
 		if !ok {
 
 			continue
@@ -101,6 +132,12 @@ func CoingeckoRate() {
 				RawRate: val.Float(),
 			})
 		}
+	}
+
+	if len(rows) == 0 {
+		log.Warn("汇率同步错误 无数据")
+
+		return
 	}
 
 	Db.Create(&rows)
@@ -158,7 +195,7 @@ func round(val float64, precision int) float64 {
 	return math.Floor(val*p+0.5) / p
 }
 
-func getOrderRate(token TokenType, fiat, syntax string) (decimal.Decimal, error) {
+func getOrderRate(token Crypto, fiat Fiat, syntax string) (decimal.Decimal, error) {
 	var r Rate
 	Db.Where("crypto = ? and fiat = ?", token, fiat).Order("created_at desc").Limit(1).Find(&r)
 	if r.ID == 0 {
