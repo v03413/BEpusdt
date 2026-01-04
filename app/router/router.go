@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
@@ -10,7 +9,6 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
-	"github.com/v03413/bepusdt/app/utils"
 )
 
 var engine *gin.Engine
@@ -21,7 +19,7 @@ func Handler() *gin.Engine {
 
 	engine = gin.New()
 
-	session := memstore.NewStore([]byte(utils.StrSha256(time.Now().String())))
+	session := memstore.NewStore([]byte(conf.Secret))
 	session.Options(sessions.Options{MaxAge: 86400, HttpOnly: true})
 
 	engine.Use(sessions.Sessions("session", session))
