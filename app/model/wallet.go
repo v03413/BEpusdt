@@ -11,14 +11,6 @@ const (
 	WaOtherDisable  uint8 = 0
 )
 
-const (
-	USDT Crypto = "USDT"
-	USDC Crypto = "USDC"
-	TRX  Crypto = "TRX"
-	BNB  Crypto = "BNB"
-	ETH  Crypto = "ETH"
-)
-
 type Wallet struct {
 	Id
 	Name        string `gorm:"column:name;type:varchar(32);not null;default:-';comment:名称" json:"name"`

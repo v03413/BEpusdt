@@ -56,10 +56,11 @@ type Order struct {
 	OrderId     string    `gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
 	TradeId     string    `gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
 	TradeType   TradeType `gorm:"column:trade_type;type:varchar(20);not null;comment:交易类型" json:"trade_type"`
-	Fiat        Fiat      `gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法币" json:"fiat"`
+	Fiat        Fiat      `gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法定货币" json:"fiat"`
+	Crypto      Crypto    `gorm:"column:crypto;type:varchar(16);not null;index;default:USDT;comment:加密货币" json:"crypto"`
 	Rate        string    `gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`
 	Amount      string    `gorm:"column:amount;type:varchar(32);not null;default:0.00;comment:交易数额" json:"amount"`
-	Money       string    `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:订单交易金额" json:"money"`
+	Money       string    `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:交易金额" json:"money"`
 	Address     string    `gorm:"column:address;type:varchar(64);index;not null;comment:收款地址" json:"address"`
 	FromAddress string    `gorm:"column:from_address;type:varchar(34);not null;default:'';comment:支付地址" json:"from_address"`
 	Status      int       `gorm:"column:status;type:tinyint(1);not null;default:1;index;comment:交易状态" json:"status"`

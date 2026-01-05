@@ -110,7 +110,7 @@ func (e Epay) fillDefaultParams(data *submit) {
 		data.Type = string(model.UsdtTrc20)
 	}
 	if data.Fiat == "" {
-		data.Fiat = model.FiatCNY
+		data.Fiat = model.CNY
 	}
 }
 

@@ -66,6 +66,20 @@ const (
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email
 )
+const (
+	CNY Fiat = "CNY"
+	USD Fiat = "USD"
+	JPY Fiat = "JPY"
+	EUR Fiat = "EUR"
+	GBP Fiat = "GBP"
+)
+const (
+	USDT Crypto = "USDT"
+	USDC Crypto = "USDC"
+	TRX  Crypto = "TRX"
+	BNB  Crypto = "BNB"
+	ETH  Crypto = "ETH"
+)
 
 // USD 交易类型常见扫描范围
 var usdGeneralRange = Range{

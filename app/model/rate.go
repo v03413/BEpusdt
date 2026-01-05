@@ -17,14 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	FiatCNY Fiat = "CNY"
-	FiatUSD Fiat = "USD"
-	FiatJPY Fiat = "JPY"
-	FiatEUR Fiat = "EUR"
-	FiatGBP Fiat = "GBP"
-)
-
 type Rate struct {
 	Id
 	Rate    string  `gorm:"column:rate;type:varchar(32);not null;comment:订单汇率" json:"rate"`

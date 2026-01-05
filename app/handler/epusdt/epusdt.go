@@ -88,7 +88,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 	}
 
 	if req.Fiat == "" {
-		req.Fiat = model.FiatCNY
+		req.Fiat = model.CNY
 	}
 	if req.TradeType == "" {
 		req.TradeType = string(model.UsdtTrc20)

@@ -88,10 +88,19 @@
             </a-tooltip>
           </template>
 
+          <template #amount="{ record }">
+            <span>
+              {{ record.amount }}
+              <a-tag size="mini" :color="getCryptoColor(record.crypto)" bordered style="margin-left: 4px">{{
+                record.crypto
+              }}</a-tag>
+            </span>
+          </template>
+
           <template #money="{ record }">
             <span>
               {{ record.money }}
-              <a-tag size="mini" color="arcoblue">{{ record.fiat }}</a-tag>
+              <a-tag size="mini" color="arcoblue" style="margin-left: 4px">{{ record.fiat }}</a-tag>
             </span>
           </template>
 
@@ -135,6 +144,7 @@ import { Notification } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
 import DetailModal from "./detail.vue";
 import { useOrderDetail } from "./detail";
+import { getCryptoColor } from "@/views/rate/common";
 
 const userStores = useUserInfoStore();
 const { detailVisible, detailData, showDetail, closeDetail } = useOrderDetail();
@@ -176,10 +186,9 @@ const pagination = ref<Pagination>({
 const columns = [
   { title: "ID", align: "center", dataIndex: "id", width: 80 },
   { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
-  { title: "交易类型", align: "center", dataIndex: "trade_type", width: 100 },
-  { title: "订单汇率", align: "center", dataIndex: "rate", width: 100 },
-  { title: "实际付款", align: "center", dataIndex: "amount", width: 120 },
-  { title: "订单金额", align: "center", dataIndex: "money", slotName: "money", width: 150 },
+  { title: "交易类型", align: "center", dataIndex: "trade_type", width: 120 },
+  { title: "交易数额", align: "center", dataIndex: "amount", slotName: "amount", width: 150 },
+  { title: "交易金额", align: "center", dataIndex: "money", slotName: "money", width: 150 },
   { title: "收款钱包", align: "center", dataIndex: "wallet.name", slotName: "wallet", width: 150, ellipsis: true },
   { title: "交易状态", dataIndex: "status", align: "center", slotName: "status", width: 100 },
   { title: "回调", dataIndex: "notify_state", align: "center", slotName: "notify_state", width: 80 },

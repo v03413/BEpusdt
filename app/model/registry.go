@@ -9,11 +9,11 @@ import (
 
 // supportFiat 支持的法定货币
 var supportFiat = map[Fiat]struct{}{
-	FiatCNY: {},
-	FiatUSD: {},
-	FiatJPY: {},
-	FiatEUR: {},
-	FiatGBP: {},
+	CNY: {},
+	USD: {},
+	JPY: {},
+	EUR: {},
+	GBP: {},
 }
 
 // supportCrypto 支持的加密货币；Coin Id 参考来源：https://docs.coingecko.com/v3.0.1/reference/coins-list
