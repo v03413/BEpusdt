@@ -14,6 +14,7 @@ import (
 	"github.com/v03413/bepusdt/app"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/notifier"
 	"github.com/v03413/bepusdt/app/router"
 	"github.com/v03413/bepusdt/app/task"
 )
@@ -70,6 +71,8 @@ func start(ctx context.Context, cmd *cli.Command) error {
 
 		log.Info("web shutdown success.")
 	}()
+
+	notifier.Welcome()
 
 	fmt.Println(fmt.Sprintf("BEpusdt 启动成功(%s)，当前版本：%s", listen, app.Version))
 

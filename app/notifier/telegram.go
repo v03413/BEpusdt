@@ -10,6 +10,8 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
+	"github.com/v03413/bepusdt/app"
+	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/utils"
@@ -187,6 +189,27 @@ func (t *Telegram) TronResourceChange(res model.TronResource) {
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
 					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: "https://tronscan.org/#/transaction/" + res.ID},
+				},
+			},
+		},
+	})
+}
+
+func (t *Telegram) Welcome() {
+	var text = `
+👋 欢迎使用 BEpusdt，一款更好用的个人 USDT/USDC 收款网关，如果您看到此消息，说明系统已启动成功！
+
+📌当前版本：` + app.Version + `
+🎉开源地址：` + conf.Github + `
+---
+`
+	t.sendMessage(&bot.SendMessageParams{
+		Text: text,
+		ReplyMarkup: models.InlineKeyboardMarkup{
+			InlineKeyboard: [][]models.InlineKeyboardButton{
+				{
+					{Text: "📢 关注频道", URL: "https://t.me/BEpusdtChannel"},
+					{Text: "💬 社区交流", URL: "https://t.me/BEpusdtChat"},
 				},
 			},
 		},

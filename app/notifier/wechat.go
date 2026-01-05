@@ -22,6 +22,10 @@ func (Wechat) TronResourceChange(res model.TronResource) {
 
 }
 
+func (Wechat) Welcome() {
+
+}
+
 func (Wechat) Test() error {
 	return nil
 }

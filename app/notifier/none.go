@@ -20,6 +20,10 @@ func (None) TronResourceChange(res model.TronResource) {
 
 }
 
+func (None) Welcome() {
+
+}
+
 func (None) Test() error {
 	return nil
 }
