@@ -165,7 +165,11 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	}
 
 	// 计算交易金额
-	address, amount := CalcTradeAmount(wallet, rate, p.Money, p.TradeType)
+	address, amount, err := CalcTradeAmount(wallet, rate, p.Money, p.TradeType)
+	if err != nil {
+
+		return Trade{}, err
+	}
 
 	return Trade{
 		Crypto:  crypto,

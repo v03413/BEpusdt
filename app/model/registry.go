@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/shopspring/decimal"
 	"github.com/v03413/bepusdt/app/conf"
@@ -250,7 +251,7 @@ var registry = map[TradeType]TradeTypeConf{
 
 func init() {
 	for t, c := range registry {
-		cryptoAtomKeys[c.Crypto] = ConfKey(fmt.Sprintf("atom_%s", c.Crypto))
+		cryptoAtomKeys[c.Crypto] = ConfKey(fmt.Sprintf("atom_%s", strings.ToLower(string(c.Crypto))))
 		explorerUrlMap[t] = c.ExplorerFmt
 		networkTradesMap[c.Network] = append(networkTradesMap[c.Network], t)
 		networkEndpointMap[c.Network] = c.EndpointKey

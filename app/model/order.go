@@ -1,6 +1,8 @@
 package model
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -189,7 +191,7 @@ func GetNotifyFailedTradeOrders() ([]Order, error) {
 }
 
 // CalcTradeAmount 计算当前实际可用的交易金额
-func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType) (string, string) {
+func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType) (string, string, error) {
 	calcMutex.Lock()
 	defer calcMutex.Unlock()
 
@@ -202,6 +204,11 @@ func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType)
 	}
 
 	var atom, precision = getAtomicity(t)
+	if rate.LessThanOrEqual(decimal.Zero) || precision <= 0 {
+
+		return "", "", errors.New(fmt.Sprintf("[%v - %v]原子颗粒度计算异常，联系管理员处理！", atom, precision))
+	}
+
 	var amount = money.DivRound(rate, precision)
 	if amount.LessThan(atom) { // 低于最小原子精度，从最小原子精度开始计算
 		amount = atom
@@ -215,7 +222,7 @@ func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType)
 				continue
 			}
 
-			return addr, amount.String()
+			return addr, amount.String(), nil
 		}
 
 		// 已经被占用，每次递增一个原子精度
