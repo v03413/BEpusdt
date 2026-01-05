@@ -100,16 +100,21 @@
                 <icon-computer />
                 <span>订单汇率</span>
               </div>
-              <div class="detail-value money-value">{{ detailData.rate }}</div>
+              <div class="detail-value">{{ detailData.rate }}</div>
             </div>
           </a-col>
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-pushpin />
-                <span>实际付款</span>
+                <span>交易数额</span>
               </div>
-              <div class="detail-value money-value">{{ detailData.amount }}</div>
+              <div class="detail-value">
+                {{ detailData.amount }}
+                <a-tag size="mini" :color="getCryptoColor(detailData.crypto)" bordered style="margin-left: 4px">
+                  {{ detailData.crypto }}
+                </a-tag>
+              </div>
             </div>
           </a-col>
         </a-row>
@@ -120,7 +125,7 @@
                 <icon-archive />
                 <span>交易金额</span>
               </div>
-              <div class="detail-value money-value highlight">{{ getCurrencySymbol(detailData.fiat) }}{{ detailData.money }}</div>
+              <div class="detail-value">{{ getCurrencySymbol(detailData.fiat) }}{{ detailData.money }}</div>
             </div>
           </a-col>
         </a-row>
@@ -157,7 +162,7 @@
       </a-card>
 
       <!-- 回调信息卡片 -->
-      <a-card class="detail-card" title="回调信息" :bordered="false">
+      <a-card class="detail-card" title="回调信息" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
         <a-row :gutter="24">
           <a-col :span="12">
             <div class="detail-item">
@@ -189,7 +194,7 @@
                 <icon-link />
                 <span>同步地址</span>
               </div>
-              <div class="detail-value url-value">{{ detailData.return_url }}</div>
+              <div class="detail-value">{{ detailData.return_url }}</div>
             </div>
           </a-col>
         </a-row>
@@ -200,14 +205,14 @@
                 <icon-sync />
                 <span>异步地址</span>
               </div>
-              <div class="detail-value url-value">{{ detailData.notify_url }}</div>
+              <div class="detail-value">{{ detailData.notify_url }}</div>
             </div>
           </a-col>
         </a-row>
       </a-card>
 
       <!-- 区块链信息卡片 -->
-      <a-card class="detail-card" title="区块链信息" :bordered="false" v-if="detailData.ref_hash || detailData.ref_block_num">
+      <a-card class="detail-card" title="区块链信息" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
         <a-row :gutter="24" v-if="detailData.ref_hash">
           <a-col :span="24">
             <div class="detail-item">
@@ -216,7 +221,11 @@
                 <span>交易哈希</span>
               </div>
               <div class="detail-value hash-value">
-                <a-typography-text copyable>{{ detailData.ref_hash }}</a-typography-text>
+                <a-typography-text v-if="detailData.status === 2" copyable>{{ detailData.ref_hash }}</a-typography-text>
+                <a-tag v-else color="blue" size="small">
+                  <template #icon><icon-clock-circle /></template>
+                  等待交易确认
+                </a-tag>
               </div>
             </div>
           </a-col>
@@ -236,14 +245,12 @@
           <a-col :span="24">
             <div class="detail-item">
               <a-button
-                size="small"
+                size="mini"
                 type="primary"
                 :disabled="!(detailData.status === 2 || detailData.status === 5)"
                 @click="openTxUrl"
               >
-                <template #icon>
-                  <icon-export />
-                </template>
+                <template #icon><icon-export /></template>
                 链上交易详情
               </a-button>
             </div>
@@ -283,7 +290,7 @@
               <div class="detail-value">{{ formatDateTime(detailData.expired_at) }}</div>
             </div>
           </a-col>
-          <a-col :span="12" v-if="detailData.confirmed_at">
+          <a-col :span="12" v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-check-circle />
@@ -299,6 +306,8 @@
 </template>
 
 <script setup lang="ts">
+import { getCryptoColor } from "@/views/rate/common";
+
 const props = defineProps({
   visible: Boolean,
   detailData: {
@@ -306,70 +315,44 @@ const props = defineProps({
     required: true
   }
 });
-const emits = defineEmits(["close"]);
-const onClose = () => {
-  emits("close");
-};
 
-// 打开链上交易详情
+const emits = defineEmits(["close"]);
+
+const onClose = () => emits("close");
+
 const openTxUrl = () => {
   if (props.detailData.tx_url) {
     window.open(props.detailData.tx_url, "_blank");
   }
 };
 
-// 获取状态颜色
-const getStatusColor = (status: number) => {
-  const statusMap: Record<number, string> = {
-    1: "blue", // 等待支付
-    2: "green", // 交易成功
-    3: "gray", // 交易过期
-    4: "gold", // 交易取消
-    5: "pinkpurple", // 等待确认
-    6: "red" // 确认失败
-  };
-  return statusMap[status] || "gray";
+const statusMap: Record<number, { color: string; text: string }> = {
+  1: { color: "blue", text: "等待支付" },
+  2: { color: "green", text: "交易成功" },
+  3: { color: "gray", text: "交易过期" },
+  4: { color: "gold", text: "交易取消" },
+  5: { color: "pinkpurple", text: "等待确认" },
+  6: { color: "red", text: "确认失败" }
 };
 
-// 获取状态文本
-const getStatusText = (status: number) => {
-  const statusMap: Record<number, string> = {
-    1: "等待支付",
-    2: "交易成功",
-    3: "交易过期",
-    4: "交易取消",
-    5: "等待确认",
-    6: "确认失败"
-  };
-  return statusMap[status] || "未知状态";
-};
+const getStatusColor = (status: number) => statusMap[status]?.color || "gray";
+const getStatusText = (status: number) => statusMap[status]?.text || "未知状态";
 
-// 格式化时间
 const formatDateTime = (dateTimeStr: string) => {
   if (!dateTimeStr) return "";
-
   const date = new Date(dateTimeStr);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
 };
 
-// 获取货币符号
-const getCurrencySymbol = (fiat: string) => {
-  const currencyMap: Record<string, string> = {
-    CNY: "¥",
-    USD: "$",
-    JPY: "¥",
-    GBP: "£",
-    EUR: "€"
-  };
-  return currencyMap[fiat] || "";
+const currencySymbolMap: Record<string, string> = {
+  CNY: "¥",
+  USD: "$",
+  JPY: "¥",
+  GBP: "£",
+  EUR: "€"
 };
+
+const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 </script>
 
 <style scoped>
@@ -402,8 +385,6 @@ const getCurrencySymbol = (fiat: string) => {
 
 .detail-item {
   margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
 }
 
 .detail-item:last-child {
@@ -425,7 +406,6 @@ const getCurrencySymbol = (fiat: string) => {
   color: var(--color-text-1);
   line-height: 1.5;
   padding-left: 26px;
-  position: relative;
 }
 
 .address-value {
@@ -455,25 +435,6 @@ const getCurrencySymbol = (fiat: string) => {
   margin-left: 4px;
 }
 
-.money-value {
-  font-weight: 600;
-  color: var(--color-text-1);
-}
-
-.money-value.highlight {
-  font-size: 16px;
-  color: #f53f3f;
-  font-weight: 700;
-}
-
-.url-value {
-  font-size: 12px;
-  color: var(--color-text-3);
-  word-break: break-all;
-  line-height: 1.4;
-}
-
-/* 响应式设计 */
 @media (max-width: 768px) {
   :deep(.arco-modal) {
     width: 95vw !important;
