@@ -111,6 +111,7 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 		return Order{}, err
 	}
 
+	crypto, _ := GetCrypto(p.TradeType)
 	tradeOrder := Order{
 		OrderId:     p.OrderId,
 		TradeId:     tradeId,
@@ -129,6 +130,7 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 		NotifyState: OrderNotifyStateFail,
 		ExpiredAt:   CalcTradeExpiredAt(p.Timeout),
 		Fiat:        p.Fiat,
+		Crypto:      crypto,
 	}
 
 	if tradeOrder.Name == "" {
