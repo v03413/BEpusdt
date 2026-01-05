@@ -25,9 +25,12 @@ interface List {
 
 interface FormData {
   form: {
-    name: string;
-    address: string;
+    order_id: string;
+    trade_id: string;
     trade_type: string;
+    address: string;
+    status?: number;
+    createTime: string[];
   };
   search: boolean;
 }

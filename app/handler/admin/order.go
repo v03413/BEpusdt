@@ -11,14 +11,16 @@ type Order struct {
 
 type oListReq struct {
 	base.ListRequest
-	Name      string  `json:"name"`
-	Money     *string `json:"money"`
-	Amount    *string `json:"amount"`
-	OrderId   *string `json:"order_id"`
-	TradeId   *string `json:"trade_id"`
-	Status    *uint8  `json:"status"`
-	Address   string  `json:"address"`
-	TradeType string  `json:"trade_type"`
+	Name      string `json:"name"`
+	Money     string `json:"money"`
+	Amount    string `json:"amount"`
+	OrderId   string `json:"order_id"`
+	TradeId   string `json:"trade_id"`
+	Status    *uint8 `json:"status"`
+	Address   string `json:"address"`
+	TradeType string `json:"trade_type"`
+	StartAt   string `json:"start_at"`
+	EndAt     string `json:"end_at"`
 }
 
 func (Order) List(ctx *gin.Context) {
@@ -29,23 +31,28 @@ func (Order) List(ctx *gin.Context) {
 		return
 	}
 
-	var data []model.Order
+	type order struct {
+		model.Order
+		Wallet model.Wallet `gorm:"foreignKey:Address,TradeType;references:Address,TradeType" json:"wallet"`
+	}
+
+	var data []order
 	var db = model.Db
 
 	if req.Name != "" {
 		db = db.Where("name LIKE ?", "%"+req.Name+"%")
 	}
-	if req.Money != nil {
-		db = db.Where("money = ?", *req.Money)
+	if req.Money != "" {
+		db = db.Where("money = ?", req.Money)
 	}
-	if req.Amount != nil {
-		db = db.Where("amount = ?", *req.Amount)
+	if req.Amount != "" {
+		db = db.Where("amount = ?", req.Amount)
 	}
-	if req.OrderId != nil {
-		db = db.Where("order_id like ?", "%"+*req.OrderId+"%")
+	if req.OrderId != "" {
+		db = db.Where("order_id like ?", "%"+req.OrderId+"%")
 	}
-	if req.TradeId != nil {
-		db = db.Where("trade_id like ?", "%"+*req.TradeId+"%")
+	if req.TradeId != "" {
+		db = db.Where("trade_id like ?", "%"+req.TradeId+"%")
 	}
 	if req.Status != nil {
 		db = db.Where("status = ?", *req.Status)
@@ -56,12 +63,18 @@ func (Order) List(ctx *gin.Context) {
 	if req.TradeType != "" {
 		db = db.Where("trade_type = ?", req.TradeType)
 	}
+	if req.StartAt != "" {
+		db = db.Where("created_at >= ?", req.StartAt)
+	}
+	if req.EndAt != "" {
+		db = db.Where("created_at <= ?", req.EndAt)
+	}
 
 	var total int64
 
 	db.Model(&model.Order{}).Count(&total)
 
-	err := db.Limit(req.Size).Offset((req.Page - 1) * req.Size).Order("id " + req.Sort).Find(&data).Error
+	err := db.Preload("Wallet").Limit(req.Size).Offset((req.Page - 1) * req.Size).Order("id " + req.Sort).Find(&data).Error
 	if err != nil {
 		base.Response(ctx, 400, err.Error())
 
@@ -79,15 +92,23 @@ func (Order) Detail(ctx *gin.Context) {
 		return
 	}
 
-	var order model.Order
-	model.Db.Where("id = ?", req.ID).Find(&order)
-	if order.ID == 0 {
+	type detail struct {
+		model.Order
+		TxUrl string `gorm:"-" json:"tx_url"`
+	}
+
+	var o model.Order
+	model.Db.Where("id = ?", req.ID).Find(&o)
+	if o.ID == 0 {
 		base.BadRequest(ctx, "订单不存在")
 
 		return
 	}
 
-	base.Ok(ctx, order)
+	base.Ok(ctx, detail{
+		Order: o,
+		TxUrl: o.GetDetailUrl(),
+	})
 }
 
 func (Order) Paid(ctx *gin.Context) {

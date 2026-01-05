@@ -120,7 +120,7 @@
                 <icon-archive />
                 <span>交易金额</span>
               </div>
-              <div class="detail-value money-value highlight">¥{{ detailData.money }}</div>
+              <div class="detail-value money-value highlight">{{ getCurrencySymbol(detailData.fiat) }}{{ detailData.money }}</div>
             </div>
           </a-col>
         </a-row>
@@ -232,6 +232,23 @@
             </div>
           </a-col>
         </a-row>
+        <a-row :gutter="24">
+          <a-col :span="24">
+            <div class="detail-item">
+              <a-button
+                size="small"
+                type="primary"
+                :disabled="!(detailData.status === 2 || detailData.status === 5)"
+                @click="openTxUrl"
+              >
+                <template #icon>
+                  <icon-export />
+                </template>
+                链上交易详情
+              </a-button>
+            </div>
+          </a-col>
+        </a-row>
       </a-card>
 
       <!-- 时间信息卡片 -->
@@ -282,8 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from "vue";
-defineProps({
+const props = defineProps({
   visible: Boolean,
   detailData: {
     type: Object,
@@ -293,6 +309,13 @@ defineProps({
 const emits = defineEmits(["close"]);
 const onClose = () => {
   emits("close");
+};
+
+// 打开链上交易详情
+const openTxUrl = () => {
+  if (props.detailData.tx_url) {
+    window.open(props.detailData.tx_url, "_blank");
+  }
 };
 
 // 获取状态颜色
@@ -334,6 +357,18 @@ const formatDateTime = (dateTimeStr: string) => {
   const seconds = String(date.getSeconds()).padStart(2, "0");
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+// 获取货币符号
+const getCurrencySymbol = (fiat: string) => {
+  const currencyMap: Record<string, string> = {
+    CNY: "¥",
+    USD: "$",
+    JPY: "¥",
+    GBP: "£",
+    EUR: "€"
+  };
+  return currencyMap[fiat] || "";
 };
 </script>
 

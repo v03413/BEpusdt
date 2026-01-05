@@ -2,7 +2,7 @@ package model
 
 type NotifyRecord struct {
 	Id
-	Txid string `Gorm:"type:varchar(64);uniqueIndex;not null;comment:交易哈希"`
+	Txid string `gorm:"type:varchar(64);uniqueIndex;not null;comment:交易哈希"`
 	AutoTimeAt
 }
 

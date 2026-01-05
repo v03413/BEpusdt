@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { detailAPI } from "@/api/modules/order";
 
 export interface Detail {
   id: number;
@@ -23,10 +24,12 @@ export interface Detail {
   confirmed_at?: string;
   created_at?: string;
   updated_at?: string;
+  tx_url?: string;
 }
 
 export const useOrderDetail = () => {
   const detailVisible = ref(false);
+  const loading = ref(false);
   const detailData = ref<Detail>({
     id: 0,
     order_id: "",
@@ -46,13 +49,23 @@ export const useOrderDetail = () => {
     notify_state: 0,
     ref_hash: "",
     ref_block_num: 0,
-    expired_at: ""
+    expired_at: "",
+    tx_url: ""
   });
 
   // 显示详情
-  const showDetail = (record: Detail) => {
-    detailData.value = { ...record };
-    detailVisible.value = true;
+  const showDetail = async (record: Detail) => {
+    loading.value = true;
+
+    try {
+      const response = await detailAPI({ id: record.id });
+      detailData.value = response.data;
+      detailVisible.value = true;
+    } catch (error) {
+      alert("获取订单详情失败" + error);
+    } finally {
+      loading.value = false;
+    }
   };
 
   // 关闭详情
@@ -77,13 +90,15 @@ export const useOrderDetail = () => {
       notify_state: 0,
       ref_hash: "",
       ref_block_num: 0,
-      expired_at: ""
+      expired_at: "",
+      tx_url: ""
     };
   };
 
   return {
     detailVisible,
     detailData,
+    loading,
     showDetail,
     closeDetail
   };
