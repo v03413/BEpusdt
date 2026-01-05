@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/conf"
@@ -330,6 +331,10 @@ func (Auth) Login(ctx *gin.Context) {
 
 func (Auth) Logout(ctx *gin.Context) {
 	cache.Set(conf.AdminTokenK, "", -1)
+
+	sess := sessions.Default(ctx)
+	sess.Delete(conf.AdminSecureK)
+	_ = sess.Save()
 
 	base.Response(ctx, 200, "退出成功")
 }

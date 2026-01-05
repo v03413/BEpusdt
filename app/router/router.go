@@ -1,7 +1,9 @@
 package router
 
 import (
+	"crypto/subtle"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
@@ -22,7 +24,12 @@ func Handler() *gin.Engine {
 	engine = gin.New()
 
 	session := memstore.NewStore([]byte(conf.Secret))
-	session.Options(sessions.Options{MaxAge: 86400, HttpOnly: true})
+	session.Options(sessions.Options{
+		MaxAge:   86400,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
 
 	engine.Use(sessions.Sessions("session", session))
 	engine.Use(gin.LoggerWithWriter(log.GetWriter()), gin.Recovery())
@@ -58,9 +65,20 @@ func sessionAuth() gin.HandlerFunc {
 			return
 		}
 
-		var need, ok = authRoute[ctx.Request.Method+"."+ctx.Request.URL.Path]
+		var path = ctx.Request.URL.Path
+		if len(path) >= 5 && path[:5] == "/api/" && !(len(path) >= 8 && path[:8] == "/api/v1/") {
+			sess := sessions.Default(ctx)
+			if secure, ok := sess.Get(conf.AdminSecureK).(bool); !ok || !secure {
+				ctx.JSON(403, gin.H{"code": 403, "msg": "unauthorized access"})
+				ctx.Abort()
+
+				return
+			}
+		}
+
+		var need, ok = authRoute[ctx.Request.Method+"."+path]
 		if !ok || !need {
-			ctx.Next() // 不需要鉴权
+			ctx.Next() // 不需要 token 鉴权
 
 			return
 		}
@@ -74,7 +92,8 @@ func sessionAuth() gin.HandlerFunc {
 		}
 
 		tokenString := cast.ToString(token)
-		if tokenString == "" || tokenString != ctx.GetHeader("Authorization") {
+		authHeader := ctx.GetHeader("Authorization")
+		if tokenString == "" || authHeader == "" || subtle.ConstantTimeCompare([]byte(tokenString), []byte(authHeader)) != 1 {
 			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid token"})
 			ctx.Abort()
 
