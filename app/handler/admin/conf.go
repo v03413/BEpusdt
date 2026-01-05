@@ -40,6 +40,8 @@ func (Conf) Set(ctx *gin.Context) {
 
 	model.SetK(model.ConfKey(strings.TrimSpace(req.Key)), strings.TrimSpace(req.Value))
 
+	defer model.RefreshC()
+
 	base.Ok(ctx, "配置成功")
 }
 
@@ -113,6 +115,8 @@ func (Conf) Sets(ctx *gin.Context) {
 
 	model.Db.Where("`k` IN ?", keys).Delete(&model.Conf{})
 	model.Db.Create(&data)
+
+	defer model.RefreshC()
 
 	base.Ok(ctx, "配置成功")
 }

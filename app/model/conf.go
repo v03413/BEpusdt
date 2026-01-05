@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/v03413/bepusdt/app/utils"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -90,18 +89,6 @@ func RefreshC() {
 	for _, row := range rows {
 		confCache.Store(row.K, row.V)
 	}
-}
-
-func Payment() (decimal.Decimal, decimal.Decimal) {
-	var vs = GetVs([]ConfKey{
-		PaymentMinAmount,
-		PaymentMaxAmount,
-	})
-
-	minAmount, _ := decimal.NewFromString(vs[PaymentMinAmount])
-	maxAmount, _ := decimal.NewFromString(vs[PaymentMaxAmount])
-
-	return minAmount, maxAmount
 }
 
 func CheckoutCounter(host, id string) string {
