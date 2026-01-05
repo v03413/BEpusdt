@@ -59,10 +59,11 @@ func BuildOrder(p OrderParams) (Order, error) {
 		return order, fmt.Errorf("交易金额必须在 %s - %s 之间", minAmount.String(), maxAmount.String())
 	}
 
-	Db.Where("order_id = ?", p.OrderId).Find(&order)
-	if order.Status == OrderStatusSuccess {
+	Db.Where("order_id = ?", p.OrderId).Order("id desc").Limit(1).Find(&order)
+	if order.Status == OrderStatusSuccess || order.Status == OrderStatusConfirming {
 		return order, nil
 	}
+
 	if order.Status == OrderStatusWaiting {
 		return RebuildOrder(order, p)
 	}
@@ -80,7 +81,10 @@ func BuildOrder(p OrderParams) (Order, error) {
 }
 
 func RebuildOrder(t Order, p OrderParams) (Order, error) {
-	if p.OrderId == t.OrderId && p.TradeType == t.TradeType && p.Money.String() == t.Money {
+	if p.OrderId == t.OrderId &&
+		p.TradeType == t.TradeType &&
+		p.Money.String() == t.Money &&
+		p.Fiat == t.Fiat {
 		return t, nil
 	}
 
