@@ -4,13 +4,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/utils"
+	"github.com/v03413/go-cache"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -320,9 +320,7 @@ func (Auth) Login(ctx *gin.Context) {
 
 	var token = utils.StrSha256(rand + ctx.ClientIP())
 
-	session := sessions.Default(ctx)
-	session.Set(conf.AdminTokenK, token)
-	defer session.Save()
+	cache.Set(conf.AdminTokenK, token, time.Hour*24)
 
 	model.SetK(model.AdminLoginIP, ctx.ClientIP())
 	model.SetK(model.AdminLoginAt, cast.ToString(time.Now().Format(time.DateTime)))
@@ -331,7 +329,7 @@ func (Auth) Login(ctx *gin.Context) {
 }
 
 func (Auth) Logout(ctx *gin.Context) {
-	model.SetK(model.AdminToken, "")
+	cache.Set(conf.AdminTokenK, "", -1)
 
 	base.Response(ctx, 200, "退出成功")
 }
@@ -364,13 +362,10 @@ func (Auth) SetPassword(ctx *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(ctx)
 	hash, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 
 	model.SetK(model.AdminPassword, string(hash))
-	session.Delete(conf.AdminTokenK)
-
-	defer session.Save()
+	cache.Set(conf.AdminTokenK, "", -1)
 
 	base.Ok(ctx, "修改成功，请重新登录")
 }

@@ -6,9 +6,11 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/go-cache"
 )
 
 var engine *gin.Engine
@@ -50,6 +52,12 @@ func Handler() *gin.Engine {
 
 func sessionAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		if conf.Debug {
+			ctx.Next()
+
+			return
+		}
+
 		var need, ok = authRoute[ctx.Request.Method+"."+ctx.Request.URL.Path]
 		if !ok || !need {
 			ctx.Next() // 不需要鉴权
@@ -57,10 +65,16 @@ func sessionAuth() gin.HandlerFunc {
 			return
 		}
 
-		session := sessions.Default(ctx)
-		token, ok := session.Get(conf.AdminTokenK).(string)
-		if !ok || token == "" || token != ctx.GetHeader("Authorization") {
-			//开发的时候可以注释掉，方便调试
+		token, ok := cache.Get(conf.AdminTokenK)
+		if !ok {
+			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid token"})
+			ctx.Abort()
+
+			return
+		}
+
+		tokenString := cast.ToString(token)
+		if tokenString == "" || tokenString != ctx.GetHeader("Authorization") {
 			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid token"})
 			ctx.Abort()
 

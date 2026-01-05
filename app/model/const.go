@@ -11,7 +11,6 @@ const (
 	AdminUsername ConfKey = "admin_username"
 	AdminPassword ConfKey = "admin_password"
 	AdminSecure   ConfKey = "admin_secure"
-	AdminToken    ConfKey = "admin_token"
 	AdminLoginIP  ConfKey = "admin_login_ip"
 	AdminLoginAt  ConfKey = "admin_login_at"
 
