@@ -197,7 +197,7 @@ func (t *Telegram) TronResourceChange(res model.TronResource) {
 
 func (t *Telegram) Welcome() {
 	var text = `
-👋 欢迎使用 BEpusdt，一款更好用的个人 USDT/USDC 收款网关，如果您看到此消息，说明系统已启动成功！
+👋 欢迎使用 BEpusdt，` + conf.Desc + `，如果您看到此消息，说明系统已启动成功！
 
 📌当前版本：` + app.Version + `
 🎉开源地址：` + conf.Github + `

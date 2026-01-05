@@ -36,7 +36,7 @@ func Handler() *gin.Engine {
 			return
 		}
 
-		ctx.HTML(200, "index.html", gin.H{"title": "一款更好用的加密货币收款网关", "url": conf.Github})
+		ctx.HTML(200, "index.html", gin.H{"title": conf.Desc, "url": conf.Github})
 	})
 
 	{
