@@ -16,6 +16,7 @@ func adminInit(e *gin.Engine) {
 		PostRegister(confRtr, "/sets", true, confHdr.Sets)
 		PostRegister(confRtr, "/notifier", true, confHdr.Notifier)
 		PostRegister(confRtr, "/notifier_test", true, confHdr.NotifierTest)
+		PostRegister(confRtr, "/reset_api_auth_token", true, confHdr.ResetApiAuthToken)
 	}
 
 	var walletRtr = e.Group("/api/wallet")

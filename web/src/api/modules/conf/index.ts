@@ -48,4 +48,12 @@ const notifierTestAPI = (data: any) => {
   });
 };
 
-export { setConfAPI, getConfAPI, getsConfAPI, setsConfAPI, notifierAPI, notifierTestAPI };
+const resetApiAuthToken = (data: any) => {
+  return axios({
+    url: "/api/conf/reset_api_auth_token",
+    method: "post",
+    data
+  });
+};
+
+export { setConfAPI, getConfAPI, getsConfAPI, setsConfAPI, notifierAPI, notifierTestAPI, resetApiAuthToken };

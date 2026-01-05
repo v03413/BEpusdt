@@ -4,18 +4,21 @@
       <a-col :span="24">
         <a-card title="API设置">
           <a-form :model="form" :rules="rules" :style="{ width: '600px' }" @submit="onSubmit">
-            <a-form-item field="api_auth_token" label="对接令牌" extra="API对接的身份验证令牌">
-              <a-input-password v-model="form.api_auth_token" placeholder="请输入 Auth Token" allow-clear />
+            <a-form-item field="api_auth_token" label="对接令牌" extra="API对接的身份验证令牌，请妥善保管">
+              <a-input-group class="token-input-group">
+                <a-input-password v-model="form.api_auth_token" placeholder="请输入 Auth Token" readonly />
+                <a-button type="primary" @click="handleResetToken">重置</a-button>
+              </a-input-group>
             </a-form-item>
 
-            <a-form-item field="api_app_uri" label="应用URI" extra="API对接的应用URI，前端收银台地址">
+            <a-form-item field="api_app_uri" label="应用URI" extra="API对接的应用URI,前端收银台地址">
               <a-input v-model="form.api_app_uri" placeholder="http(s)://your-host-uri" allow-clear />
             </a-form-item>
 
             <a-form-item
               field="payment_static_path"
               label="静态资源"
-              extra="收银台静态资源路径，可通过此功能自定义前端收银台样式；不懂请勿修改，否则可能导致收银台异常！【修改重启生效】"
+              extra="收银台静态资源路径,可通过此功能自定义前端收银台样式;不懂请勿修改,否则可能导致收银台异常!【修改重启生效】"
             >
               <a-input v-model="form.payment_static_path" placeholder="/var/lib/bepusdt/payment/" allow-clear />
             </a-form-item>
@@ -32,34 +35,27 @@
 
 <script setup lang="ts">
 import { Message } from "@arco-design/web-vue";
-import { setsConfAPI } from "@/api/modules/conf/index";
+import { setsConfAPI, resetApiAuthToken } from "@/api/modules/conf/index";
 
 const emit = defineEmits(["refresh"]);
 const data = defineModel() as any;
 const form = ref({ api_auth_token: "", api_app_uri: "", payment_static_path: "" });
-const rules = {
-  api_auth_token: [
-    {
-      required: true,
-      message: "对接令牌不能为空"
-    },
-    {
-      minLength: 6,
-      message: "长度不能少于6位"
-    }
-  ]
+const rules = {};
+
+const handleResetToken = async () => {
+  try {
+    await resetApiAuthToken({});
+    Message.success("令牌重置成功");
+    emit("refresh");
+  } catch {
+    Message.error("令牌重置失败");
+  }
 };
 
 const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
   if (errors) return;
 
-  if (errors) return;
-
   await setsConfAPI([
-    {
-      key: "api_auth_token",
-      value: form.value.api_auth_token
-    },
     {
       key: "api_app_uri",
       value: form.value.api_app_uri
@@ -88,5 +84,17 @@ watch(
 <style lang="scss" scoped>
 .row-title {
   font-size: $font-size-title-1;
+}
+
+.token-input-group {
+  width: 100%;
+
+  :deep(.arco-input-wrapper) {
+    flex: 1;
+  }
+
+  :deep(.arco-btn) {
+    flex-shrink: 0;
+  }
 }
 </style>

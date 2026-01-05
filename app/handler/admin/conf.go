@@ -3,6 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/v03413/bepusdt/app/handler/base"
@@ -111,6 +112,11 @@ func (Conf) Sets(ctx *gin.Context) {
 
 			return
 		}
+		if v.K == model.ApiAuthToken {
+			base.BadRequest(ctx, "安全考虑，不允许自定义修改 API 对接令牌")
+
+			return
+		}
 	}
 
 	model.Db.Where("`k` IN ?", keys).Delete(&model.Conf{})
@@ -148,4 +154,10 @@ func (Conf) NotifierTest(ctx *gin.Context) {
 	}
 
 	base.Ok(ctx, "发送测试成功")
+}
+
+func (Conf) ResetApiAuthToken(ctx *gin.Context) {
+	model.SetK(model.ApiAuthToken, strings.ToUpper(utils.Md5String(utils.StrSha256(time.Now().String()))))
+
+	base.Ok(ctx, "重置成功")
 }
