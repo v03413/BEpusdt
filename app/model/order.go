@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -51,44 +50,6 @@ const (
 )
 
 var calcMutex sync.Mutex
-
-var explorerUrlMap = map[TradeType]string{
-	// Ethereum
-	UsdtErc20: "https://etherscan.io/tx/",
-	UsdcErc20: "https://etherscan.io/tx/",
-	// BSC
-	UsdtBep20: "https://bscscan.com/tx/",
-	UsdcBep20: "https://bscscan.com/tx/",
-	// X Layer
-	UsdtXlayer: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/",
-	UsdcXlayer: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/",
-	// Polygon
-	UsdtPolygon: "https://polygonscan.com/tx/",
-	UsdcPolygon: "https://polygonscan.com/tx/",
-	// Arbitrum
-	UsdtArbitrum: "https://arbiscan.io/tx/",
-	UsdcArbitrum: "https://arbiscan.io/tx/",
-	// Base
-	UsdcBase: "https://basescan.org/tx/",
-	// Solana
-	UsdtSolana: "https://solscan.io/tx/",
-	UsdcSolana: "https://solscan.io/tx/",
-	// Aptos
-	UsdtAptos: "https://explorer.aptoslabs.com/txn/",
-	UsdcAptos: "https://explorer.aptoslabs.com/txn/",
-	// Tron
-	TronTrx:   "https://tronscan.org/#/transaction/",
-	UsdtTrc20: "https://tronscan.org/#/transaction/",
-	UsdcTrc20: "https://tronscan.org/#/transaction/",
-}
-
-var cryptoAtomKeys = map[Crypto]ConfKey{
-	USDT: AtomUSDT,
-	USDC: AtomUSDC,
-	TRX:  AtomTRX,
-	BNB:  AtomBNB,
-	ETH:  AtomETH,
-}
 
 type Order struct {
 	Id
@@ -192,27 +153,14 @@ func (o *Order) GetStatusEmoji() string {
 	return label
 }
 
-func (o *Order) GetDetailUrl() string {
+func (o *Order) GetTxUrl() string {
 
-	return GetDetailUrl(o.TradeType, o.RefHash)
+	return GetTxUrl(o.TradeType, o.RefHash)
 }
 
 func (o *Order) TableName() string {
 
 	return "bep_order"
-}
-
-func GetDetailUrl(t TradeType, hash string) string {
-	if baseUrl, ok := explorerUrlMap[t]; ok {
-		if t == UsdtAptos || t == UsdcAptos {
-
-			return fmt.Sprintf("%s%s?network=mainnet", baseUrl, hash)
-		}
-
-		return baseUrl + hash
-	}
-
-	return "https://tronscan.org/#/transaction/" + hash
 }
 
 func GetTradeOrder(tradeId string) (Order, bool) {
@@ -285,15 +233,9 @@ func CalcTradeExpiredAt(sec int64) time.Time {
 }
 
 func getAtomicity(t TradeType) (decimal.Decimal, int32) {
-	var crypto = USDT
-	c, ok := registry[t]
-	if ok {
-		crypto = c.Crypto
-	}
-
-	confKey, ok2 := cryptoAtomKeys[crypto]
-	if !ok2 {
-		confKey = AtomUSDT
+	confKey, ok := GetTradeAtomKey(t)
+	if !ok {
+		confKey = "atom_usdt"
 	}
 
 	var atom, _ = decimal.NewFromString(GetK(confKey))

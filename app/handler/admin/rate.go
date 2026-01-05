@@ -68,8 +68,8 @@ func (Rate) Syntax(ctx *gin.Context) {
 
 	var data = make([]Syntax, 0)
 
-	for fiat := range model.SupportFiat {
-		for token := range model.SupportCrypto {
+	for fiat := range model.GetSupportFiat() {
+		for token := range model.GetSupportCrypto() {
 			var k = fmt.Sprintf("rate_float_%s_%s", token, fiat)
 			data = append(data, Syntax{
 				Key:    k,

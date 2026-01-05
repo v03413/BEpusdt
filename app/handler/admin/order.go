@@ -107,7 +107,7 @@ func (Order) Detail(ctx *gin.Context) {
 
 	base.Ok(ctx, detail{
 		Order: o,
-		TxUrl: o.GetDetailUrl(),
+		TxUrl: o.GetTxUrl(),
 	})
 }
 

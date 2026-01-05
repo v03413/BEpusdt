@@ -25,24 +25,6 @@ const (
 	FiatGBP Fiat = "GBP"
 )
 
-// SupportFiat 支持的法币
-var SupportFiat = map[Fiat]struct{}{
-	FiatCNY: {},
-	FiatUSD: {},
-	FiatJPY: {},
-	FiatEUR: {},
-	FiatGBP: {},
-}
-
-// SupportCrypto 支持的加密货币，不能瞎定义；参考来源：https://docs.coingecko.com/v3.0.1/reference/coins-list
-var SupportCrypto = map[Crypto]coinId{
-	USDT: "tether",
-	USDC: "usd-coin",
-	TRX:  "tron",
-	BNB:  "binancecoin",
-	ETH:  "ethereum",
-}
-
 type Rate struct {
 	Id
 	Rate    string  `gorm:"column:rate;type:varchar(32);not null;comment:订单汇率" json:"rate"`
@@ -72,13 +54,13 @@ func (r *Rate) BeforeCreate(*gorm.DB) error {
 
 func CoingeckoRate() {
 	var fiats = make([]string, 0)
-	for k := range SupportFiat {
+	for k := range supportFiat {
 		fiats = append(fiats, string(k))
 	}
 
 	var ids = make([]string, 0)
-	var tokens = make(map[coinId]Crypto)
-	for token, id := range SupportCrypto {
+	var tokens = make(map[CoinId]Crypto)
+	for token, id := range supportCrypto {
 		ids = append(ids, string(id))
 		tokens[id] = token
 	}
@@ -115,7 +97,7 @@ func CoingeckoRate() {
 
 	var rows = make([]Rate, 0)
 	for id, v := range data.Map() {
-		var token, ok = tokens[coinId(id)]
+		var token, ok = tokens[CoinId(id)]
 		if !ok {
 
 			continue

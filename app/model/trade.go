@@ -47,7 +47,7 @@ func BuildOrder(p OrderParams) (Order, error) {
 
 		return order, fmt.Errorf("不支持的交易类型：%s", p.TradeType)
 	}
-	if _, ok := SupportFiat[p.Fiat]; !ok {
+	if _, ok := supportFiat[p.Fiat]; !ok {
 
 		return order, fmt.Errorf("不支持的法币类型：%s", p.Fiat)
 	}

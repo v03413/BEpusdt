@@ -32,8 +32,8 @@ func (Auth) Info(ctx *gin.Context) {
 	base.Ok(ctx, gin.H{
 		"admin_username": model.GetK(model.AdminUsername),
 		"trade_type":     model.GetAllAlias(),
-		"trade_fiat":     model.SupportFiat,
-		"trade_crypto":   model.SupportCrypto,
+		"trade_fiat":     model.GetSupportFiat(),
+		"trade_crypto":   model.GetSupportCrypto(),
 	})
 }
 

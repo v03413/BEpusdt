@@ -1,11 +1,28 @@
 package model
 
+import "github.com/shopspring/decimal"
+
 type ConfKey string
 type Fiat string
-type coinId string
+type CoinId string
 type Crypto string
 type TradeType string
 type Network string
+type Range struct {
+	MinAmount decimal.Decimal
+	MaxAmount decimal.Decimal
+}
+type TradeTypeConf struct {
+	Alias       string  // 类型别名，主要用户前端展示
+	Network     Network // 所属区块链网络
+	Crypto      Crypto  // 币种类型
+	Native      bool    // 是否原生币
+	Contract    string  // 合约地址，原生币为空
+	Decimal     int32   // 小数位
+	AmountRange Range   // 合法数额范围；这里特指则扫块时[数额范围]，目前偷懒全部写死一个大概合理的范围，后面有问题再说...
+	ExplorerFmt string  // 区块浏览器交易链接格式化字符串，%s 位置替换为交易哈希
+	EndpointKey ConfKey // RPC 端点配置键
+}
 
 const (
 	AdminUsername ConfKey = "admin_username"
@@ -49,3 +66,18 @@ const (
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email
 )
+
+// USD 交易类型常见扫描范围
+var usdGeneralRange = Range{
+	MinAmount: decimal.NewFromFloat(0.01),
+	MaxAmount: decimal.NewFromFloat(1000000),
+}
+
+// registry 交易类型注册表【由init函数自动维护】
+var networkTradesMap = make(map[Network][]TradeType)
+var networkEndpointMap = make(map[Network]ConfKey)
+var contractTradeMap = make(map[string]TradeType)
+var contractDecimalMap = make(map[string]int32)
+var tradeAmountRangeMap = make(map[TradeType]Range)
+var explorerUrlMap = make(map[TradeType]string)
+var cryptoAtomKeys = make(map[Crypto]ConfKey)

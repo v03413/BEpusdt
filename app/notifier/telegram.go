@@ -88,7 +88,7 @@ func (t *Telegram) Success(o model.Order) {
 		ReplyMarkup: &models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
-					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: o.GetDetailUrl()},
+					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: o.GetTxUrl()},
 				},
 			},
 		},
@@ -134,7 +134,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 		ReplyMarkup: &models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
-					models.InlineKeyboardButton{Text: "📝查看收款详情", CallbackData: o.GetDetailUrl()},
+					models.InlineKeyboardButton{Text: "📝查看收款详情", CallbackData: o.GetTxUrl()},
 				},
 			},
 		},
@@ -162,7 +162,7 @@ func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
-					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: model.GetDetailUrl(model.TradeType(trans.TradeType), trans.TxHash)},
+					models.InlineKeyboardButton{Text: "📝查看交易明细", URL: model.GetTxUrl(trans.TradeType, trans.TxHash)},
 				},
 			},
 		},
