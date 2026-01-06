@@ -2,7 +2,7 @@
   <a-layout-footer class="footer">
     <div class="footer_title">
       <div class="left-placeholder"></div>
-      <span @click="onBEpusdt" class="primary-copyright">© 2025 BEpusdt. All rights reserved.</span>
+      <span @click="onBEpusdt" class="primary-copyright">© 2026 BEpusdt. All rights reserved.</span>
       <span class="secondary-info">Powered by SnowAdmin</span>
     </div>
   </a-layout-footer>

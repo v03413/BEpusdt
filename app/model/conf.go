@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/v03413/bepusdt/app/utils"
+	"github.com/v03413/go-cache"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -33,6 +35,8 @@ func SetK(k ConfKey, v string) {
 
 			return err2
 		}
+
+		defer RefreshC()
 
 		return nil
 	}); err != nil {
@@ -136,6 +140,7 @@ func ConfInit() {
 		BlockHeightMaxDiff:  "1000",
 		PaymentTimeout:      "1200", // 20分钟
 		PaymentStaticPath:   "",
+		SystemInstallLock:   "0",
 	}
 
 	var rows = make([]Conf, 0)
@@ -143,38 +148,35 @@ func ConfInit() {
 		rows = append(rows, Conf{K: k, V: v})
 	}
 
-	fmt.Println()
-	fmt.Println("╔═══════════════════════════════════════════════════════════════════════")
-	fmt.Println("║  🎉  欢迎使用 BEpusdt  -  首次运行检测，初始化配置完成")
-	fmt.Println("╚═══════════════════════════════════════════════════════════════════════")
-	fmt.Println()
-	fmt.Println("┏━━  🔐  后台登录信息 (请立即保存！)")
-	fmt.Println("┃")
-	fmt.Printf("┃    👤  登录账号:  %s\n", username)
-	fmt.Printf("┃    🔑  登录密码:  %s\n", password)
-	fmt.Printf("┃    🛡️   安全入口:  %s\n", secure)
-	fmt.Println("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
-	fmt.Println("┏━━  🔌  API 对接信息")
-	fmt.Println("┃")
-	fmt.Printf("┃    🎫  对接令牌:  %s\n", token)
-	fmt.Println("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
-	fmt.Println("⚠️   重要提示:")
-	fmt.Println("    •  以上信息仅显示一次，请务必妥善保存至安全位置")
-	fmt.Println("    •  登录密码遗忘可通过 'reset' 命令重置")
-	fmt.Println("    •  API 令牌可在网页后台进行修改")
-	fmt.Println("    •  建议定期更换密码以确保账户安全")
-	fmt.Println()
-	fmt.Println("🚀  快速开始:  http://your-domain" + secure)
-	fmt.Println()
-	fmt.Println("═══════════════════════════════════════════════════════════════════════")
-	fmt.Println()
-
 	Db.Create(&rows)
+
+	// 数据丢到缓存，前台首次访问时会展示这部分初始化信息；明文密码只这一次保存到缓存，不写入数据库
+	cache.Set(string(SystemInstallLock), gin.H{
+		"username": username,
+		"password": password,
+		"secure":   secure,
+		"token":    token,
+	}, -1)
 }
 
 func AuthToken() string {
 
 	return GetK(ApiAuthToken)
+}
+
+func IsInstalled() bool {
+	return GetC(SystemInstallLock) == "1"
+}
+
+func InstallLock() {
+	SetK(SystemInstallLock, "1")
+}
+
+func GetInstallInfo() gin.H {
+	if info, ok := cache.Get(string(SystemInstallLock)); ok {
+
+		return info.(gin.H)
+	}
+
+	return gin.H{}
 }

@@ -44,6 +44,8 @@ func Init(path string) error {
 		ConfInit()
 	}
 
+	RefreshC()
+
 	return nil
 }
 

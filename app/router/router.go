@@ -37,6 +37,13 @@ func Handler() *gin.Engine {
 	engine.Use(sessionAuth(), copyright())
 	engine.NoRoute(noRoute())
 	engine.GET("/", func(ctx *gin.Context) {
+		if !model.IsInstalled() {
+			model.InstallLock()
+			ctx.HTML(200, "installed.html", model.GetInstallInfo())
+
+			return
+		}
+
 		sess := sessions.Default(ctx)
 		if secure, ok := sess.Get(conf.AdminSecureK).(bool); ok && secure {
 			ctx.HTML(200, "secure.html", gin.H{})
