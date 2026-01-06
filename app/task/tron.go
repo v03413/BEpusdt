@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -17,11 +18,10 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 	"github.com/v03413/tronprotocol/api"
 	"github.com/v03413/tronprotocol/core"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var gasFreeUsdtTokenAddress = []byte{0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 0x78, 0x09, 0x86, 0xa4, 0x2c, 0x78, 0xec, 0x9c, 0x7f, 0x77, 0xe6, 0xde, 0xd1, 0x3c}
@@ -29,14 +29,6 @@ var gasFreeOwnerAddress = []byte{0x41, 0x3b, 0x41, 0x50, 0x50, 0xb1, 0xe7, 0x9e,
 var gasFreeContractAddress = []byte{0x41, 0x39, 0xdd, 0x12, 0xa5, 0x4e, 0x2b, 0xab, 0x7c, 0x82, 0xaa, 0x14, 0xa1, 0xe1, 0x58, 0xb3, 0x42, 0x63, 0xd2, 0xd5, 0x10}
 var usdtTrc20ContractAddress = []byte{0x41, 0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 0x78, 0x09, 0x86, 0xa4, 0x2c, 0x78, 0xec, 0x9c, 0x7f, 0x77, 0xe6, 0xde, 0xd1, 0x3c}
 var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 0xb2, 0xc8, 0x7f, 0xb7, 0xff, 0xa8, 0xbc, 0xfa, 0xde, 0x38, 0xea, 0xac, 0x1a, 0xbe}
-var trc20TokenDecimals = map[string]int32{
-	model.OrderTradeTypeUsdtTrc20: conf.UsdtTronDecimals,
-	model.OrderTradeTypeUsdcTrc20: conf.UsdcTronDecimals,
-}
-var grpcParams = grpc.ConnectParams{
-	Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
-	MinConnectTimeout: 1 * time.Minute,
-}
 
 type tron struct {
 	blockConfirmedOffset int64
@@ -49,9 +41,9 @@ var tr tron
 
 func init() {
 	tr = newTron()
-	register(task{duration: time.Second, callback: tr.blockDispatch})
-	register(task{duration: time.Second * 3, callback: tr.blockRoll})
-	register(task{duration: time.Second * 5, callback: tr.tradeConfirmHandle})
+	Register(Task{Duration: time.Second, Callback: tr.blockDispatch})
+	Register(Task{Duration: time.Second * 3, Callback: tr.blockRoll})
+	Register(Task{Duration: time.Second * 5, Callback: tr.tradeConfirmHandle})
 }
 
 func newTron() tron {
@@ -69,9 +61,9 @@ func (t *tron) blockRoll(context.Context) {
 		return
 	}
 
-	conn, err := grpc.NewClient(conf.GetTronGrpcNode(), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
 	if err != nil {
-		log.Error("grpc.NewClient", err)
+		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
@@ -80,23 +72,20 @@ func (t *tron) blockRoll(context.Context) {
 
 	var client = api.NewWalletClient(conn)
 
-	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*15)
 	block, err1 := client.GetNowBlock2(ctx, nil)
 	defer cancel()
 
 	if err1 != nil {
-		log.Warn("GetNowBlock2 超时：", err1)
+		log.Task.Warn("GetNowBlock2 超时：", err1)
 
 		return
 	}
 
 	var now = block.BlockHeader.RawData.Number
-	if conf.GetTradeIsConfirmed() {
-		now = now - t.blockConfirmedOffset
-	}
 
 	// 区块高度变化过大，强制丢块重扫
-	if now-t.lastBlockNum > conf.BlockHeightMaxDiff {
+	if now-t.lastBlockNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
 		t.blockInitOffset(now)
 		t.lastBlockNum = now - 1
 	}
@@ -119,7 +108,7 @@ func (t *tron) blockRoll(context.Context) {
 func (t *tron) blockDispatch(context.Context) {
 	p, err := ants.NewPoolWithFunc(3, t.blockParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("Error creating pool:", err)
 
 		return
 	}
@@ -130,18 +119,18 @@ func (t *tron) blockDispatch(context.Context) {
 		if err := p.Invoke(n); err != nil {
 			t.blockScanQueue.In <- n
 
-			log.Warn("Tron Error invoking process block:", err)
+			log.Task.Warn("Tron Error invoking process block:", err)
 		}
 	}
 }
 
 func (t *tron) blockParse(n any) {
 	var num = n.(int64)
-	var node = conf.GetTronGrpcNode()
+
 	var conn *grpc.ClientConn
 	var err error
-	if conn, err = grpc.NewClient(node, grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials())); err != nil {
-		log.Error("grpc.NewClient", err)
+	if conn, err = utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey)); err != nil {
+		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
@@ -157,7 +146,7 @@ func (t *tron) blockParse(n any) {
 	if err2 != nil {
 		conf.SetBlockFail(conf.Tron)
 		t.blockScanQueue.In <- num
-		log.Warn("GetBlockByNum2 Error", err2)
+		log.Task.Warn("GetBlockByNum2 Error", err2)
 
 		return
 	}
@@ -230,7 +219,7 @@ func (t *tron) blockParse(n any) {
 					FromAddress: t.base58CheckEncode(foo.OwnerAddress),
 					RecvAddress: t.base58CheckEncode(foo.ToAddress),
 					Timestamp:   timestamp,
-					TradeType:   model.OrderTradeTypeTronTrx,
+					TradeType:   model.TronTrx,
 					BlockNum:    cast.ToInt64(num),
 				})
 			}
@@ -256,24 +245,18 @@ func (t *tron) blockParse(n any) {
 							FromAddress: from,
 							RecvAddress: receiver,
 							Timestamp:   timestamp,
-							TradeType:   model.OrderTradeTypeUsdtTrc20,
+							TradeType:   model.UsdtTrc20,
 							BlockNum:    cast.ToInt64(num),
 						})
 					}
 				}
 
 				// trc20 合约解析
-				var tradeType = "None"
+				var tradeType model.TradeType = "None"
 				if bytes.Equal(foo.GetContractAddress(), usdtTrc20ContractAddress) {
-					tradeType = model.OrderTradeTypeUsdtTrc20
+					tradeType = model.UsdtTrc20
 				} else if bytes.Equal(foo.GetContractAddress(), usdcTrc20ContractAddress) {
-					tradeType = model.OrderTradeTypeUsdcTrc20
-				}
-
-				exp, ok := trc20TokenDecimals[tradeType]
-				if !ok {
-
-					continue
+					tradeType = model.UsdcTrc20
 				}
 
 				if bytes.Equal(data[:4], []byte{0xa9, 0x05, 0x9c, 0xbb}) { //  a9059cbb transfer
@@ -282,7 +265,7 @@ func (t *tron) blockParse(n any) {
 						transfers = append(transfers, transfer{
 							Network:     conf.Tron,
 							TxHash:      id,
-							Amount:      decimal.NewFromBigInt(amount, exp),
+							Amount:      decimal.NewFromBigInt(amount, model.GetTradeDecimal(tradeType)),
 							FromAddress: t.base58CheckEncode(foo.OwnerAddress),
 							RecvAddress: receiver,
 							Timestamp:   timestamp,
@@ -297,7 +280,7 @@ func (t *tron) blockParse(n any) {
 						transfers = append(transfers, transfer{
 							Network:     conf.Tron,
 							TxHash:      id,
-							Amount:      decimal.NewFromBigInt(amount, exp),
+							Amount:      decimal.NewFromBigInt(amount, model.GetTradeDecimal(tradeType)),
 							FromAddress: from,
 							RecvAddress: to,
 							Timestamp:   timestamp,
@@ -318,7 +301,7 @@ func (t *tron) blockParse(n any) {
 		resourceQueue.In <- resources
 	}
 
-	log.Info("区块扫描完成", num, conf.GetBlockSuccRate(conf.Tron), conf.Tron)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Tron): %d 成功率：%s", num, conf.GetBlockSuccRate(conf.Tron)))
 }
 
 func (t *tron) blockInitOffset(now int64) {
@@ -400,14 +383,14 @@ func (t *tron) gasFreePermitTransfer(data []byte) (string, string, *big.Int) {
 }
 
 func (t *tron) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders([]string{model.OrderTradeTypeTronTrx, model.OrderTradeTypeUsdtTrc20, model.OrderTradeTypeUsdcTrc20})
+	var orders = getConfirmingOrders([]model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20})
 
 	var wg sync.WaitGroup
 
-	var handle = func(o model.TradeOrders) {
-		conn, err := grpc.NewClient(conf.GetTronGrpcNode(), grpc.WithConnectParams(grpcParams), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	var handle = func(o model.Order) {
+		conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
 		if err != nil {
-			log.Error("grpc.NewClient", err)
+			log.Task.Error("grpc.NewClient", err)
 
 			return
 		}
@@ -416,17 +399,17 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 
 		var c = api.NewWalletClient(conn)
 
-		idBytes, err := hex.DecodeString(o.TradeHash)
+		idBytes, err := hex.DecodeString(o.RefHash)
 		if err != nil {
-			log.Error("hex.DecodeString", err)
+			log.Task.Error("hex.DecodeString", err)
 
 			return
 		}
 
-		if o.TradeType == model.OrderTradeTypeTronTrx {
+		if o.TradeType == model.TronTrx {
 			trans, err := c.GetTransactionById(ctx, &api.BytesMessage{Value: idBytes})
 			if err != nil {
-				log.Error("GetTransactionById", err)
+				log.Task.Error("GetTransactionById", err)
 
 				return
 			}
@@ -440,7 +423,7 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 
 		info, err := c.GetTransactionInfoById(ctx, &api.BytesMessage{Value: idBytes})
 		if err != nil {
-			log.Error("GetTransactionInfoById", err)
+			log.Task.Error("GetTransactionInfoById", err)
 
 			return
 		}
@@ -473,14 +456,14 @@ func (t *tron) base58CheckEncode(input []byte) string {
 
 func (t *tron) rollBreak() bool {
 	var count int64 = 0
-	trade := []string{model.OrderTradeTypeTronTrx, model.OrderTradeTypeUsdtTrc20, model.OrderTradeTypeUsdcTrc20}
-	model.DB.Model(&model.TradeOrders{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
+	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
 	if count > 0 {
 
 		return false
 	}
 
-	model.DB.Model(&model.WalletAddress{}).Where("other_notify = ? and trade_type in (?)", model.OtherNotifyEnable, trade).Count(&count)
+	model.Db.Model(&model.Wallet{}).Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, trade).Count(&count)
 	if count > 0 {
 
 		return false

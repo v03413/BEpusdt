@@ -1,0 +1,46 @@
+/* global style scss */
+@use "@/style/var/index" as *;
+
+// ============非铺满main窗口============
+// 整体main窗口容器-有内边距
+.snow-page {
+  box-sizing: border-box;
+  flex: 1;
+  padding: $padding;
+  overflow-y: auto;
+  background: $color-fill-1;
+}
+
+// 内部main窗口容器-有内边距
+.snow-inner {
+  padding: $padding;
+  background: $color-bg-1;
+}
+
+// ==============铺满main窗口==================
+// 铺满main窗口-有内边距
+.snow-fill {
+  height: 100%;
+  padding: $padding;
+  overflow: hidden;
+  background: $color-fill-1;
+}
+.snow-fill-inner {
+  box-sizing: border-box;
+  height: 100%;
+  padding: $padding;
+  overflow: hidden;
+  background: $color-bg-1;
+}
+
+// 铺满main窗口-无内边距
+.snow-fill-pure {
+  height: 100%;
+  overflow: hidden;
+  background: $color-fill-1;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

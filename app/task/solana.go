@@ -15,6 +15,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
+	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
@@ -33,22 +34,17 @@ type solana struct {
 }
 
 type solanaTokenOwner struct {
-	TradeType string
+	TradeType model.TradeType
 	Address   string
 }
 
 var sol solana
 
-var solSplToken = map[string]string{
-	conf.UsdtSolana: model.OrderTradeTypeUsdtSolana,
-	conf.UsdcSolana: model.OrderTradeTypeUsdcSolana,
-}
-
 func init() {
 	sol = newSolana()
-	register(task{callback: sol.slotDispatch})
-	register(task{callback: sol.slotRoll, duration: time.Second * 5})
-	register(task{callback: sol.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: sol.slotDispatch})
+	Register(Task{Callback: sol.slotRoll, Duration: time.Second * 5})
+	Register(Task{Callback: sol.tradeConfirmHandle, Duration: time.Second * 5})
 }
 
 func newSolana() solana {
@@ -66,12 +62,12 @@ func (s *solana) slotRoll(ctx context.Context) {
 		return
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", conf.GetSolanaRpcEndpoint(), bytes.NewBuffer([]byte(`{"jsonrpc":"2.0","id":1,"method":"getSlot"}`)))
+	req, err := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer([]byte(`{"jsonrpc":"2.0","id":1,"method":"getSlot"}`)))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warn("slotRoll Error sending request:", err)
+		log.Task.Warn("slotRoll Error sending request:", err)
 
 		return
 	}
@@ -79,31 +75,26 @@ func (s *solana) slotRoll(ctx context.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Warn("slotRoll Error response status code:", resp.StatusCode)
+		log.Task.Warn("slotRoll Error response status code:", resp.StatusCode)
 
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warn("slotRoll Error reading response body:", err)
+		log.Task.Warn("slotRoll Error reading response body:", err)
 
 		return
 	}
 
 	now := gjson.GetBytes(body, "result").Int()
 	if now <= 0 {
-		log.Warn("slotRoll Error: invalid slot number:", now)
+		log.Task.Warn("slotRoll Error: invalid slot number:", now)
 
 		return
 	}
 
-	if conf.GetTradeIsConfirmed() {
-
-		now = now - s.slotConfirmedOffset
-	}
-
-	if now-s.lastSlotNum > conf.BlockHeightMaxDiff { // 区块高度变化过大，强制丢块重扫
+	if now-s.lastSlotNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) { // 区块高度变化过大，强制丢块重扫
 		s.lastSlotNum = now
 		s.slotInitOffset(now)
 	}
@@ -125,7 +116,7 @@ func (s *solana) slotRoll(ctx context.Context) {
 func (s *solana) slotDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(3, s.slotParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("Error creating pool:", err)
 
 		return
 	}
@@ -137,11 +128,11 @@ func (s *solana) slotDispatch(ctx context.Context) {
 		case slot := <-s.slotQueue.Out:
 			if err := p.Invoke(slot); err != nil {
 				s.slotQueue.In <- slot
-				log.Warn("slotDispatch Error invoking process slot:", err)
+				log.Task.Warn("slotDispatch Error invoking process slot:", err)
 			}
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
-				log.Warn("slotDispatch context done:", err)
+				log.Task.Warn("slotDispatch context done:", err)
 			}
 
 			return
@@ -178,10 +169,10 @@ func (s *solana) slotParse(n any) {
 	network := conf.Solana
 
 	conf.SetBlockTotal(network)
-	resp, err := client.Post(conf.GetSolanaRpcEndpoint(), "application/json", bytes.NewBuffer(post))
+	resp, err := client.Post(model.Endpoint(conf.Solana), "application/json", bytes.NewBuffer(post))
 	if err != nil {
 		conf.SetBlockFail(network)
-		log.Warn("slotParse Error sending request:", err)
+		log.Task.Warn("slotParse Error sending request:", err)
 
 		return
 	}
@@ -189,7 +180,7 @@ func (s *solana) slotParse(n any) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		conf.SetBlockFail(network)
-		log.Warn("slotParse Error response status code:", resp.StatusCode)
+		log.Task.Warn("slotParse Error response status code:", resp.StatusCode)
 
 		return
 	}
@@ -198,7 +189,7 @@ func (s *solana) slotParse(n any) {
 	if err != nil {
 		conf.SetBlockFail(network)
 		s.slotQueue.In <- slot
-		log.Warn("slotParse Error reading response body:", err)
+		log.Task.Warn("slotParse Error reading response body:", err)
 
 		return
 	}
@@ -235,11 +226,11 @@ func (s *solana) slotParse(n any) {
 			continue
 		}
 
-		// 解析 Token 账户 【Token Address => Owner Address】
+		// 解析 Token 账户 【Token Wallet => Owner Wallet】
 		tokenAccountMap := make(map[string]solanaTokenOwner)
 		for _, v := range []string{"postTokenBalances", "preTokenBalances"} {
 			for _, itm := range trans.Get("meta." + v).Array() {
-				tradeType, ok := solSplToken[itm.Get("mint").String()]
+				tradeType, ok := model.GetContractTrade(itm.Get("mint").String())
 				if !ok || itm.Get("programId").String() != conf.SolSplToken {
 
 					continue
@@ -297,7 +288,7 @@ func (s *solana) slotParse(n any) {
 		}
 	}
 
-	log.Info("区块扫描完成", slot, conf.GetBlockSuccRate(network), network)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Solana) %d 成功率：%s", slot, conf.GetBlockSuccRate(network)))
 }
 
 func (s *solana) parseTransfer(instr gjson.Result, accountKeys []string, tokenAccountMap map[string]solanaTokenOwner) transfer {
@@ -351,15 +342,15 @@ func (s *solana) parseTransfer(instr gjson.Result, accountKeys []string, tokenAc
 }
 
 func (s *solana) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders(networkTokenMap[conf.Solana])
+	var orders = getConfirmingOrders(model.GetNetworkTrades(conf.Solana))
 	var wg sync.WaitGroup
 
-	var handle = func(o model.TradeOrders) {
-		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getSignatureStatuses","params":[["%s"],{"searchTransactionHistory":true}]}`, o.TradeHash))
-		req, _ := http.NewRequestWithContext(ctx, "POST", conf.GetSolanaRpcEndpoint(), bytes.NewBuffer(post))
+	var handle = func(o model.Order) {
+		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getSignatureStatuses","params":[["%s"],{"searchTransactionHistory":true}]}`, o.RefHash))
+		req, _ := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Warn("solana tradeConfirmHandle Error sending request:", err)
+			log.Task.Warn("solana tradeConfirmHandle Error sending request:", err)
 
 			return
 		}
@@ -367,21 +358,21 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != 200 {
-			log.Warn("solana tradeConfirmHandle Error response status code:", resp.StatusCode)
+			log.Task.Warn("solana tradeConfirmHandle Error response status code:", resp.StatusCode)
 
 			return
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Warn("solana tradeConfirmHandle Error reading response body:", err)
+			log.Task.Warn("solana tradeConfirmHandle Error reading response body:", err)
 
 			return
 		}
 
 		data := gjson.ParseBytes(body)
 		if data.Get("error").Exists() {
-			log.Warn("solana tradeConfirmHandle Error:", data.Get("error").String())
+			log.Task.Warn("solana tradeConfirmHandle Error:", data.Get("error").String())
 
 			return
 		}

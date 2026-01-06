@@ -1,0 +1,45 @@
+@use "@/style/var/index" as *;
+
+// 处理首页数据图大小
+// 页面宽度 大于 0px 小于 992px;
+@media screen and (min-width: $xs) and (max-width: $lg) {
+  .sell-histogram {
+    width: 100%;
+    height: 400px;
+    padding-bottom: $padding;
+  }
+  .monthly-analysis {
+    width: 100%;
+    height: 400px;
+    padding-bottom: $padding;
+  }
+}
+
+// 页面宽度 大于 992px 小于 1600px;
+@media screen and (min-width: $lg) and (max-width: $xxl) {
+  .sell-histogram {
+    width: 100%;
+    height: 400px;
+    padding-bottom: $padding;
+  }
+  .monthly-analysis {
+    width: 100%;
+    height: 400px;
+    padding-bottom: $padding;
+  }
+}
+
+// 页面宽度 大于 1600px;
+@media screen and (min-width: $xxl) {
+  .sell-histogram {
+    width: calc(100% - 600px - $padding);
+    height: 400px;
+    padding-bottom: $padding;
+  }
+  .monthly-analysis {
+    width: 600px;
+    height: 400px;
+    padding-bottom: $padding;
+    margin-left: $padding;
+  }
+}

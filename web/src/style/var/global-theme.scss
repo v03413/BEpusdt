@@ -1,0 +1,85 @@
+/* global css theme */
+
+$margin: 14px; // 盒子间距
+$margin-text: 8px; // 文字间距-行内
+$padding: 16px; // 盒子和内容的间距
+$icon-box: 24px; // icon盒子通用大小
+$icon-size: 18px; // icon通用大小
+
+$radius-box-1: 4px; // 边框圆角-迷你-用于icon、按钮等一些细微的圆角
+$radius-box-2: 6px; // 边框圆角-小型
+$radius-box-3: 8px; // 边框圆角-中型
+$radius-box-4: 10px; // 边框圆角-大型
+$radius-box-5: 12px; // 边框圆角-极大
+
+// 边框宽度
+$border-1: 1px; // 常规-主要
+$border-2: 2px; // 较粗
+$border-3: 3px; // 粗
+
+// 边框色
+$color-border-1: var(--color-border-1); // 浅色
+$color-border-2: var(--color-border-2); // 常规-主要边框色
+$color-border-3: var(--color-border-3); // 深/悬浮
+$color-border-4: var(--color-border-4); // 重/按钮描边
+
+// 默认不占位边框
+$shadow-border-1: inset 0 0 0 1px red;
+$shadow-border-2: inset 0 0 0 1px cyan;
+$shadow-border-3: inset 0 0 0 1px blue;
+$shadow-border-4: inset 0 0 0 1px gold;
+$shadow-border-5: inset 0 0 0 1px violet;
+$shadow-border-6: inset 0 0 0 1px green;
+
+// 填充色
+$color-fill-1: var(--color-fill-1); // 浅/禁用-main背景色
+$color-fill-2: var(--color-fill-2); // 常规填充色/灰底悬浮
+$color-fill-3: var(--color-fill-3); // 深/灰底悬浮
+$color-fill-4: var(--color-fill-4); // 重/特殊场景
+
+// 设置全局主题色：https://arco.design/vue/docs/token
+$color-primary: rgb(var(--primary-6)); // 主题色-主要
+$color-success: rgb(var(--success-6)); // 成功色
+$color-warning: rgb(var(--warning-6)); // 警示色
+$color-danger: rgb(var(--danger-6)); // 错误色
+$color-link: rgb(var(--link-6)); // 链接色
+
+// 字体色
+$color-text-1: var(--color-text-1); // 标题、重点字体颜色 强调/正文标题
+$color-text-2: var(--color-text-2); // 默认字体色 次强调/正文标题
+$color-text-3: var(--color-text-3); // 次要信息 二级字体色
+$color-text-4: var(--color-text-4); // 置灰信息
+
+// 背景色
+$color-bg-1: var(--color-bg-1); // 整体背景色-可用于main窗口卡片背景
+$color-bg-2: var(--color-bg-2); // 一级容器背景
+$color-bg-3: var(--color-bg-3); // 二级容器背景
+$color-bg-4: var(--color-bg-4); // 三级容器背景
+$color-bg-5: var(--color-bg-5); // 下拉弹出框、Tooltip 背景颜色
+$color-bg-white: var(--color-bg-white); // 白色背景
+
+// 阴影
+$shadow-special: 0 0 1px rgb(0 0 0 / 30%); // 特殊阴影
+$shadow1-center: 0 -2px 5px rgb(0 0 0 / 10%); // 阴影样式1
+$shadow2-center: 0 0 10px rgb(0 0 0 / 10%); // 阴影样式2
+$shadow3-center: 0 0 20px rgb(0 0 0 / 10%); // 阴影样式3
+
+// 常规大小为字体对应的首选项
+// 字体大小
+$font-size-body-3: 14px; // 默认大小-正文-常规
+$font-size-body-2: 13px; // 小号字体
+$font-size-body-1: 12px; // 说明描述-辅助文案/次要文案
+// 标题
+$font-size-title-1: 16px; // h3-标题-小
+$font-size-title-2: 20px; // 常规-h2-标题-中
+$font-size-title-3: 24px; // h1-标题-大
+$font-size-title-4: 28px; // h1-标题-巨大
+$font-size-title-5: 32px; // h1-标题-极大
+// 运营标题
+$font-size-display-1: 36px; // 运营标题-小
+$font-size-display-2: 48px; // 常规-运营标题-中
+$font-size-display-3: 56px; // 运营标题-大
+
+// icon的衬线类型
+$stroke-width-3: 3; // 衬线-3 轻线
+$stroke-width-4: 4; // 默认-衬线-4 重线

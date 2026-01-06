@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDC・Solana 一款更好用的个人USDC收款网关 BEpusdt</title>
+    <link rel="shortcut icon" href="/payment/img/tether.svg">
+    <link rel="stylesheet" href="/payment/css/core.min.css">
+    <script src="/payment/js/jquery.min.js"></script>
+    <script src="/payment/js/jquery.qrcode_1.0.min.js"></script>
+    <script src="/payment/i18n/i18next.min.js"></script>
+    <script src="/payment/js/core.min.js"></script>
+</head>
+
+<body>
+    <div class="payment-container" data-token="USDC" data-network="Solana" data-network-name="Solana" data-warning-token="SOL">
+        <div class="language-switcher">
+            <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <div class="crypto-icon">USDC</div>
+        <h1 class="payment-title" data-i18n="payment.title">USDC 支付</h1>
+        <p class="payment-subtitle">
+            <span class="status-indicator"></span>
+            <span data-i18n="payment.subtitle">请使用 <strong>Solana</strong> 网络进行转账</span>
+            <span class="network-badge" data-i18n="payment.networkBadge">Solana</span>
+        </p>
+
+        <div class="order-info">
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.paymentAmount">付款数额:</span>
+                <span class="order-value amount-value" id="payAmount" onclick="copyAmount()" data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USDC</span>
+            </div>
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.merchantOrder">商户订单:</span>
+                <span class="order-value">{{.order_id}}</span>
+            </div>
+            <div class="order-item">
+                <span class="order-label" data-i18n="payment.orderAmount">订单金额:</span>
+                <span class="order-value">
+                    <span class="fiat-amount"><span data-i18n="payment.amountPrefix">约</span> {{.money}} {{.fiat}}</span>
+                </span>
+            </div>
+        </div>
+        <div class="countdown-banner">
+            <div class="countdown-content">
+                <div class="countdown-info">
+                    <div class="countdown-title" data-i18n="payment.countdownTitle">⏰ 支付倒计时</div>
+                    <div class="countdown-subtitle" data-i18n="payment.countdownSubtitle">请在指定时间内完成转账，超时勿付请重新下单</div>
+                </div>
+                <div class="countdown-timer" id="countdown">
+                    <div class="time-unit">
+                        <span class="time-number" id="minutes">15</span>
+                        <span class="time-label" data-i18n="payment.minutes">分</span>
+                    </div>
+                    <span class="time-separator">:</span>
+                    <div class="time-unit">
+                        <span class="time-number" id="seconds">00</span>
+                        <span class="time-label" data-i18n="payment.seconds">秒</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="qr-section">
+            <div class="qr-code" id="qrcode"></div>
+            <div class="address-section">
+                <div class="address-label" data-i18n="payment.addressLabel">收款地址 (Solana 网络)</div>
+                <div class="address-text" id="walletAddress">{{.address}}</div>
+                <button class="copy-btn" onclick="copyAddress()" data-i18n="payment.copyAddress">复制地址</button>
+            </div>
+        </div>
+        <div class="instructions">
+            <h4 data-i18n="payment.instructionsTitle">📋 转账说明</h4>
+            <ol>
+                <li data-i18n="[html]payment.instruction1">必须使用 <strong>Solana 网络</strong> 进行转账，请勿转入 SOL！</li>
+                <li data-i18n="payment.instruction2">转账完成后系统会自动确认到账</li>
+                <li data-i18n="payment.instruction3">转账金额必须与显示金额完全一致</li>
+                <li data-i18n="payment.instruction4">如果有其它疑问，请联系客服处理</li>
+            </ol>
+        </div>
+        <div class="footer-info">
+            <div class="project-info">
+                <span class="powered-by" data-i18n="payment.poweredBy">Powered by</span>
+                <a href="https://github.com/v03413/BEpusdt" target="_blank" class="project-link">
+                    <strong>BEpusdt</strong>
+                </a>
+                <span class="open-source" data-i18n="payment.github">Github</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+            Payment.init({
+                expire: "{{.expire}}",
+                address: "{{.address}}",
+                amount: "{{.amount}}",
+                trade_id: "{{.trade_id}}",
+                return_url: "{{.return_url}}"
+            });
+        });
+    </script>
+</body>
+
+</html>
+

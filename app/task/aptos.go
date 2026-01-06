@@ -34,11 +34,6 @@ type version struct {
 
 var apt aptos
 
-var aptDecimals = map[string]int32{
-	model.OrderTradeTypeUsdtAptos: conf.UsdtAptosDecimals,
-	model.OrderTradeTypeUsdcAptos: conf.UsdcAptosDecimals,
-}
-
 type aptEvent struct {
 	Type    string
 	Action  string
@@ -48,14 +43,14 @@ type aptEvent struct {
 
 type aptAmount struct {
 	Amount string
-	Type   string
+	Type   model.TradeType
 }
 
 func init() {
 	apt = newAptos()
-	register(task{callback: apt.versionDispatch})
-	register(task{callback: apt.versionRoll, duration: time.Second * 3})
-	register(task{callback: apt.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: apt.versionDispatch})
+	Register(Task{Callback: apt.versionRoll, Duration: time.Second * 3})
+	Register(Task{Callback: apt.tradeConfirmHandle, Duration: time.Second * 5})
 }
 
 func newAptos() aptos {
@@ -74,10 +69,10 @@ func (a *aptos) versionRoll(ctx context.Context) {
 		return
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, "GET", conf.GetAptosRpcNode()+"/v1", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"/v1", nil)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warn("aptos versionRoll Error sending request:", err)
+		log.Task.Warn("aptos versionRoll Error sending request:", err)
 
 		return
 	}
@@ -85,28 +80,23 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Warn("aptos versionRoll Error response status code:", resp.StatusCode)
+		log.Task.Warn("aptos versionRoll Error response status code:", resp.StatusCode)
 
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warn("aptos versionRoll Error reading response body:", err)
+		log.Task.Warn("aptos versionRoll Error reading response body:", err)
 
 		return
 	}
 
 	now := gjson.GetBytes(body, "ledger_version").Int()
 	if now <= 0 {
-		log.Warn("versionRoll Error: invalid ledger_version:", now)
+		log.Task.Warn("versionRoll Error: invalid ledger_version:", now)
 
 		return
-	}
-
-	if conf.GetTradeIsConfirmed() {
-
-		now = now - a.versionConfirmedOffset
 	}
 
 	if now-a.lastVersion > 10000 {
@@ -144,7 +134,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 func (a *aptos) versionDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(3, a.versionParse)
 	if err != nil {
-		panic(err)
+		log.Task.Warn("aptos versionDispatch Error:", err)
 
 		return
 	}
@@ -156,11 +146,11 @@ func (a *aptos) versionDispatch(ctx context.Context) {
 		case n := <-a.versionQueue.Out:
 			if err := p.Invoke(n); err != nil {
 				a.versionQueue.In <- n
-				log.Warn("versionDispatch Error invoking process slot:", err)
+				log.Task.Warn("versionDispatch Error invoking process slot:", err)
 			}
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
-				log.Warn("versionDispatch context done:", err)
+				log.Task.Warn("versionDispatch context done:", err)
 			}
 
 			return
@@ -198,13 +188,13 @@ func (a *aptos) versionParse(n any) {
 	p := n.(version)
 
 	var net = conf.Aptos
-	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", conf.GetAptosRpcNode(), p.Start, p.Limit)
+	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", model.Endpoint(conf.Aptos), p.Start, p.Limit)
 
 	conf.SetBlockTotal(net)
 	resp, err := client.Get(url)
 	if err != nil {
 		conf.SetBlockFail(net)
-		log.Warn("versionParse Error sending request:", err)
+		log.Task.Warn("versionParse Error sending request:", err)
 
 		return
 	}
@@ -212,7 +202,7 @@ func (a *aptos) versionParse(n any) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		conf.SetBlockFail(net)
-		log.Warn("versionParse Error response status code:", resp.StatusCode)
+		log.Task.Warn("versionParse Error response status code:", resp.StatusCode)
 
 		return
 	}
@@ -221,7 +211,7 @@ func (a *aptos) versionParse(n any) {
 	if err != nil {
 		conf.SetBlockFail(net)
 		a.versionQueue.In <- p
-		log.Warn("versionParse Error reading response body:", err)
+		log.Task.Warn("versionParse Error reading response body:", err)
 
 		return
 	}
@@ -229,7 +219,7 @@ func (a *aptos) versionParse(n any) {
 	if !gjson.ValidBytes(body) {
 		conf.SetBlockFail(net)
 		a.versionQueue.In <- p
-		log.Warn("versionParse Error: invalid JSON response body")
+		log.Task.Warn("versionParse Error: invalid JSON response body")
 
 		return
 	}
@@ -241,7 +231,7 @@ func (a *aptos) versionParse(n any) {
 		ver := trans.Get("version").Int()
 		hash := trans.Get("hash").String()
 		addrOwner := make(map[string]string)                                         // [address] => owner address
-		addrType := make(map[string]string)                                          // [address] => tradeType
+		addrType := make(map[string]model.TradeType)                                 // [address] => tradeType
 		amtAddrMap := map[string]map[aptAmount]string{"deposit": {}, "withdraw": {}} // [amount] => address
 		aptEvents := make([]aptEvent, 0)
 		trans.Get("changes").ForEach(func(_, v gjson.Result) bool {
@@ -255,9 +245,9 @@ func (a *aptos) versionParse(n any) {
 				addr := v.Get("address").String()
 				switch data.Get("data.metadata.inner").String() {
 				case conf.UsdtAptos:
-					addrType[addr] = model.OrderTradeTypeUsdtAptos
+					addrType[addr] = model.UsdtAptos
 				case conf.UsdcAptos:
-					addrType[addr] = model.OrderTradeTypeUsdcAptos
+					addrType[addr] = model.UsdcAptos
 				}
 			}
 			if data.Get("type").String() == "0x1::object::ObjectCore" {
@@ -309,7 +299,7 @@ func (a *aptos) versionParse(n any) {
 			transfers = append(transfers, transfer{
 				Network:     net,
 				TxHash:      hash,
-				Amount:      decimal.NewFromBigInt(amount, aptDecimals[tradeType]),
+				Amount:      decimal.NewFromBigInt(amount, model.GetTradeDecimal(tradeType)),
 				FromAddress: a.padAddressLeadingZeros(addrOwner[from]),
 				RecvAddress: a.padAddressLeadingZeros(addrOwner[to]),
 				Timestamp:   timestamp,
@@ -319,7 +309,7 @@ func (a *aptos) versionParse(n any) {
 		}
 
 		// 针对 一个withdraw 对应 多个deposit(数额累计等于 withdraw) 的情况
-		processEvents := func(tradeType string, events []aptEvent) ([]aptEvent, map[string]string) {
+		processEvents := func(tradeType model.TradeType, events []aptEvent) ([]aptEvent, map[string]string) {
 			deposits := make([]aptEvent, 0)
 			withdraws := make(map[decimal.Decimal]aptEvent)
 			fromMap := make(map[string]string)
@@ -353,7 +343,7 @@ func (a *aptos) versionParse(n any) {
 
 			return deposits, fromMap
 		}
-		generateTransfers := func(deposits []aptEvent, fromMap map[string]string, tradeType string, decimals int32) {
+		generateTransfers := func(deposits []aptEvent, fromMap map[string]string, t model.TradeType, decimals int32) {
 			for _, to := range deposits {
 				if from, ok := fromMap[to.Address]; ok {
 					transfers = append(transfers, transfer{
@@ -363,7 +353,7 @@ func (a *aptos) versionParse(n any) {
 						FromAddress: a.padAddressLeadingZeros(addrOwner[from]),
 						RecvAddress: a.padAddressLeadingZeros(addrOwner[to.Address]),
 						Timestamp:   timestamp,
-						TradeType:   tradeType,
+						TradeType:   t,
 						BlockNum:    ver,
 					})
 				}
@@ -371,12 +361,12 @@ func (a *aptos) versionParse(n any) {
 		}
 
 		// 处理 USDT
-		usdtDeposits, usdtFrom := processEvents(model.OrderTradeTypeUsdtAptos, aptEvents)
-		generateTransfers(usdtDeposits, usdtFrom, model.OrderTradeTypeUsdtAptos, aptDecimals[model.OrderTradeTypeUsdtAptos])
+		usdtDeposits, usdtFrom := processEvents(model.UsdtAptos, aptEvents)
+		generateTransfers(usdtDeposits, usdtFrom, model.UsdtAptos, model.GetTradeDecimal(model.UsdtAptos))
 
 		// 处理 USDC
-		usdcDeposits, usdcFrom := processEvents(model.OrderTradeTypeUsdcAptos, aptEvents)
-		generateTransfers(usdcDeposits, usdcFrom, model.OrderTradeTypeUsdcAptos, aptDecimals[model.OrderTradeTypeUsdcAptos])
+		usdcDeposits, usdcFrom := processEvents(model.UsdcAptos, aptEvents)
+		generateTransfers(usdcDeposits, usdcFrom, model.UsdcAptos, model.GetTradeDecimal(model.UsdcAptos))
 	}
 
 	if len(transfers) > 0 {
@@ -384,7 +374,7 @@ func (a *aptos) versionParse(n any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Info("区块扫描完成", fmt.Sprintf("%d.%d", p.Start, p.Limit), conf.GetBlockSuccRate(net), net)
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Aptos) %d.%d 成功率：%s", p.Start, p.Limit, conf.GetBlockSuccRate(net)))
 }
 
 func (a *aptos) padAddressLeadingZeros(addr string) string {
@@ -395,14 +385,14 @@ func (a *aptos) padAddressLeadingZeros(addr string) string {
 }
 
 func (a *aptos) tradeConfirmHandle(ctx context.Context) {
-	var orders = getConfirmingOrders(networkTokenMap[conf.Aptos])
+	var orders = getConfirmingOrders(model.GetNetworkTrades(conf.Aptos))
 	var wg sync.WaitGroup
 
-	var handle = func(o model.TradeOrders) {
-		req, _ := http.NewRequestWithContext(ctx, "GET", conf.GetAptosRpcNode()+"v1/transactions/by_hash/"+o.TradeHash, nil)
+	var handle = func(o model.Order) {
+		req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"v1/transactions/by_hash/"+o.RefHash, nil)
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Warn("aptos tradeConfirmHandle Error sending request:", err)
+			log.Task.Warn("aptos tradeConfirmHandle Error sending request:", err)
 
 			return
 		}
@@ -410,21 +400,21 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != 200 {
-			log.Warn("aptos tradeConfirmHandle Error response status code:", resp.StatusCode)
+			log.Task.Warn("aptos tradeConfirmHandle Error response status code:", resp.StatusCode)
 
 			return
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Warn("aptos tradeConfirmHandle Error reading response body:", err)
+			log.Task.Warn("aptos tradeConfirmHandle Error reading response body:", err)
 
 			return
 		}
 
 		data := gjson.ParseBytes(body)
 		if data.Get("error_code").Exists() {
-			log.Warn("aptos tradeConfirmHandle Error:", data.Get("message").String())
+			log.Task.Warn("aptos tradeConfirmHandle Error:", data.Get("message").String())
 
 			return
 		}

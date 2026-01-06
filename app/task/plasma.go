@@ -10,9 +10,8 @@ import (
 
 func plasmaInit() {
 	ctx := context.Background()
-	xpl := evm{
-		Network:  conf.Plasma,
-		Endpoint: conf.GetPlasmaRpcEndpoint(),
+	pol := evm{
+		Network: conf.Plasma,
 		Block: block{
 			InitStartOffset: -600,
 			ConfirmedOffset: 40,
@@ -20,7 +19,7 @@ func plasmaInit() {
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 
-	register(task{callback: xpl.blockDispatch})
-	register(task{callback: xpl.blockRoll, duration: time.Second * 5})
-	register(task{callback: xpl.tradeConfirmHandle, duration: time.Second * 5})
+	Register(Task{Callback: pol.blockDispatch})
+	Register(Task{Callback: pol.blockRoll, Duration: time.Second * 5})
+	Register(Task{Callback: pol.tradeConfirmHandle, Duration: time.Second * 5})
 }
