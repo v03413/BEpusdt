@@ -17,6 +17,7 @@ import (
 
 var engine *gin.Engine
 var authRoute = make(map[string]bool)
+var secureRoute = make(map[string]struct{})
 
 func Handler() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -61,42 +62,42 @@ func sessionAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if conf.Debug {
 			ctx.Next()
-
 			return
 		}
 
-		var path = ctx.Request.URL.Path
-		if len(path) >= 5 && path[:5] == "/api/" && !(len(path) >= 8 && path[:8] == "/api/v1/") {
+		var route = fmt.Sprintf("%s.%s", ctx.Request.Method, ctx.Request.URL.Path)
+		if _, ok := secureRoute[route]; ok {
 			sess := sessions.Default(ctx)
 			if secure, ok := sess.Get(conf.AdminSecureK).(bool); !ok || !secure {
 				ctx.JSON(403, gin.H{"code": 403, "msg": "unauthorized access"})
 				ctx.Abort()
-
 				return
 			}
 		}
 
-		var need, ok = authRoute[ctx.Request.Method+"."+path]
+		var need, ok = authRoute[route]
 		if !ok || !need {
-			ctx.Next() // 不需要 token 鉴权
-
+			ctx.Next()
 			return
 		}
 
 		token, ok := cache.Get(conf.AdminTokenK)
 		if !ok {
-			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid token"})
+			ctx.JSON(403, gin.H{"code": 403, "msg": "token expired, please login again"})
 			ctx.Abort()
-
 			return
 		}
 
-		tokenString := cast.ToString(token)
 		authHeader := ctx.GetHeader("Authorization")
-		if tokenString == "" || authHeader == "" || subtle.ConstantTimeCompare([]byte(tokenString), []byte(authHeader)) != 1 {
-			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid token"})
+		if authHeader == "" {
+			ctx.JSON(403, gin.H{"code": 403, "msg": "missing authorization token"})
 			ctx.Abort()
+			return
+		}
 
+		if subtle.ConstantTimeCompare([]byte(cast.ToString(token)), []byte(authHeader)) != 1 {
+			ctx.JSON(403, gin.H{"code": 403, "msg": "invalid authorization token"})
+			ctx.Abort()
 			return
 		}
 
@@ -125,17 +126,19 @@ func copyright() gin.HandlerFunc {
 }
 
 func PostRegister(router *gin.RouterGroup, relativePath string, checkAuth bool, handlers ...gin.HandlerFunc) {
-	var path = router.BasePath() + relativePath
+	var route = fmt.Sprintf("POST.%s%s", router.BasePath(), relativePath)
 
-	authRoute[fmt.Sprintf("POST.%s", path)] = checkAuth
+	authRoute[route] = checkAuth
+	secureRoute[route] = struct{}{}
 
 	router.POST(relativePath, handlers...)
 }
 
 func GetRegister(router *gin.RouterGroup, relativePath string, checkAuth bool, handlers ...gin.HandlerFunc) {
-	var path = router.BasePath() + relativePath
+	var route = fmt.Sprintf("GET.%s%s", router.BasePath(), relativePath)
 
-	authRoute[fmt.Sprintf("GET.%s", path)] = checkAuth
+	authRoute[route] = checkAuth
+	secureRoute[route] = struct{}{}
 
 	router.GET(relativePath, handlers...)
 }
