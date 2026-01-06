@@ -20,10 +20,10 @@
                   {{ Conf.admin_username }}
                 </a-descriptions-item>
                 <a-descriptions-item label="登录时间">
-                  {{ Conf.last_login_at }}
+                  {{ Conf.admin_login_at }}
                 </a-descriptions-item>
                 <a-descriptions-item label="登录IP">
-                  {{ Conf.last_login_ip || "暂无" }}
+                  {{ Conf.admin_login_ip || "暂无" }}
                 </a-descriptions-item>
               </a-descriptions>
             </a-space>
@@ -87,8 +87,8 @@ const getConf = async () => {
         "admin_username",
         "admin_secure",
         "block_height_max_diff",
-        "last_login_at",
-        "last_login_ip",
+        "admin_login_at",
+        "admin_login_ip",
         "notify_max_retry",
         "payment_max_amount",
         "payment_min_amount",
