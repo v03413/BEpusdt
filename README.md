@@ -1,4 +1,5 @@
-**❗️作者声明：本项目为研究学习区块链的开源项目，不提供任何形式的收费服务(谨防诈骗)，不鼓励任何衍生金融属性的交易行为，不负责任何使用本项目进行的三方行为；使用过程中遇见问题请提`issue`
+**❗️作者声明：本项目为研究学习区块链的开源项目，不提供任何形式的收费服务(谨防诈骗)
+，不鼓励任何衍生金融属性的交易行为，不负责任何使用本项目进行的三方行为；使用过程中遇见问题请提`issue`
 或群里交流，开源项目请自重！**
 
 ---
@@ -6,7 +7,7 @@
 # BEpusdt (Better Easy Payment USDT)
 
 <p align="center">
-<img src="./static/img/tether.svg" width="15%" alt="tether">
+<img src="./static/payment/static/img/tether.svg" width="15%" alt="tether">
 </p>
 <p align="center">
 <a href="https://www.gnu.org/licenses/gpl-3.0.html"><img src="https://img.shields.io/badge/license-GPLV3-blue" alt="license GPLV3"></a>
@@ -18,8 +19,7 @@
 
 ## 🪧 介绍
 
-基本就是对`Epusdt`重新造了一次轮子，移除一些非必要依赖(`Redis MySQL`)，同时加入一些新特性，让个人`USDT/USDC`
-收款更好用、部署更便捷！
+**缘起于`Epusdt`，但不仅限于此，加入了一些新特性，致力于成为一款更好用的个人`加密货币`收款网关。**
 
 ## 🎉 新特性
 
@@ -28,19 +28,20 @@
 🔥 主流网络：TRON Ethereum BSC Polygon<br>
 ⚡ 其他网络： X-Layer Solana Aptos Arbitrum-One Base [完整列表](./docs/trade-type.md)
 
-- ✅ 完全兼容 `Epusdt`，插件无缝替换
-- ️✅ 区块网络支持`USDT USDC`收款监控
-- ✅ 实时同步`USDT`汇率，支持自定义浮动
-- ✅ 无`MySQL Redis`依赖，支持`Docker`部署
-- ✅ 支持非订单交易监控，钱包余额变动通知
+- ✅ 完全兼容 `Epusdt` 插件无缝替换
+- ️✅ 支持主流区块网络 不仅限于`USDT`
+- ✅ 支持主流法定货币 汇率自动更新同步
+- ✅ 无`MySQL Redis`依赖 支持`Docker`部署
+- ✅ 支持非订单交易监控 钱包余额变动通知
 - ✅ 支持自定义`USDT`支付精度与递增颗粒度
-- ✅ 底层区块扫描，无`API`依赖，秒级响应
-- ✅ 支持波场能量代理与能量回收监控
-- ✅ 原生兼容`易支付`收单接口，快捷接入
-- ✅ 支持创建订单 自定义钱包地址 超时
-- ✅ 完整支持`等待支付 支付超时`回调
-- ✅ 支持事件`WebHook` 方便多方协同
-- 🏖️ 摆脱TG依赖 完整WEB后台管理 待实现
+- ✅ 底层区块扫描 提升订单确认速度与稳定性
+- ✅ 支持波场能量代理与能量回收监控通知
+- ✅ 原生兼容`易支付`收单接口 快捷接入
+- ✅ 支持创建订单 自定义地址 超时时长等
+- ✅ 完整支持`等待支付 支付超时`回调通知
+- ✅ 完整独立WEB后台 方便配置统计管理
+- ✅ 默认收银员支持中英切换 助力出海需求
+- ✅ 快速迭代期 超多实用特性功能等你发现
 
 ## 🚀 安装部署
 
@@ -51,7 +52,11 @@
 
 ## 🖼 功能截图
 
-![screenshot](./docs/images/screenshot.png)
+
+| 前台收银                                            | 后台订单                                             | Telegram 通知                                            |
+|-------------------------------------------------|--------------------------------------------------|--------------------------------------------------------|
+| <img src=./docs/images/1.png alt=收银台 width=300> | <img src=./docs/images/2.png alt=后台订单 width=300> | <img src=./docs/images/3.png alt=Telegram通知 width=300> |
+
 
 ## 🤔 常见问题
 
@@ -68,7 +73,7 @@
 - Telegram 群组：[https://t.me/BEpusdtChat](https://t.me/BEpusdtChat)
 - Telegram 频道：[https://t.me/BEpusdtChannel](https://t.me/BEpusdtChannel)
 
-## 🙏 感谢
+## 🙏 鸣谢
 
 - https://github.com/assimon/epusdt
 
