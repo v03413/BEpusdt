@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
@@ -21,6 +23,11 @@ type oListReq struct {
 	TradeType string `json:"trade_type"`
 	StartAt   string `json:"start_at"`
 	EndAt     string `json:"end_at"`
+}
+
+type paidReq struct {
+	base.IDRequest
+	RefHash string `json:"ref_hash"`
 }
 
 func (Order) List(ctx *gin.Context) {
@@ -112,7 +119,7 @@ func (Order) Detail(ctx *gin.Context) {
 }
 
 func (Order) Paid(ctx *gin.Context) {
-	var req base.IDRequest
+	var req paidReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, err.Error())
 
@@ -127,7 +134,13 @@ func (Order) Paid(ctx *gin.Context) {
 		return
 	}
 
-	err := model.Db.Model(&order).Update("status", model.OrderStatusSuccess).Error
+	var update = map[string]interface{}{
+		"ref_hash":     req.RefHash,
+		"status":       model.OrderStatusSuccess,
+		"confirmed_at": model.Datetime(time.Now()),
+	}
+
+	err := model.Db.Model(&order).Updates(update).Error
 	if err != nil {
 		base.Error(ctx, err)
 

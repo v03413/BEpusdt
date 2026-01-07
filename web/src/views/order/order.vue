@@ -119,14 +119,15 @@
           <template #optional="{ record }">
             <a-space>
               <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
-              <a-popconfirm
-                content="即使用户没付款,也确认强制补单吗?"
-                type="warning"
-                @ok="onPaid(record)"
+              <a-button
+                size="mini"
+                type="primary"
+                status="warning"
                 :disabled="record.status === 2"
+                @click="showPaidModal(record)"
               >
-                <a-button size="mini" type="primary" status="warning" :disabled="record.status === 2"> 补单 </a-button>
-              </a-popconfirm>
+                补单
+              </a-button>
             </a-space>
           </template>
         </a-table>
@@ -134,6 +135,43 @@
     </div>
 
     <DetailModal :visible="detailVisible" :detailData="detailData" @close="closeDetail" />
+
+    <!-- 补单弹窗 -->
+    <a-modal
+      v-model:visible="paidModalVisible"
+      title="确认补单操作"
+      @ok="confirmPaid"
+      @cancel="closePaidModal"
+      ok-text="确认补单"
+      cancel-text="取消"
+      width="500px"
+      :mask-closable="false"
+    >
+      <div class="paid-modal-content">
+        <a-alert type="warning" style="margin-bottom: 20px">
+          <template #icon>
+            <icon-exclamation-circle-fill />
+          </template>
+          <div style="font-weight: 500">注意</div>
+          <div style="font-size: 13px; margin-top: 4px; color: #666">
+            补单操作将强制标记订单为已支付，即使用户实际未付款、谨慎操作!
+          </div>
+        </a-alert>
+
+        <a-form :model="paidForm" layout="vertical">
+          <a-form-item field="ref_hash" label="交易哈希" :rules="[{ maxLength: 200, message: '哈希值不能超过200个字符' }]">
+            <a-input v-model="paidForm.ref_hash" placeholder="请输入区块链交易哈希值(可选)" allow-clear>
+              <template #prefix>
+                <icon-link />
+              </template>
+            </a-input>
+            <template #extra>
+              <div style="font-size: 12px; color: #86909c; margin-top: 4px">如有实际交易,建议填写对应的区块链交易哈希值</div>
+            </template>
+          </a-form-item>
+        </a-form>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -266,9 +304,31 @@ const getOrderList = async () => {
   }
 };
 
-const onPaid = async (record: List) => {
+const paidModalVisible = ref(false);
+const paidForm = reactive({
+  ref_hash: "",
+  recordId: 0
+});
+
+const showPaidModal = (record: List) => {
+  paidForm.recordId = record.id;
+  paidForm.ref_hash = "";
+  paidModalVisible.value = true;
+};
+
+const closePaidModal = () => {
+  paidModalVisible.value = false;
+  paidForm.ref_hash = "";
+  paidForm.recordId = 0;
+};
+
+const confirmPaid = async () => {
   try {
-    await paidAPI({ id: record.id });
+    await paidAPI({
+      id: paidForm.recordId,
+      ref_hash: paidForm.ref_hash || "" // 确保空时传递空字符串
+    });
+    closePaidModal();
     getOrderList();
     Notification.success("补单成功");
   } catch (error) {
@@ -320,6 +380,42 @@ getOrderList();
 
   &:hover {
     text-decoration: underline;
+  }
+}
+
+// 在 style 标签中添加
+.paid-modal-content {
+  padding: 4px 0;
+
+  :deep(.arco-alert) {
+    border-radius: 6px;
+  }
+
+  :deep(.arco-form-item-label-col) {
+    font-weight: 500;
+    color: #1d2129;
+  }
+
+  :deep(.arco-input-wrapper) {
+    &:hover {
+      border-color: #4080ff;
+    }
+  }
+}
+
+:deep(.arco-modal) {
+  .arco-modal-header {
+    border-bottom: 1px solid #e5e6eb;
+    padding: 16px 20px;
+  }
+
+  .arco-modal-body {
+    padding: 20px;
+  }
+
+  .arco-modal-footer {
+    border-top: 1px solid #e5e6eb;
+    padding: 12px 20px;
   }
 }
 
