@@ -82,6 +82,15 @@ func (wa *Wallet) GetTokenDecimals() int32 {
 	return -18
 }
 
+func (wa *Wallet) GetNetwork() Network {
+	if c, ok := registry[TradeType(wa.TradeType)]; ok {
+
+		return c.Network
+	}
+
+	return ""
+}
+
 func GetAvailableAddress(t TradeType) []string {
 	var rows []Wallet
 	Db.Where("trade_type = ? and status = ?", t, WaStatusEnable).Find(&rows)
