@@ -282,7 +282,7 @@ MD5(amount=42&notify_url=http://example.com/notify&order_id=20220201030210321&re
 ## 参考资料
 
 - [交易类型完整列表](../trade-type.md)
-- [订单回调通知](../notify-epusdt.md)
+- [订单回调通知](../notify/readme.md)
 - [易支付对接插件](https://github.com/v03413/Epay-BEpusdt)
 - [Python SDK](https://github.com/luoyanglang/bepusdt-python-sdk)
 - [原项目参考](https://github.com/assimon/epusdt/blob/master/wiki/API.md)

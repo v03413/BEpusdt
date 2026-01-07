@@ -17,4 +17,4 @@ systemctl status systemd-timesyncd.service
 ```
 
 最后再执行`timedatectl`，检查时间看看系统时钟同步是否打开，如图所示即说明成功。
-![时钟同步状态](./images/timedatectl.png)
+![时钟同步状态](timedatectl.png)
