@@ -257,6 +257,8 @@ func (t *tron) blockParse(n any) {
 					tradeType = model.UsdtTrc20
 				} else if bytes.Equal(foo.GetContractAddress(), usdcTrc20ContractAddress) {
 					tradeType = model.UsdcTrc20
+				} else {
+					continue
 				}
 
 				if bytes.Equal(data[:4], []byte{0xa9, 0x05, 0x9c, 0xbb}) { //  a9059cbb transfer
