@@ -57,7 +57,7 @@ type Order struct {
 	Id
 	OrderId     string    `gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
 	TradeId     string    `gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
-	TradeType   TradeType `gorm:"column:trade_type;type:varchar(20);not null;comment:交易类型" json:"trade_type"`
+	TradeType   TradeType `gorm:"column:trade_type;type:varchar(20);not null;index;comment:交易类型" json:"trade_type"`
 	Fiat        Fiat      `gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法定货币" json:"fiat"`
 	Crypto      Crypto    `gorm:"column:crypto;type:varchar(16);not null;index;default:USDT;comment:加密货币" json:"crypto"`
 	Rate        string    `gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`

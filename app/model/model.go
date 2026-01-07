@@ -27,10 +27,23 @@ func Init(path string) error {
 		return fmt.Errorf("创建数据库目录失败：%w", err)
 	}
 
-	Db, err = gorm.Open(sqlite.Open(path), &gorm.Config{})
+	dsn := fmt.Sprintf("%s?cache=shared&mode=rwc&_pragma=cache_size(-18888)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", path)
+
+	Db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 
 		return fmt.Errorf("数据库初始化失败：%w", err)
+	}
+
+	{
+		sqlDB, err := Db.DB()
+		if err != nil {
+
+			return fmt.Errorf("获取数据库连接失败：%w", err)
+		}
+		sqlDB.SetMaxOpenConns(5)
+		sqlDB.SetMaxIdleConns(3)
+		sqlDB.SetConnMaxLifetime(0)
 	}
 
 	if err = AutoMigrate(); err != nil {
