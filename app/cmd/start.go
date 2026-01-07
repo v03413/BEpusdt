@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"context"
@@ -38,6 +39,12 @@ var Start = &cli.Command{
 		}
 
 		return ctx, task.Init()
+	},
+	After: func(ctx context.Context, c *cli.Command) error {
+		log.Close()
+		model.Close()
+
+		return nil
 	},
 	Action: start,
 }
@@ -78,12 +85,8 @@ func start(ctx context.Context, cmd *cli.Command) error {
 
 	// 等待中断信号
 	var signals = make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, os.Kill)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	<-signals
-
-	if err := log.Close(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "关闭日志文件失败: %v\n", err)
-	}
 
 	runtime.GC()
 

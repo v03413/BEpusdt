@@ -24,6 +24,11 @@ var Reset = &cli.Command{
 
 		return ctx, task.Init()
 	},
+	After: func(ctx context.Context, c *cli.Command) error {
+		model.Close()
+
+		return nil
+	},
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		hash := utils.Md5String(time.Now().String())
 

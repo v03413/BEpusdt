@@ -65,3 +65,22 @@ func Init(path string) error {
 func AutoMigrate() error {
 	return Db.AutoMigrate(&Wallet{}, &Order{}, &NotifyRecord{}, &Conf{}, &Rate{})
 }
+
+func Close() {
+	if Db == nil {
+
+		return
+	}
+
+	sqlDB, err := Db.DB()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("数据库资源句柄获取异常：%s", err.Error()))
+
+		return
+	}
+
+	if err := sqlDB.Close(); err != nil {
+
+		_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("数据库资源关闭错误：%s", err.Error()))
+	}
+}

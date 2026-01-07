@@ -80,7 +80,7 @@ func GetWriter() *io.PipeWriter {
 	return bepusdt.Writer()
 }
 
-func Close() error {
+func Close() {
 	var lastErr error
 	for _, f := range logFiles {
 		if f != nil {
@@ -92,5 +92,7 @@ func Close() error {
 
 	logFiles = nil
 
-	return lastErr
+	if lastErr != nil {
+		_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("日志句柄资源关闭错误：%s", lastErr.Error()))
+	}
 }
