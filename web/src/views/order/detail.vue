@@ -29,43 +29,12 @@
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
-                <icon-idcard />
-                <span>订单ID</span>
-              </div>
-              <div class="detail-value">{{ detailData.id }}</div>
-            </div>
-          </a-col>
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-file />
-                <span>商户订单号</span>
-              </div>
-              <div class="detail-value">{{ detailData.order_id }}</div>
-            </div>
-          </a-col>
-        </a-row>
-        <a-row :gutter="24">
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-tag />
-                <span>本地交易ID</span>
-              </div>
-              <div class="detail-value">{{ detailData.trade_id }}</div>
-            </div>
-          </a-col>
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
                 <icon-user />
                 <span>商品名称</span>
               </div>
               <div class="detail-value">{{ detailData.name }}</div>
             </div>
           </a-col>
-        </a-row>
-        <a-row :gutter="24">
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
@@ -73,34 +42,47 @@
                 <span>交易类型</span>
               </div>
               <div class="detail-value">
-                <a-tag color="blue">{{ detailData.trade_type }}</a-tag>
-              </div>
-            </div>
-          </a-col>
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-code />
-                <span>API类型</span>
-              </div>
-              <div class="detail-value">
-                <a-tag color="arcoblue">{{ detailData.api_type }}</a-tag>
+                <a-tag color="blue" class="trade-type-tag">{{ detailData.trade_type }}</a-tag>
               </div>
             </div>
           </a-col>
         </a-row>
-      </a-card>
-
-      <!-- 金额信息卡片 -->
-      <a-card class="detail-card" title="金额信息" :bordered="false">
         <a-row :gutter="24">
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
-                <icon-computer />
-                <span>订单汇率</span>
+                <icon-file />
+                <span>商户订单</span>
               </div>
-              <div class="detail-value">{{ detailData.rate }}</div>
+              <div class="detail-value">
+                <a-typography-text :copyable="{ text: detailData.order_id }">{{ detailData.order_id }}</a-typography-text>
+              </div>
+            </div>
+          </a-col>
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-tag />
+                <span>交易编号</span>
+              </div>
+              <div class="detail-value">
+                <a-typography-text :copyable="{ text: detailData.trade_id }">{{ detailData.trade_id }}</a-typography-text>
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-archive />
+                <span>交易金额（汇率）</span>
+              </div>
+              <div class="detail-value">
+                <span class="currency-symbol">{{ getCurrencySymbol(detailData.fiat) }}</span
+                >{{ detailData.money }}
+                <span class="rate-text">({{ detailData.rate }})</span>
+              </div>
             </div>
           </a-col>
           <a-col :span="12">
@@ -118,21 +100,10 @@
             </div>
           </a-col>
         </a-row>
-        <a-row :gutter="24">
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-archive />
-                <span>交易金额</span>
-              </div>
-              <div class="detail-value">{{ getCurrencySymbol(detailData.fiat) }}{{ detailData.money }}</div>
-            </div>
-          </a-col>
-        </a-row>
       </a-card>
 
       <!-- 地址信息卡片 -->
-      <a-card class="detail-card" title="地址信息" :bordered="false">
+      <a-card class="detail-card" title="交易地址" :bordered="false">
         <a-row :gutter="24">
           <a-col :span="24">
             <div class="detail-item">
@@ -167,71 +138,35 @@
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
-                <icon-notification />
-                <span>回调次数</span>
-              </div>
-              <div class="detail-value">{{ detailData.notify_num }}</div>
-            </div>
-          </a-col>
-          <a-col :span="12">
-            <div class="detail-item">
-              <div class="detail-label">
                 <icon-check />
                 <span>回调状态</span>
               </div>
               <div class="detail-value">
-                <a-tag :color="detailData.notify_state === 1 ? 'green' : 'red'">
-                  {{ detailData.notify_state === 1 ? "成功" : "失败" }}
-                </a-tag>
+                <a-tag v-if="detailData.notify_state === 1" color="green"> 成功 </a-tag>
+                <a-tag v-else color="red"> 失败，等待第 {{ detailData.notify_num + 1 }} 次回调中 </a-tag>
               </div>
             </div>
           </a-col>
-        </a-row>
-        <a-row :gutter="24" v-if="detailData.return_url">
-          <a-col :span="24">
+          <a-col :span="12" v-if="detailData.return_url">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-link />
-                <span>同步地址</span>
+                <span>商户网站</span>
               </div>
-              <div class="detail-value">{{ detailData.return_url }}</div>
-            </div>
-          </a-col>
-        </a-row>
-        <a-row :gutter="24" v-if="detailData.notify_url">
-          <a-col :span="24">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-sync />
-                <span>异步地址</span>
+              <div class="detail-value">
+                <a-link @click="openMerchantWebsite" :hoverable="false">
+                  {{ getMerchantWebsite(detailData.return_url) }}
+                </a-link>
               </div>
-              <div class="detail-value">{{ detailData.notify_url }}</div>
             </div>
           </a-col>
         </a-row>
       </a-card>
 
       <!-- 区块链信息卡片 -->
-      <a-card class="detail-card" title="区块链信息" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
+      <a-card class="detail-card" title="区块链数据" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
         <a-row :gutter="24" v-if="detailData.ref_hash">
-          <a-col :span="24">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-safe />
-                <span>交易哈希</span>
-              </div>
-              <div class="detail-value hash-value">
-                <a-typography-text v-if="detailData.status === 2" copyable>{{ detailData.ref_hash }}</a-typography-text>
-                <a-tag v-else color="blue" size="small">
-                  <template #icon><icon-clock-circle /></template>
-                  等待交易确认
-                </a-tag>
-              </div>
-            </div>
-          </a-col>
-        </a-row>
-        <a-row :gutter="24" v-if="detailData.ref_block_num">
-          <a-col :span="12">
+          <a-col :span="12" v-if="detailData.ref_block_num">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-layers />
@@ -240,63 +175,64 @@
               <div class="detail-value">{{ detailData.ref_block_num }}</div>
             </div>
           </a-col>
-        </a-row>
-        <a-row :gutter="24">
-          <a-col :span="24">
+          <a-col :span="12">
             <div class="detail-item">
-              <a-button
-                size="mini"
-                type="primary"
-                :disabled="!(detailData.status === 2 || detailData.status === 5)"
-                @click="openTxUrl"
-              >
-                <template #icon><icon-export /></template>
-                链上交易详情
-              </a-button>
+              <div class="detail-label">
+                <icon-safe />
+                <span>链上详情</span>
+              </div>
+              <div class="detail-value hash-value">
+                <a-link
+                  v-if="detailData.status === 2 && detailData.tx_url"
+                  @click="openTxUrl"
+                  :hoverable="false"
+                  class="tx-url-link"
+                >
+                  {{ detailData.tx_url }}
+                </a-link>
+                <a-tag v-else color="blue" size="small">
+                  <template #icon><icon-clock-circle /></template>
+                  等待交易确认
+                </a-tag>
+              </div>
             </div>
           </a-col>
         </a-row>
       </a-card>
 
       <!-- 时间信息卡片 -->
-      <a-card class="detail-card" title="时间信息" :bordered="false">
+      <a-card class="detail-card" title="订单时间" :bordered="false">
         <a-row :gutter="24">
           <a-col :span="12" v-if="detailData.created_at">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-plus-circle />
-                <span>创建时间</span>
+                <span>创建订单</span>
               </div>
               <div class="detail-value">{{ formatDateTime(detailData.created_at) }}</div>
             </div>
           </a-col>
-          <a-col :span="12" v-if="detailData.updated_at">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-edit />
-                <span>更新时间</span>
-              </div>
-              <div class="detail-value">{{ formatDateTime(detailData.updated_at) }}</div>
-            </div>
-          </a-col>
-        </a-row>
-        <a-row :gutter="24">
           <a-col :span="12">
             <div class="detail-item">
               <div class="detail-label">
-                <icon-schedule />
-                <span>失效时间</span>
+                <icon-check-circle v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)" />
+                <icon-schedule v-else-if="detailData.status === 3" />
+                <icon-sync v-else />
+                <span v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)">交易确认</span>
+                <span v-else-if="detailData.status === 3">交易过期</span>
+                <span v-else>最后更新</span>
               </div>
-              <div class="detail-value">{{ formatDateTime(detailData.expired_at) }}</div>
-            </div>
-          </a-col>
-          <a-col :span="12" v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)">
-            <div class="detail-item">
-              <div class="detail-label">
-                <icon-check-circle />
-                <span>确认时间</span>
+              <div class="detail-value">
+                <span v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)">
+                  {{ formatDateTime(detailData.confirmed_at) }}
+                </span>
+                <span v-else-if="detailData.status === 3">
+                  {{ formatDateTime(detailData.expired_at) }}
+                </span>
+                <span v-else>
+                  {{ formatDateTime(detailData.updated_at) }}
+                </span>
               </div>
-              <div class="detail-value">{{ formatDateTime(detailData.confirmed_at) }}</div>
             </div>
           </a-col>
         </a-row>
@@ -323,6 +259,23 @@ const onClose = () => emits("close");
 const openTxUrl = () => {
   if (props.detailData.tx_url) {
     window.open(props.detailData.tx_url, "_blank");
+  }
+};
+
+const getMerchantWebsite = (returnUrl: string) => {
+  if (!returnUrl) return "";
+  try {
+    const url = new URL(returnUrl);
+    return `${url.protocol}//${url.host}/`;
+  } catch {
+    return returnUrl;
+  }
+};
+
+const openMerchantWebsite = () => {
+  if (props.detailData.return_url) {
+    const merchantUrl = getMerchantWebsite(props.detailData.return_url);
+    window.open(merchantUrl, "_blank");
   }
 };
 
@@ -408,6 +361,20 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
   padding-left: 26px;
 }
 
+.detail-value :deep(.arco-typography) {
+  font-size: 14px;
+  color: var(--color-text-1);
+}
+
+.detail-value :deep(.arco-typography-operation-copy) {
+  color: #165dff;
+  margin-left: 4px;
+}
+
+.detail-value :deep(.arco-typography-operation-copy:hover) {
+  color: #0e42d2;
+}
+
 .address-value {
   font-family: "Monaco", "Menlo", "Consolas", monospace;
   font-size: 13px;
@@ -426,13 +393,31 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 .hash-value {
   font-family: "Monaco", "Menlo", "Consolas", monospace;
   font-size: 12px;
-  word-break: break-all;
   color: var(--color-text-3);
 }
 
-.hash-value :deep(.arco-typography-operation-copy) {
-  color: #165dff;
+.tx-url-link {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.currency-symbol {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.rate-text {
+  color: var(--color-text-3);
+  font-size: 13px;
   margin-left: 4px;
+}
+
+.trade-type-tag {
+  font-weight: 700;
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {
