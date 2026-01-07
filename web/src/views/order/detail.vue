@@ -394,14 +394,25 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
   font-family: "Monaco", "Menlo", "Consolas", monospace;
   font-size: 12px;
   color: var(--color-text-3);
+  overflow: hidden;
 }
 
 .tx-url-link {
-  display: block;
+  display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  vertical-align: bottom;
+}
+
+.hash-value :deep(.arco-link) {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  vertical-align: bottom;
 }
 
 .currency-symbol {
