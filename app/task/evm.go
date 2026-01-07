@@ -190,7 +190,7 @@ func (e *evm) getBlockByNumber(a any) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		conf.SetBlockFail(e.Network)
+		conf.RecordFailure(e.Network)
 		e.blockScanQueue.In <- b
 		log.Task.Warn("eth_getBlockByNumber Error sending request:", err)
 
@@ -201,7 +201,7 @@ func (e *evm) getBlockByNumber(a any) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		conf.SetBlockFail(e.Network)
+		conf.RecordFailure(e.Network)
 		e.blockScanQueue.In <- b
 		log.Task.Warn("eth_getBlockByNumber Error reading response body:", err)
 
@@ -212,7 +212,7 @@ func (e *evm) getBlockByNumber(a any) {
 	timestamp := make(map[string]time.Time)
 	for _, itm := range gjson.ParseBytes(body).Array() {
 		if itm.Get("error").Exists() {
-			conf.SetBlockFail(e.Network)
+			conf.RecordFailure(e.Network)
 			e.blockScanQueue.In <- b
 			log.Task.Warn(fmt.Sprintf("%s eth_getBlockByNumber response error %s", e.Network, itm.Get("error").String()))
 
@@ -233,7 +233,7 @@ func (e *evm) getBlockByNumber(a any) {
 
 	transfers, err := e.parseEventTransfer(b, timestamp)
 	if err != nil {
-		conf.SetBlockFail(e.Network)
+		conf.RecordFailure(e.Network)
 		e.blockScanQueue.In <- b
 		log.Task.Warn("Evm Block Parse Error parsing block transfer:", err)
 
@@ -247,7 +247,7 @@ func (e *evm) getBlockByNumber(a any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Task.Info(fmt.Sprintf("区块扫描完成(%s): %d → %d 成功率：%s", e.Network, b.From, b.To, conf.GetBlockSuccRate(e.Network)))
+	log.Task.Info(fmt.Sprintf("区块扫描完成(%s): %d → %d 成功率：%s", e.Network, b.From, b.To, conf.GetSuccessRate(e.Network)))
 }
 
 func (e *evm) parseNativeTransfer(array []gjson.Result, num int64, timestamp time.Time) []transfer {

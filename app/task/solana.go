@@ -168,10 +168,10 @@ func (s *solana) slotParse(n any) {
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getBlock","params":[%d,{"encoding":"json","maxSupportedTransactionVersion":0,"transactionDetails":"full","rewards":false}]}`, slot))
 	network := conf.Solana
 
-	conf.SetBlockTotal(network)
+	conf.RecordSuccess(network)
 	resp, err := client.Post(model.Endpoint(conf.Solana), "application/json", bytes.NewBuffer(post))
 	if err != nil {
-		conf.SetBlockFail(network)
+		conf.RecordFailure(network)
 		log.Task.Warn("slotParse Error sending request:", err)
 
 		return
@@ -179,7 +179,7 @@ func (s *solana) slotParse(n any) {
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		conf.SetBlockFail(network)
+		conf.RecordFailure(network)
 		log.Task.Warn("slotParse Error response status code:", resp.StatusCode)
 
 		return
@@ -187,7 +187,7 @@ func (s *solana) slotParse(n any) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		conf.SetBlockFail(network)
+		conf.RecordFailure(network)
 		s.slotQueue.In <- slot
 		log.Task.Warn("slotParse Error reading response body:", err)
 
@@ -288,7 +288,7 @@ func (s *solana) slotParse(n any) {
 		}
 	}
 
-	log.Task.Info(fmt.Sprintf("区块扫描完成(Solana) %d 成功率：%s", slot, conf.GetBlockSuccRate(network)))
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Solana) %d 成功率：%s", slot, conf.GetSuccessRate(network)))
 }
 
 func (s *solana) parseTransfer(instr gjson.Result, accountKeys []string, tokenAccountMap map[string]solanaTokenOwner) transfer {

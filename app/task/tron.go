@@ -138,13 +138,13 @@ func (t *tron) blockParse(n any) {
 	defer conn.Close()
 	var client = api.NewWalletClient(conn)
 
-	conf.SetBlockTotal(conf.Tron)
+	conf.RecordSuccess(conf.Tron)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 	bok, err2 := client.GetBlockByNum2(ctx, &api.NumberMessage{Num: num})
 	cancel()
 	if err2 != nil {
-		conf.SetBlockFail(conf.Tron)
+		conf.RecordFailure(conf.Tron)
 		t.blockScanQueue.In <- num
 		log.Task.Warn("GetBlockByNum2 Error", err2)
 
@@ -301,7 +301,7 @@ func (t *tron) blockParse(n any) {
 		resourceQueue.In <- resources
 	}
 
-	log.Task.Info(fmt.Sprintf("区块扫描完成(Tron): %d 成功率：%s", num, conf.GetBlockSuccRate(conf.Tron)))
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Tron): %d 成功率：%s", num, conf.GetSuccessRate(conf.Tron)))
 }
 
 func (t *tron) blockInitOffset(now int64) {

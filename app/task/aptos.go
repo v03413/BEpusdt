@@ -190,10 +190,10 @@ func (a *aptos) versionParse(n any) {
 	var net = conf.Aptos
 	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", model.Endpoint(conf.Aptos), p.Start, p.Limit)
 
-	conf.SetBlockTotal(net)
+	conf.RecordSuccess(net)
 	resp, err := client.Get(url)
 	if err != nil {
-		conf.SetBlockFail(net)
+		conf.RecordFailure(net)
 		log.Task.Warn("versionParse Error sending request:", err)
 
 		return
@@ -201,7 +201,7 @@ func (a *aptos) versionParse(n any) {
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		conf.SetBlockFail(net)
+		conf.RecordFailure(net)
 		log.Task.Warn("versionParse Error response status code:", resp.StatusCode)
 
 		return
@@ -209,7 +209,7 @@ func (a *aptos) versionParse(n any) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		conf.SetBlockFail(net)
+		conf.RecordFailure(net)
 		a.versionQueue.In <- p
 		log.Task.Warn("versionParse Error reading response body:", err)
 
@@ -217,7 +217,7 @@ func (a *aptos) versionParse(n any) {
 	}
 
 	if !gjson.ValidBytes(body) {
-		conf.SetBlockFail(net)
+		conf.RecordFailure(net)
 		a.versionQueue.In <- p
 		log.Task.Warn("versionParse Error: invalid JSON response body")
 
@@ -374,7 +374,7 @@ func (a *aptos) versionParse(n any) {
 		transferQueue.In <- transfers
 	}
 
-	log.Task.Info(fmt.Sprintf("区块扫描完成(Aptos) %d.%d 成功率：%s", p.Start, p.Limit, conf.GetBlockSuccRate(net)))
+	log.Task.Info(fmt.Sprintf("区块扫描完成(Aptos) %d.%d 成功率：%s", p.Start, p.Limit, conf.GetSuccessRate(net)))
 }
 
 func (a *aptos) padAddressLeadingZeros(addr string) string {
