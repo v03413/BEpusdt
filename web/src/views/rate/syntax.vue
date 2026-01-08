@@ -97,9 +97,9 @@
           <a-input-number
             v-model="syntaxValue"
             :placeholder="getSyntaxPlaceholder()"
-            :precision="syntaxType === '~' ? 2 : 6"
-            :min="syntaxType === '~' ? 0.01 : 0"
+            :min="syntaxType === '~' ? 0.000001 : 0"
             :max="syntaxType === '~' ? 10 : 999999"
+            :step="syntaxType === '~' ? 0.000001 : 0.01"
             style="width: 100%"
           >
             <template #prefix v-if="syntaxType">
@@ -259,7 +259,7 @@ const columns = [
     title: "交易法币",
     dataIndex: "fiat",
     align: "center",
-    width: 240,
+    width: 160,
     slotName: "fiat",
     filterable: {
       filters: [
@@ -277,7 +277,7 @@ const columns = [
     title: "加密货币",
     dataIndex: "crypto",
     align: "center",
-    width: 240,
+    width: 140,
     slotName: "crypto",
     filterable: {
       filters: [
@@ -294,14 +294,15 @@ const columns = [
   {
     title: "汇率浮动",
     dataIndex: "syntax",
-    slotName: "syntax"
+    slotName: "syntax",
+    width: 480
   },
   {
     title: "操作",
     slotName: "optional",
     align: "center",
     fixed: "right",
-    width: "200"
+    width: 120
   }
 ];
 
@@ -316,14 +317,26 @@ const parseSyntax = (syntax: string) => {
 
 const generateSyntax = () => {
   if (syntaxValue.value === undefined || syntaxValue.value === null) return "";
-  return syntaxType.value + syntaxValue.value.toString();
+
+  // 格式化数值,去除末尾的0
+  const formatValue = (val: number) => {
+    return parseFloat(val.toFixed(6)).toString();
+  };
+
+  // 百分比浮动
+  if (syntaxType.value === "~") {
+    return syntaxType.value + formatValue(syntaxValue.value);
+  }
+
+  // 其他类型
+  return syntaxType.value + formatValue(syntaxValue.value);
 };
 
 const getSyntaxPlaceholder = () => {
   const placeholders = {
     "+": "如：0.3",
     "-": "如：0.2",
-    "~": "如：1.02 或 0.97",
+    "~": "如：1.020000 或 0.970000",
     "": "如：7.4"
   };
   return placeholders[syntaxType.value as keyof typeof placeholders];
@@ -335,30 +348,40 @@ const getTableSyntaxDescription = (syntax: string) => {
   const parsed = parseSyntax(syntax);
   if (parsed.value === undefined || parsed.value === null) return "";
 
+  // 格式化数值,去除末尾的0
+  const formatValue = (val: number) => {
+    return parseFloat(val.toFixed(6)).toString();
+  };
+
   switch (parsed.type) {
     case "+":
-      return `订单汇率 = 基准汇率 + ${parsed.value}`;
+      return `订单汇率 = 基准汇率 + ${formatValue(parsed.value)}`;
     case "-":
-      return `订单汇率 = 基准汇率 - ${parsed.value}`;
+      return `订单汇率 = 基准汇率 - ${formatValue(parsed.value)}`;
     case "~":
-      return parsed.value != 1 ? `订单汇率 = 基准汇率 * ${parsed.value}` : `订单汇率 = 基准汇率`;
+      return parsed.value != 1 ? `订单汇率 = 基准汇率 * ${formatValue(parsed.value)}` : `订单汇率 = 基准汇率`;
     default:
-      return `订单汇率强制固定 ${parsed.value}`;
+      return `订单汇率强制固定 ${formatValue(parsed.value)}`;
   }
 };
 
 const getFormSyntaxDescription = () => {
   if (!syntaxType.value || syntaxValue.value === undefined || syntaxValue.value === null) return "";
 
+  // 格式化数值,去除末尾的0
+  const formatValue = (val: number) => {
+    return parseFloat(val.toFixed(6)).toString();
+  };
+
   switch (syntaxType.value) {
     case "+":
-      return `订单汇率 = 基准汇率 + ${syntaxValue.value}`;
+      return `订单汇率 = 基准汇率 + ${formatValue(syntaxValue.value)}`;
     case "-":
-      return `订单汇率 = 基准汇率 - ${syntaxValue.value}`;
+      return `订单汇率 = 基准汇率 - ${formatValue(syntaxValue.value)}`;
     case "~":
-      return syntaxValue.value != 1 ? `订单汇率 = 基准汇率 * ${syntaxValue.value}` : `订单汇率 = 基准汇率`;
+      return syntaxValue.value != 1 ? `订单汇率 = 基准汇率 * ${formatValue(syntaxValue.value)}` : `订单汇率 = 基准汇率`;
     default:
-      return `订单汇率强制固定 ${syntaxValue.value}`;
+      return `订单汇率强制固定 ${formatValue(syntaxValue.value)}`;
   }
 };
 
@@ -589,12 +612,13 @@ getCommonTableList();
 .syntax-display {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  white-space: nowrap;
 
   .syntax-value {
     font-weight: 500;
     color: #262626;
-    width: 50px;
+    min-width: 80px;
     text-align: left;
     flex-shrink: 0;
   }
@@ -603,7 +627,7 @@ getCommonTableList();
     font-size: 12px;
     color: #8c8c8c;
     font-style: italic;
-    flex: 1;
+    flex-shrink: 0;
   }
 }
 
