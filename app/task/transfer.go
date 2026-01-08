@@ -136,7 +136,7 @@ func notOrderTransferHandle(ctx context.Context) {
 			model.Db.Where("other_notify = ?", model.WaOtherEnable).Find(&was)
 			for _, wa := range was {
 				for _, t := range batch {
-					if t.RecvAddress != wa.Address && t.FromAddress != wa.Address {
+					if t.RecvAddress != wa.MatchAddr && t.FromAddress != wa.MatchAddr {
 						continue
 					}
 
@@ -217,21 +217,16 @@ func markFinalConfirmed(o model.Order) {
 func getAllWaitingOrders() map[string][]model.Order {
 	var tradeOrders = model.GetOrderByStatus(model.OrderStatusWaiting)
 	var data = make(map[string][]model.Order)
-	for _, order := range tradeOrders {
-		if time.Now().Unix() >= order.ExpiredAt.Unix() { // 订单过期
-			order.SetExpired()
-			notify.Bepusdt(order)
+	for _, t := range tradeOrders {
+		if time.Now().Unix() >= t.ExpiredAt.Unix() { // 订单过期
+			t.SetExpired()
+			notify.Bepusdt(t)
 
 			continue
 		}
 
-		if order.TradeType == model.UsdtPolygon {
-
-			order.Address = strings.ToLower(order.Address)
-		}
-
-		key := order.Address + string(order.TradeType)
-		data[key] = append(data[key], order)
+		key := t.Address + string(t.TradeType)
+		data[key] = append(data[key], t)
 	}
 
 	return data

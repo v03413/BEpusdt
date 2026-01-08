@@ -7,6 +7,7 @@ import (
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 func ethInit() {
@@ -22,6 +23,7 @@ func ethInit() {
 			TradeType: model.EthereumEth,
 			Decimal:   conf.EthereumEthDecimals,
 		},
+		Client:         utils.NewHttpClient(),
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 

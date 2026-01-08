@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/shopspring/decimal"
@@ -164,6 +165,9 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	var wallet = GetAvailableAddress(p.TradeType)
 	if p.Address != "" {
 		wallet = []string{p.Address}
+		if !AddrCaseSens(p.TradeType) { // 交易类型不区分大小写，统一转小写；这个地址最后的交易匹配要用到，千万不能错
+			wallet = []string{strings.ToLower(p.Address)}
+		}
 	}
 
 	if len(wallet) == 0 {

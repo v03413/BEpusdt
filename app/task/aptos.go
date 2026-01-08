@@ -17,6 +17,7 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 type aptos struct {
@@ -25,6 +26,7 @@ type aptos struct {
 	versionInitStartOffset int64
 	lastVersion            int64
 	versionQueue           *chanx.UnboundedChan[version]
+	client                 *http.Client
 }
 
 type version struct {
@@ -60,6 +62,7 @@ func newAptos() aptos {
 		versionInitStartOffset: -100 * 500,
 		lastVersion:            0,
 		versionQueue:           chanx.NewUnboundedChan[version](context.Background(), 30),
+		client:                 utils.NewHttpClient(),
 	}
 }
 
@@ -70,7 +73,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"/v1", nil)
-	resp, err := client.Do(req)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		log.Task.Warn("aptos versionRoll Error sending request:", err)
 
@@ -191,7 +194,7 @@ func (a *aptos) versionParse(n any) {
 	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", model.Endpoint(conf.Aptos), p.Start, p.Limit)
 
 	conf.RecordSuccess(net)
-	resp, err := client.Get(url)
+	resp, err := a.client.Get(url)
 	if err != nil {
 		conf.RecordFailure(net)
 		log.Task.Warn("versionParse Error sending request:", err)
@@ -390,7 +393,7 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 
 	var handle = func(o model.Order) {
 		req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"v1/transactions/by_hash/"+o.RefHash, nil)
-		resp, err := client.Do(req)
+		resp, err := a.client.Do(req)
 		if err != nil {
 			log.Task.Warn("aptos tradeConfirmHandle Error sending request:", err)
 

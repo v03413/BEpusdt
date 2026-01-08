@@ -43,12 +43,12 @@
 - ✅ 默认收银员支持中英切换 助力出海需求
 - ✅ 快速迭代期 超多实用特性功能等你发现
 
-## 🚀 安装部署
+## 🚀 安装部署  
 
-- 安装：[Docker](docs/docker/docker.md)・[Linux](docs/linux/install.md)・[1Panel](./docs/1panel/README.md)・[宝塔](./docs/bt_panel/README.md)
-- 对接：[独角数卡](docs/dujiaoka/dujiaoka.md)・[异次元](./docs/acg-faka.md)・[萌次元](./docs/mcy-shop.md)・[彩虹易支付](https://github.com/v03413/Epay-BEpusdt)
-- 开发：[API对接](docs/api/api.md)・[订单回调](docs/notify/readme.md)・[Python SDK](https://github.com/luoyanglang/bepusdt-python-sdk)
-- 其它：[https 配置](./docs/ssl.md)・[时钟同步](docs/linux/systemd-timesyncd.md)・[自定义收银台](./docs/template/README.md)
+- 安装：[Docker](docs/docker/docker.md)·[Linux](docs/linux/install.md)·[1Panel](./docs/1panel/README.md)·[宝塔](./docs/bt_panel/README.md)
+- 对接：[独角数卡](docs/dujiaoka/dujiaoka.md)·[异次元](./docs/acg-faka.md)·[萌次元](./docs/mcy-shop.md)·[彩虹易支付](https://github.com/v03413/Epay-BEpusdt)
+- 开发：[API对接](docs/api/api.md)·[订单回调](docs/notify/readme.md)·[Python SDK](https://github.com/luoyanglang/bepusdt-python-sdk)
+- 其它：[https 配置](./docs/ssl.md)·[时钟同步](docs/linux/systemd-timesyncd.md)·[自定义收银台](./docs/template/README.md)
 
 ## 🖼 功能截图
 
@@ -57,30 +57,29 @@
 |-------------------------------------------------|--------------------------------------------------|--------------------------------------------------------|
 | <img src=./docs/images/1.png alt=收银台 width=300> | <img src=./docs/images/2.png alt=后台订单 width=300> | <img src=./docs/images/3.png alt=Telegram通知 width=300> |
 
-
-## 🤔 常见问题
+## ❓ 常见问题
 
 - [如何获取参数 admin_id](./docs/faq/admin_id.md)
 - [服务器宽带占用过大解释](./docs/faq/bandwidth.md)
 
-## ⚠️ 特别注意
+## ⚠️ 重要提示
 
-- 订单交易强依赖时间，请确保服务器时间准确性，否则可能导致订单异常！
-- 部分功能依赖网络，请确保服务器网络纯洁性，否则可能导致功能异常！
+- **订单交易强依赖时间**：请确保服务器时间准确，否则可能导致订单异常
+- **网络环境要求**：请确保服务器网络环境稳定，否则可能影响功能正常运行
 
-## 🏝️ 交流反馈
+## 🏝️ 社区交流
 
-- Telegram 群组：[https://t.me/BEpusdtChat](https://t.me/BEpusdtChat)
-- Telegram 频道：[https://t.me/BEpusdtChannel](https://t.me/BEpusdtChannel)
+- **Telegram 群组**：[https://t.me/BEpusdtChat](https://t.me/BEpusdtChat)
+- **Telegram 频道**：[https://t.me/BEpusdtChannel](https://t.me/BEpusdtChannel)
 
-## 🙏 鸣谢
+## 🙏 致谢
 
-- https://github.com/assimon/epusdt
+- [Epusdt](https://github.com/assimon/epusdt)
 
-## 📢 声明
+## 📜 免责声明
 
-- 本项目仅供个人学习研究使用，任何人或组织在使用过程中请符合当地的法律法规，否则产生的任何后果责任自负。
+本项目仅供个人学习研究使用。任何人或组织在使用过程中请符合当地的法律法规，否则产生的任何后果责任自负。
 
-## 🌟 Stargazers over time
+## 🌟 Star 历史
 
 [![Stargazers over time](https://starchart.cc/v03413/bepusdt.svg)](https://starchart.cc/v03413/bepusdt)

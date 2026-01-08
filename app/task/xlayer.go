@@ -6,6 +6,7 @@ import (
 
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 func xlayerInit() {
@@ -17,6 +18,7 @@ func xlayerInit() {
 			RollDelayOffset: 3,
 			ConfirmedOffset: 12,
 		},
+		Client:         utils.NewHttpClient(),
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 

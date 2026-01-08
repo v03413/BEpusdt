@@ -6,6 +6,7 @@ import (
 
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 func polygonInit() {
@@ -16,6 +17,7 @@ func polygonInit() {
 			InitStartOffset: -600,
 			ConfirmedOffset: 40,
 		},
+		Client:         utils.NewHttpClient(),
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 

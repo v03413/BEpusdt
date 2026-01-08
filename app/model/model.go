@@ -27,8 +27,13 @@ func Init(path string) error {
 		return fmt.Errorf("创建数据库目录失败：%w", err)
 	}
 
-	dsn := fmt.Sprintf("%s?cache=shared&mode=rwc&_pragma=cache_size(-18888)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", path)
-
+	dsn := fmt.Sprintf("%s?cache=shared&mode=rwc"+
+		"&_pragma=cache_size(-32000)"+ // 32MB 缓存，平衡内存占用
+		"&_pragma=journal_mode(WAL)"+
+		"&_pragma=busy_timeout(8000)"+ // 8 秒超时，兼顾慢速磁盘
+		"&_pragma=synchronous(NORMAL)"+ // NORMAL 模式，性能与安全平衡
+		"&_pragma=wal_autocheckpoint(1500)", // 适中的 checkpoint 频率
+		path)
 	Db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 
