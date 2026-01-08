@@ -9,9 +9,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 )
 
+// NewTronGrpcClient 目前很多 TRON API 基本都有QPS限制，过于激进或者过于保守的重试策略都不合适
 func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
 	apiNode = strings.TrimSpace(apiNode)
 	if apiNode == "" {
@@ -24,10 +26,19 @@ func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
 
 	opts := []grpc.DialOption{
 		grpc.WithConnectParams(grpc.ConnectParams{
-			Backoff:           backoff.Config{BaseDelay: 1 * time.Second, MaxDelay: 30 * time.Second, Multiplier: 1.5},
+			Backoff: backoff.Config{
+				BaseDelay:  1 * time.Second,
+				MaxDelay:   30 * time.Second,
+				Multiplier: 1.5,
+			},
 			MinConnectTimeout: 1 * time.Minute,
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                30 * time.Second,
+			Timeout:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
 	}
 
 	if apiKey != "" {

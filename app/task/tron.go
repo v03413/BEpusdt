@@ -22,6 +22,7 @@ import (
 	"github.com/v03413/tronprotocol/api"
 	"github.com/v03413/tronprotocol/core"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 var gasFreeUsdtTokenAddress = []byte{0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 0x78, 0x09, 0x86, 0xa4, 0x2c, 0x78, 0xec, 0x9c, 0x7f, 0x77, 0xe6, 0xde, 0xd1, 0x3c}
@@ -35,6 +36,8 @@ type tron struct {
 	blockInitStartOffset int64
 	lastBlockNum         int64
 	blockScanQueue       *chanx.UnboundedChan[int64]
+	conn                 map[string]*grpc.ClientConn
+	connMu               sync.RWMutex
 }
 
 var tr tron
@@ -52,6 +55,7 @@ func newTron() tron {
 		blockInitStartOffset: -400, // 大概为过去20分钟的区块高度
 		lastBlockNum:         0,
 		blockScanQueue:       chanx.NewUnboundedChan[int64](context.Background(), 30),
+		conn:                 make(map[string]*grpc.ClientConn),
 	}
 }
 
@@ -61,19 +65,15 @@ func (t *tron) blockRoll(context.Context) {
 		return
 	}
 
-	conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
+	conn, err := t.client()
 	if err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
 
-	defer conn.Close()
-
-	var client = api.NewWalletClient(conn)
-
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*15)
-	block, err1 := client.GetNowBlock2(ctx, nil)
+	block, err1 := api.NewWalletClient(conn).GetNowBlock2(ctx, nil)
 	defer cancel()
 
 	if err1 != nil {
@@ -106,7 +106,7 @@ func (t *tron) blockRoll(context.Context) {
 }
 
 func (t *tron) blockDispatch(context.Context) {
-	p, err := ants.NewPoolWithFunc(3, t.blockParse)
+	p, err := ants.NewPoolWithFunc(2, t.blockParse)
 	if err != nil {
 		log.Task.Warn("Error creating pool:", err)
 
@@ -129,24 +129,21 @@ func (t *tron) blockParse(n any) {
 
 	var conn *grpc.ClientConn
 	var err error
-	if conn, err = utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey)); err != nil {
+	if conn, err = t.client(); err != nil {
 		log.Task.Error("grpc.NewClient", err)
 
 		return
 	}
 
-	defer conn.Close()
-	var client = api.NewWalletClient(conn)
-
 	conf.RecordSuccess(conf.Tron)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
-	bok, err2 := client.GetBlockByNum2(ctx, &api.NumberMessage{Num: num})
+	bok, err2 := api.NewWalletClient(conn).GetBlockByNum2(ctx, &api.NumberMessage{Num: num})
 	cancel()
 	if err2 != nil {
 		conf.RecordFailure(conf.Tron)
 		t.blockScanQueue.In <- num
-		log.Task.Warn("GetBlockByNum2 Error", err2)
+		log.Task.Warn("GetBlockByNum2 ", err2)
 
 		return
 	}
@@ -394,14 +391,12 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
-		conn, err := utils.NewTronGrpcClient(model.Endpoint(conf.Tron), model.GetK(model.RpcEndpointTronGridApiKey))
+		conn, err := t.client()
 		if err != nil {
 			log.Task.Error("grpc.NewClient", err)
 
 			return
 		}
-
-		defer conn.Close()
 
 		var c = api.NewWalletClient(conn)
 
@@ -476,4 +471,46 @@ func (t *tron) rollBreak() bool {
 	}
 
 	return true
+}
+
+func (t *tron) client() (*grpc.ClientConn, error) {
+	var endpoint = model.Endpoint(conf.Tron)
+
+	t.connMu.RLock()
+	if c, ok := t.conn[endpoint]; ok {
+		state := c.GetState()
+		if state == connectivity.Ready || state == connectivity.Idle {
+			t.connMu.RUnlock()
+
+			return c, nil
+		}
+
+		t.connMu.RUnlock()
+	} else {
+		t.connMu.RUnlock()
+	}
+
+	t.connMu.Lock()
+	defer t.connMu.Unlock()
+
+	if c, ok := t.conn[endpoint]; ok {
+		state := c.GetState()
+		if state == connectivity.Ready || state == connectivity.Idle {
+
+			return c, nil
+		}
+
+		c.Close()
+	}
+
+	conn, err := utils.NewTronGrpcClient(endpoint, model.GetK(model.RpcEndpointTronGridApiKey))
+	if err != nil {
+
+		return nil, fmt.Errorf("连接失败: %w", err)
+	}
+
+	t.conn[endpoint] = conn
+	log.Task.Info("Tron gRPC 连接已建立:", endpoint)
+
+	return conn, nil
 }

@@ -158,7 +158,7 @@ func (e *evm) blockDispatch(ctx context.Context) {
 			if err := p.Invoke(n); err != nil {
 				e.blockScanQueue.In <- n
 
-				log.Task.Warn("evmBlockDispatch Error invoking process block:", err)
+				log.Task.Warn("Evm Block Dispatch Error invoking process block:", err)
 			}
 		}
 	}
