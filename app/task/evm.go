@@ -30,7 +30,6 @@ const (
 )
 
 var chainBlockNum sync.Map
-var client = &http.Client{Timeout: time.Second * 30}
 
 type block struct {
 	InitStartOffset int64 // 首次偏移量，第一次启动时，区块高度需要叠加此值，设置为负值可解决部分已创建但未超时(未扫描)的订单问题
@@ -48,6 +47,7 @@ type evm struct {
 	Network        string
 	Block          block
 	Native         evmNative
+	Client         *http.Client
 	blockScanQueue *chanx.UnboundedChan[evmBlock]
 }
 
@@ -71,7 +71,7 @@ func (e *evm) blockRoll(ctx context.Context) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	resp, err := e.Client.Do(req)
 	if err != nil {
 		log.Task.Warn("Error sending request:", err)
 
@@ -141,7 +141,7 @@ func (e *evm) blockInitOffset(now, offset int64) int64 {
 }
 
 func (e *evm) blockDispatch(ctx context.Context) {
-	p, err := ants.NewPoolWithFunc(2, e.getBlockByNumber)
+	p, err := ants.NewPoolWithFunc(3, e.getBlockByNumber)
 	if err != nil {
 		log.Task.Warn("Error creating pool:", err)
 
@@ -188,7 +188,7 @@ func (e *evm) getBlockByNumber(a any) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	resp, err := e.Client.Do(req)
 	if err != nil {
 		conf.RecordFailure(e.Network)
 		e.blockScanQueue.In <- b
@@ -296,7 +296,7 @@ func (e *evm) parseNativeTransfer(array []gjson.Result, num int64, timestamp tim
 func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]transfer, error) {
 	transfers := make([]transfer, 0)
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x%x","toBlock":"0x%x","topics":["%s"]}],"id":1}`, b.From, b.To, evmTransferEvent))
-	resp, err := client.Post(e.rpcEndpoint(), "application/json", bytes.NewBuffer(post))
+	resp, err := e.Client.Post(e.rpcEndpoint(), "application/json", bytes.NewBuffer(post))
 	if err != nil {
 
 		return transfers, errors.Join(errors.New("eth_getLogs Post Error"), err)
@@ -379,7 +379,7 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := client.Do(req)
+		resp, err := e.Client.Do(req)
 		if err != nil {
 			log.Task.Warn("evm tradeConfirmHandle Error sending request:", err)
 

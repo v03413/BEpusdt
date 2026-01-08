@@ -7,6 +7,7 @@ import (
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 func bscInit() {
@@ -22,6 +23,7 @@ func bscInit() {
 			Decimal:   conf.BscBnbDecimals,
 			TradeType: model.BscBnb,
 		},
+		Client:         utils.NewHttpClient(),
 		blockScanQueue: chanx.NewUnboundedChan[evmBlock](ctx, 30),
 	}
 

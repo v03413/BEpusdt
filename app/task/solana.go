@@ -20,6 +20,7 @@ import (
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 // 参考文档
@@ -31,6 +32,7 @@ type solana struct {
 	slotInitStartOffset int64
 	lastSlotNum         int64
 	slotQueue           *chanx.UnboundedChan[int64]
+	client              *http.Client
 }
 
 type solanaTokenOwner struct {
@@ -53,6 +55,7 @@ func newSolana() solana {
 		slotInitStartOffset: -600,
 		lastSlotNum:         0,
 		slotQueue:           chanx.NewUnboundedChan[int64](context.Background(), 30),
+		client:              utils.NewHttpClient(),
 	}
 }
 
@@ -65,7 +68,7 @@ func (s *solana) slotRoll(ctx context.Context) {
 	req, err := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer([]byte(`{"jsonrpc":"2.0","id":1,"method":"getSlot"}`)))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		log.Task.Warn("slotRoll Error sending request:", err)
 
@@ -169,7 +172,7 @@ func (s *solana) slotParse(n any) {
 	network := conf.Solana
 
 	conf.RecordSuccess(network)
-	resp, err := client.Post(model.Endpoint(conf.Solana), "application/json", bytes.NewBuffer(post))
+	resp, err := s.client.Post(model.Endpoint(conf.Solana), "application/json", bytes.NewBuffer(post))
 	if err != nil {
 		conf.RecordFailure(network)
 		log.Task.Warn("slotParse Error sending request:", err)
@@ -348,7 +351,7 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	var handle = func(o model.Order) {
 		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getSignatureStatuses","params":[["%s"],{"searchTransactionHistory":true}]}`, o.RefHash))
 		req, _ := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
-		resp, err := client.Do(req)
+		resp, err := s.client.Do(req)
 		if err != nil {
 			log.Task.Warn("solana tradeConfirmHandle Error sending request:", err)
 

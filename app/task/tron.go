@@ -233,6 +233,10 @@ func (t *tron) blockParse(n any) {
 				}
 
 				data := foo.GetData()
+				if len(data) < 4 {
+
+					continue
+				}
 
 				// Gas Free 钱包 合约授权转账
 				if bytes.Equal(foo.OwnerAddress, gasFreeOwnerAddress) && bytes.Equal(foo.ContractAddress, gasFreeContractAddress) {
