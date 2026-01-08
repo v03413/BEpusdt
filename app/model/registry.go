@@ -39,14 +39,15 @@ var registry = map[TradeType]TradeTypeConf{
 		EndpointKey: RpcEndpointPlasma,
 	},
 	UsdtTrc20: {
-		Alias:       "USDT・TRC20",
-		Network:     conf.Tron,
-		Crypto:      USDT,
-		Contract:    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // 占位，目前实际没使用
-		Decimal:     conf.UsdtTronDecimals,
-		AmountRange: usdGeneralRange,
-		ExplorerFmt: "https://tronscan.org/#/transaction/%s",
-		EndpointKey: RpcEndpointTron,
+		Alias:        "USDT・TRC20",
+		Network:      conf.Tron,
+		Crypto:       USDT,
+		Contract:     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // 占位，目前实际没使用
+		Decimal:      conf.UsdtTronDecimals,
+		AmountRange:  usdGeneralRange,
+		ExplorerFmt:  "https://tronscan.org/#/transaction/%s",
+		EndpointKey:  RpcEndpointTron,
+		AddrCaseSens: true,
 	},
 	UsdtErc20: {
 		Alias:       "USDT・ERC20",
@@ -89,14 +90,15 @@ var registry = map[TradeType]TradeTypeConf{
 		EndpointKey: RpcEndpointXlayer,
 	},
 	UsdtSolana: {
-		Alias:       "USDT・Solana",
-		Network:     conf.Solana,
-		Crypto:      USDT,
-		Contract:    conf.UsdtSolana,
-		Decimal:     conf.UsdtSolanaDecimals,
-		AmountRange: usdGeneralRange,
-		ExplorerFmt: "https://solscan.io/tx/%s",
-		EndpointKey: RpcEndpointSolana,
+		Alias:        "USDT・Solana",
+		Network:      conf.Solana,
+		Crypto:       USDT,
+		Contract:     conf.UsdtSolana,
+		Decimal:      conf.UsdtSolanaDecimals,
+		AmountRange:  usdGeneralRange,
+		ExplorerFmt:  "https://solscan.io/tx/%s",
+		EndpointKey:  RpcEndpointSolana,
+		AddrCaseSens: true,
 	},
 	UsdtPolygon: {
 		Alias:       "USDT・Polygon",
@@ -179,24 +181,26 @@ var registry = map[TradeType]TradeTypeConf{
 		EndpointKey: RpcEndpointBase,
 	},
 	UsdcTrc20: {
-		Alias:       "USDC・TRC20",
-		Network:     conf.Tron,
-		Crypto:      USDC,
-		Contract:    "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", // 占位，目前实际没使用
-		Decimal:     conf.UsdcTronDecimals,
-		AmountRange: usdGeneralRange,
-		ExplorerFmt: "https://tronscan.org/#/transaction/%s",
-		EndpointKey: RpcEndpointTron,
+		Alias:        "USDC・TRC20",
+		Network:      conf.Tron,
+		Crypto:       USDC,
+		Contract:     "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", // 占位，目前实际没使用
+		Decimal:      conf.UsdcTronDecimals,
+		AmountRange:  usdGeneralRange,
+		ExplorerFmt:  "https://tronscan.org/#/transaction/%s",
+		EndpointKey:  RpcEndpointTron,
+		AddrCaseSens: true,
 	},
 	UsdcSolana: {
-		Alias:       "USDC・Solana",
-		Network:     conf.Solana,
-		Crypto:      USDC,
-		Contract:    conf.UsdcSolana,
-		Decimal:     conf.UsdcSolanaDecimals,
-		AmountRange: usdGeneralRange,
-		ExplorerFmt: "https://solscan.io/tx/%s",
-		EndpointKey: RpcEndpointSolana,
+		Alias:        "USDC・Solana",
+		Network:      conf.Solana,
+		Crypto:       USDC,
+		Contract:     conf.UsdcSolana,
+		Decimal:      conf.UsdcSolanaDecimals,
+		AmountRange:  usdGeneralRange,
+		ExplorerFmt:  "https://solscan.io/tx/%s",
+		EndpointKey:  RpcEndpointSolana,
+		AddrCaseSens: true,
 	},
 	UsdcAptos: {
 		Alias:       "USDC・Aptos",
@@ -218,8 +222,9 @@ var registry = map[TradeType]TradeTypeConf{
 			MinAmount: decimal.NewFromFloat(0.1),
 			MaxAmount: decimal.NewFromFloat(1000000),
 		},
-		ExplorerFmt: "https://tronscan.org/#/transaction/%s",
-		EndpointKey: RpcEndpointTron,
+		ExplorerFmt:  "https://tronscan.org/#/transaction/%s",
+		EndpointKey:  RpcEndpointTron,
+		AddrCaseSens: true,
 	},
 	EthereumEth: {
 		Alias:   "Ethereum・Eth",
@@ -376,4 +381,13 @@ func GetSupportFiat() map[Fiat]struct{} {
 func GetSupportCrypto() map[Crypto]CoinId {
 
 	return supportCrypto
+}
+
+func AddrCaseSens(t TradeType) bool {
+	if c, ok := registry[t]; ok {
+
+		return c.AddrCaseSens
+	}
+
+	return true
 }

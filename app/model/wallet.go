@@ -15,7 +15,8 @@ type Wallet struct {
 	Id
 	Name        string `gorm:"column:name;type:varchar(32);not null;default:-';comment:名称" json:"name"`
 	Status      uint8  `gorm:"column:status;type:tinyint(1);not null;default:1;comment:地址状态" json:"status"`
-	Address     string `gorm:"column:address;type:varchar(64);not null;uniqueIndex:idx_address;comment:钱包地址" json:"address"`
+	Address     string `gorm:"column:address;type:varchar(64);not null;index;comment:钱包地址" json:"address"`
+	MatchAddr   string `gorm:"column:match_addr;type:varchar(64);not null;uniqueIndex:idx_address;comment:匹配地址" json:"match_addr"`
 	TradeType   string `gorm:"column:trade_type;type:varchar(20);not null;uniqueIndex:idx_address;comment:交易类型" json:"trade_type"`
 	OtherNotify uint8  `gorm:"column:other_notify;type:tinyint(1);not null;default:0;comment:其它通知" json:"other_notify"`
 	Remark      string `gorm:"column:remark;type:varchar(255);not null;default:'';comment:备注" json:"remark"`
@@ -97,7 +98,7 @@ func GetAvailableAddress(t TradeType) []string {
 
 	wallets := make([]string, 0, len(rows))
 	for _, w := range rows {
-		wallets = append(wallets, w.Address)
+		wallets = append(wallets, w.MatchAddr)
 	}
 
 	return wallets

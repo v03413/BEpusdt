@@ -54,6 +54,7 @@ func (Wallet) Add(ctx *gin.Context) {
 		Name:        strings.TrimSpace(req.Name),
 		Remark:      req.Remark,
 		Address:     strings.TrimSpace(req.Address),
+		MatchAddr:   strings.TrimSpace(req.Address),
 		TradeType:   req.TradeType,
 		Status:      model.WaStatusEnable,
 		OtherNotify: model.WaOtherDisable,
@@ -63,6 +64,11 @@ func (Wallet) Add(ctx *gin.Context) {
 		base.BadRequest(ctx, "钱包地址格式不合法，请检查")
 
 		return
+	}
+
+	// 非大小写敏感的地址，统一转为小写存储
+	if !model.AddrCaseSens(model.TradeType(wallet.TradeType)) {
+		wallet.MatchAddr = strings.ToLower(wallet.MatchAddr)
 	}
 
 	if err := model.Db.Create(&wallet).Error; err != nil {
@@ -133,6 +139,7 @@ func (Wallet) Mod(ctx *gin.Context) {
 	}
 	if req.Address != nil {
 		w.Address = strings.TrimSpace(*req.Address)
+		w.MatchAddr = strings.TrimSpace(*req.Address)
 	}
 	if req.TradeType != nil {
 		if !model.IsSupportedTradeType(model.TradeType(*req.TradeType)) {
@@ -154,6 +161,11 @@ func (Wallet) Mod(ctx *gin.Context) {
 		base.BadRequest(ctx, "钱包地址格式不合法，请检查")
 
 		return
+	}
+
+	// 非大小写敏感的地址，统一转为小写存储
+	if !model.AddrCaseSens(model.TradeType(w.TradeType)) {
+		w.MatchAddr = strings.ToLower(w.Address)
 	}
 
 	if err := model.Db.Save(&w).Error; err != nil {
