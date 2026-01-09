@@ -32,12 +32,10 @@ var usdtTrc20ContractAddress = []byte{0x41, 0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 
 var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 0xb2, 0xc8, 0x7f, 0xb7, 0xff, 0xa8, 0xbc, 0xfa, 0xde, 0x38, 0xea, 0xac, 0x1a, 0xbe}
 
 type tron struct {
-	blockConfirmedOffset int64
-	blockInitStartOffset int64
-	lastBlockNum         int64
-	blockScanQueue       *chanx.UnboundedChan[int64]
-	conn                 map[string]*grpc.ClientConn
-	connMu               sync.RWMutex
+	lastBlockNum   int64
+	blockScanQueue *chanx.UnboundedChan[int64]
+	conn           map[string]*grpc.ClientConn
+	connMu         sync.RWMutex
 }
 
 var tr tron
@@ -45,21 +43,20 @@ var tr tron
 func init() {
 	tr = newTron()
 	Register(Task{Duration: time.Second, Callback: tr.blockDispatch})
-	Register(Task{Duration: time.Second * 3, Callback: tr.blockRoll})
+	Register(Task{Duration: time.Second * 3, Callback: tr.syncBlocksForward})
 	Register(Task{Duration: time.Second * 5, Callback: tr.tradeConfirmHandle})
 }
 
 func newTron() tron {
 	return tron{
-		blockConfirmedOffset: 30,   // 区块确认偏移量
-		blockInitStartOffset: -400, // 大概为过去20分钟的区块高度
-		lastBlockNum:         0,
-		blockScanQueue:       chanx.NewUnboundedChan[int64](context.Background(), 30),
-		conn:                 make(map[string]*grpc.ClientConn),
+		lastBlockNum:   0,
+		blockScanQueue: chanx.NewUnboundedChan[int64](context.Background(), 30),
+		conn:           make(map[string]*grpc.ClientConn),
 	}
 }
 
-func (t *tron) blockRoll(context.Context) {
+// syncBlocksForward 正向同步区块
+func (t *tron) syncBlocksForward(context.Context) {
 	if t.rollBreak() {
 
 		return
@@ -86,7 +83,7 @@ func (t *tron) blockRoll(context.Context) {
 
 	// 区块高度变化过大，强制丢块重扫
 	if now-t.lastBlockNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
-		t.blockInitOffset(now)
+		t.syncBlocksBackward(now)
 		t.lastBlockNum = now - 1
 	}
 
@@ -103,6 +100,40 @@ func (t *tron) blockRoll(context.Context) {
 	}
 
 	t.lastBlockNum = now
+}
+
+// syncBlocksBackward 反向同步区块，针对程序启动前就已经存在待支付订单时，补齐之前的区块数据，自适应偏移数量
+func (t *tron) syncBlocksBackward(now int64) {
+	var o model.Order
+	trade := model.GetNetworkTrades(conf.Tron)
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
+	if o.ID == 0 {
+
+		return
+	}
+
+	// 波场出块速度大概3秒一个，同时再冗余5个区块
+	num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) / 3 // 计算需要反向扫描的区块数量
+	start := now - num - 5                                         // 计算反向扫描的起始区块高度
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for b := now; b >= start; {
+			if t.rollBreak() {
+
+				return
+			}
+
+			for i := 0; i < 10 && b >= start; i++ {
+				t.blockScanQueue.In <- b
+				b--
+			}
+
+			<-ticker.C
+		}
+	}()
 }
 
 func (t *tron) blockDispatch(context.Context) {
@@ -305,33 +336,6 @@ func (t *tron) blockParse(n any) {
 	}
 
 	log.Task.Info(fmt.Sprintf("区块扫描完成(Tron): %d 成功率：%s", num, conf.GetSuccessRate(conf.Tron)))
-}
-
-func (t *tron) blockInitOffset(now int64) {
-	if now == 0 || t.lastBlockNum != 0 {
-
-		return
-	}
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		endOffset := now + t.blockInitStartOffset
-		defer ticker.Stop()
-
-		for num := now; num >= endOffset; {
-			if t.rollBreak() {
-
-				return
-			}
-
-			for i := 0; i < 10 && num >= endOffset; i++ {
-				t.blockScanQueue.In <- num
-				num--
-			}
-
-			<-ticker.C
-		}
-	}()
 }
 
 func (t *tron) parseTrc20ContractTransfer(data []byte) (string, *big.Int) {
