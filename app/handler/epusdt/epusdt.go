@@ -40,7 +40,7 @@ type cancelReq struct {
 func (Epusdt) SignVerify(ctx *gin.Context) {
 	rawData, err := ctx.GetRawData()
 	if err != nil {
-		ctx.JSON(400, gin.H{"error": fmt.Sprintf("json 数据读取错误 %s", err.Error())})
+		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据读取错误 %s", err.Error())))
 		ctx.Abort()
 
 		return
@@ -48,7 +48,7 @@ func (Epusdt) SignVerify(ctx *gin.Context) {
 
 	m := make(map[string]any)
 	if err = json.Unmarshal(rawData, &m); err != nil {
-		ctx.JSON(400, gin.H{"error": fmt.Sprintf("json 数据解析错误 %s", err.Error())})
+		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据解析错误 %s", err.Error())))
 		ctx.Abort()
 
 		return
@@ -56,14 +56,14 @@ func (Epusdt) SignVerify(ctx *gin.Context) {
 
 	sign, ok := m["signature"]
 	if !ok {
-		ctx.JSON(400, gin.H{"error": "签名丢失"})
+		ctx.JSON(200, respFailJson("签名丢失"))
 		ctx.Abort()
 
 		return
 	}
 
 	if utils.EpusdtSign(m, model.AuthToken()) != sign {
-		ctx.JSON(400, gin.H{"error": "签名错误"})
+		ctx.JSON(200, respFailJson("签名错误"))
 		ctx.Abort()
 
 		return
@@ -76,7 +76,7 @@ func (Epusdt) SignVerify(ctx *gin.Context) {
 func (Epusdt) CreateTransaction(ctx *gin.Context) {
 	var req createReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": fmt.Sprintf("请求参数错误：%s", err.Error())})
+		ctx.JSON(200, respFailJson(fmt.Sprintf("请求参数错误：%s", err.Error())))
 
 		return
 	}
@@ -113,6 +113,8 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		return
 	}
 
+	log.Info(fmt.Sprintf("订单创建成功 商户订单：%s", req.OrderID))
+
 	// 返回响应数据
 	ctx.JSON(200, respSuccJson(gin.H{
 		"fiat":            order.Fiat,
@@ -125,13 +127,12 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
 		"payment_url":     model.CheckoutCounter(host, order.TradeId),
 	}))
-	log.Info(fmt.Sprintf("订单创建成功 商户订单：%s", req.OrderID))
 }
 
 func (Epusdt) CancelTransaction(ctx *gin.Context) {
 	var req cancelReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": fmt.Sprintf("请求参数错误：%s", err.Error())})
+		ctx.JSON(200, respFailJson(fmt.Sprintf("请求参数错误：%s", err.Error())))
 
 		return
 	}

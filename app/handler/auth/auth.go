@@ -270,16 +270,17 @@ func (Auth) Menu(ctx *gin.Context) {
 			},
 		},
 		{
-			Id:   "06",
-			Path: "/github-api-doc",
-			Name: "github-api-doc",
+			Id:        "06",
+			Path:      "/github-api-doc",
+			Name:      "github-api-doc",
+			Component: "about/doc",
 			Meta: meta{
 				Title:     "github-api-doc",
 				Hide:      false,
 				Disable:   false,
 				KeepAlive: true,
 				Affix:     false,
-				Link:      "https://github.com/v03413/BEpusdt/blob/main/docs/api.md",
+				Link:      "https://github.com/v03413/BEpusdt/blob/main/docs/api/api.md",
 				Iframe:    false,
 				IsFull:    false,
 				Roles:     []string{"admin"},
@@ -288,7 +289,6 @@ func (Auth) Menu(ctx *gin.Context) {
 				Sort:      1,
 				Type:      2,
 			},
-			Children: nil,
 		},
 	}
 

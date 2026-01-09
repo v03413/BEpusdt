@@ -75,11 +75,11 @@ export default defineConfig(({ mode }) => {
           drop_debugger: true // 生产环境去除 debugger
         },
         format: {
-          comments: false // 删除注释
+          comments: true // 删除注释
         }
       },
       assetsInlineLimit: 50 * 1024, // 打包内联阈值100kb
-      chunkSizeWarningLimit: 50000, // 规定触发警告的 chunk 大小, 这里设置阈值为50kb, 消除打包大小超过500kb警告
+      chunkSizeWarningLimit: 10000, // 规定触发警告的 chunk 大小, 这里设置阈值为50kb, 消除打包大小超过500kb警告
       // 静态资源打包到dist下的不同目录,将文件类型css、js、jpg等文件分开存储
       rollupOptions: {
         output: {
