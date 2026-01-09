@@ -9,6 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-telegram/bot v1.17.0
+	github.com/joho/godotenv v1.5.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/shopspring/decimal v1.4.0

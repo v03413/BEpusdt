@@ -1,6 +1,7 @@
 tmp
 .air.toml
 .DS_Store
+.env
 .idea
 conf.toml
 # Added by goreleaser init:
