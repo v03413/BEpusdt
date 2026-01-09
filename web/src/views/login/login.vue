@@ -4,7 +4,7 @@
       <LoginBanner v-if="isPc" />
       <div class="login_box">
         <div class="login_title">Welcome Back</div>
-        <div class="login_title_desc">一款更好用的个人 USDT/USDC 收款网关，让您的收款更加便捷！</div>
+        <div class="login_title_desc">一款更好用的个人加密货币收款网关，助力出海需求！</div>
         <LoginForm />
         <!-- <div class="author">by 兔子先森</div> -->
       </div>

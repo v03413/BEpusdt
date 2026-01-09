@@ -55,7 +55,7 @@
                 <span>商户订单</span>
               </div>
               <div class="detail-value">
-                <a-typography-text :copyable="{ text: detailData.order_id }">{{ detailData.order_id }}</a-typography-text>
+                <a-typography-text copyable>{{ detailData.order_id }}</a-typography-text>
               </div>
             </div>
           </a-col>
@@ -66,7 +66,7 @@
                 <span>交易编号</span>
               </div>
               <div class="detail-value">
-                <a-typography-text :copyable="{ text: detailData.trade_id }">{{ detailData.trade_id }}</a-typography-text>
+                <a-typography-text copyable>{{ detailData.trade_id }}</a-typography-text>
               </div>
             </div>
           </a-col>
