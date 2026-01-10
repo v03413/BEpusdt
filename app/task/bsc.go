@@ -15,7 +15,6 @@ func bscInit() {
 	bsc := evm{
 		Network: conf.Bsc,
 		Block: block{
-			InitStartOffset: -400,
 			ConfirmedOffset: 15,
 		},
 		Native: evmNative{
@@ -28,6 +27,6 @@ func bscInit() {
 	}
 
 	Register(Task{Callback: bsc.blockDispatch})
-	Register(Task{Callback: bsc.blockRoll, Duration: time.Second * 5})
+	Register(Task{Callback: bsc.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: bsc.tradeConfirmHandle, Duration: time.Second * 5})
 }

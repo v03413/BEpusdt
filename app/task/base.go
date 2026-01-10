@@ -14,7 +14,6 @@ func baseInit() {
 	base := evm{
 		Network: conf.Base,
 		Block: block{
-			InitStartOffset: -600,
 			ConfirmedOffset: 40,
 		},
 		Client:         utils.NewHttpClient(),
@@ -22,6 +21,6 @@ func baseInit() {
 	}
 
 	Register(Task{Callback: base.blockDispatch})
-	Register(Task{Callback: base.blockRoll, Duration: time.Second * 5})
+	Register(Task{Callback: base.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: base.tradeConfirmHandle, Duration: time.Second * 5})
 }

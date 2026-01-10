@@ -15,7 +15,6 @@ func ethInit() {
 	eth := evm{
 		Network: conf.Ethereum,
 		Block: block{
-			InitStartOffset: -100,
 			ConfirmedOffset: 12,
 		},
 		Native: evmNative{
@@ -28,6 +27,6 @@ func ethInit() {
 	}
 
 	Register(Task{Callback: eth.blockDispatch})
-	Register(Task{Callback: eth.blockRoll, Duration: time.Second * 12})
+	Register(Task{Callback: eth.syncBlocksForward, Duration: time.Second * 12})
 	Register(Task{Callback: eth.tradeConfirmHandle, Duration: time.Second * 5})
 }

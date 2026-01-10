@@ -40,7 +40,7 @@ func (Order) List(ctx *gin.Context) {
 
 	type order struct {
 		model.Order
-		Wallet model.Wallet `gorm:"foreignKey:Address,TradeType;references:Address,TradeType" json:"wallet"`
+		Wallet model.Wallet `gorm:"foreignKey:MatchAddr,TradeType;references:Address,TradeType" json:"wallet"`
 	}
 
 	var data []order

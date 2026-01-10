@@ -32,7 +32,6 @@ const (
 var chainBlockNum sync.Map
 
 type block struct {
-	InitStartOffset int64 // 首次偏移量，第一次启动时，区块高度需要叠加此值，设置为负值可解决部分已创建但未超时(未扫描)的订单问题
 	RollDelayOffset int64 // 延迟偏移量，某些RPC节点如果不延迟，会报错 block is out of range，目前发现 https://rpc.xlayer.tech/ 存在此问题
 	ConfirmedOffset int64 // 确认偏移量，开启交易确认后，区块高度需要减去此值认为交易已确认
 }
@@ -48,6 +47,7 @@ type evm struct {
 	Block          block
 	Native         evmNative
 	Client         *http.Client
+	AvgBlockTime   int64 // 平均出块时间，单位秒；一个大概值，用于计算首次启动时需要回溯的区块数量，尽量准确设置，默认1秒一个区块
 	blockScanQueue *chanx.UnboundedChan[evmBlock]
 }
 
@@ -56,8 +56,8 @@ type evmBlock struct {
 	To   int64
 }
 
-func (e *evm) blockRoll(ctx context.Context) {
-	if rollBreak(e.Network) {
+func (e *evm) syncBlocksForward(ctx context.Context) {
+	if syncBreak(e.Network) {
 
 		return
 	}
@@ -98,10 +98,13 @@ func (e *evm) blockRoll(ctx context.Context) {
 	if v, ok := chainBlockNum.Load(e.Network); ok {
 
 		lastBlockNumber = v.(int64)
+	} else {
+		e.syncBlocksBackward(now) // 不存在，说明是第一次启动
 	}
 
 	if now-lastBlockNumber > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
-		lastBlockNumber = e.blockInitOffset(now, e.Block.InitStartOffset) - 1
+
+		lastBlockNumber = now - 1
 	}
 
 	chainBlockNum.Store(e.Network, now)
@@ -120,24 +123,42 @@ func (e *evm) blockRoll(ctx context.Context) {
 	}
 }
 
-func (e *evm) blockInitOffset(now, offset int64) int64 {
+func (e *evm) syncBlocksBackward(now int64) {
+	if e.AvgBlockTime <= 0 { // 未设置平均出块时间，默认1秒一个
+		e.AvgBlockTime = 1
+	}
+
+	var o model.Order
+	trade := model.GetNetworkTrades(model.Network(e.Network))
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
+	if o.ID == 0 {
+
+		return
+	}
+
+	sub := ((time.Now().Unix() - o.CreatedAt.Time().Unix()) / e.AvgBlockTime) + 30 //计算需要回溯的区块数量，同时冗余30个区块
+	start := now - sub
+
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
-		for b := now; b > now+offset; b -= blockParseMaxNum {
-			if rollBreak(e.Network) {
+		for from := start; from <= now; from += blockParseMaxNum {
+			if syncBreak(e.Network) {
 
 				return
 			}
 
-			e.blockScanQueue.In <- evmBlock{From: b - blockParseMaxNum + 1, To: b}
+			to := from + blockParseMaxNum - 1
+			if to > now {
+				to = now
+			}
+
+			e.blockScanQueue.In <- evmBlock{From: from, To: to}
 
 			<-ticker.C
 		}
 	}()
-
-	return now
 }
 
 func (e *evm) blockDispatch(ctx context.Context) {
@@ -209,7 +230,7 @@ func (e *evm) getBlockByNumber(a any) {
 	}
 
 	nativeTransfers := make([]transfer, 0)
-	timestamp := make(map[string]time.Time)
+	blockTimestamp := make(map[string]time.Time)
 	for _, itm := range gjson.ParseBytes(body).Array() {
 		if itm.Get("error").Exists() {
 			conf.RecordFailure(e.Network)
@@ -219,10 +240,10 @@ func (e *evm) getBlockByNumber(a any) {
 			return
 		}
 
-		timestamp[itm.Get("result.number").String()] = time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
+		timestamp := utils.HexStr2Int(itm.Get("result.blockTimestamp").String()).Int64()
+		blockTime := time.Unix(timestamp, 0)
 		blockNumHex := itm.Get("result.number").String()
-		blockTime := time.Unix(utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64(), 0)
-		timestamp[blockNumHex] = blockTime
+		blockTimestamp[blockNumHex] = blockTime
 
 		var array = itm.Get("result.transactions").Array()
 		if e.Native.Parse && len(array) != 0 {
@@ -231,7 +252,7 @@ func (e *evm) getBlockByNumber(a any) {
 		}
 	}
 
-	transfers, err := e.parseEventTransfer(b, timestamp)
+	transfers, err := e.parseEventTransfer(b, blockTimestamp)
 	if err != nil {
 		conf.RecordFailure(e.Network)
 		e.blockScanQueue.In <- b
@@ -423,7 +444,7 @@ func (e *evm) rpcEndpoint() string {
 	return model.Endpoint(model.Network(e.Network))
 }
 
-func rollBreak(network string) bool {
+func syncBreak(network string) bool {
 	token := model.GetNetworkTrades(model.Network(network))
 	if len(token) == 0 {
 

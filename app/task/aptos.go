@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
@@ -23,10 +24,10 @@ import (
 type aptos struct {
 	versionChunkSize       int64
 	versionConfirmedOffset int64
-	versionInitStartOffset int64
 	lastVersion            int64
 	versionQueue           *chanx.UnboundedChan[version]
 	client                 *http.Client
+	earliestBlockTs        atomic.Int64
 }
 
 type version struct {
@@ -51,7 +52,7 @@ type aptAmount struct {
 func init() {
 	apt = newAptos()
 	Register(Task{Callback: apt.versionDispatch})
-	Register(Task{Callback: apt.versionRoll, Duration: time.Second * 3})
+	Register(Task{Callback: apt.syncVersionForward, Duration: time.Second * 3})
 	Register(Task{Callback: apt.tradeConfirmHandle, Duration: time.Second * 5})
 }
 
@@ -59,15 +60,15 @@ func newAptos() aptos {
 	return aptos{
 		versionChunkSize:       100, // 目前好像最大就只能100
 		versionConfirmedOffset: 1000,
-		versionInitStartOffset: -100 * 500,
 		lastVersion:            0,
 		versionQueue:           chanx.NewUnboundedChan[version](context.Background(), 30),
 		client:                 utils.NewHttpClient(),
+		earliestBlockTs:        atomic.Int64{},
 	}
 }
 
-func (a *aptos) versionRoll(ctx context.Context) {
-	if rollBreak(conf.Aptos) {
+func (a *aptos) syncVersionForward(ctx context.Context) {
+	if syncBreak(conf.Aptos) {
 
 		return
 	}
@@ -75,7 +76,7 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"/v1", nil)
 	resp, err := a.client.Do(req)
 	if err != nil {
-		log.Task.Warn("aptos versionRoll Error sending request:", err)
+		log.Task.Warn("aptos syncVersionForward Error sending request:", err)
 
 		return
 	}
@@ -83,36 +84,34 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Task.Warn("aptos versionRoll Error response status code:", resp.StatusCode)
+		log.Task.Warn("aptos syncVersionForward Error response status code:", resp.StatusCode)
 
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Task.Warn("aptos versionRoll Error reading response body:", err)
+		log.Task.Warn("aptos syncVersionForward Error reading response body:", err)
 
 		return
 	}
 
 	now := gjson.GetBytes(body, "ledger_version").Int()
 	if now <= 0 {
-		log.Task.Warn("versionRoll Error: invalid ledger_version:", now)
+		log.Task.Warn("syncVersionForward Error: invalid ledger_version:", now)
 
 		return
 	}
 
+	if a.lastVersion == 0 {
+		a.syncVersionBackward(ctx, now)
+	}
+
 	if now-a.lastVersion > 10000 {
-		a.versionInitOffset(now)
 		a.lastVersion = now - a.versionChunkSize
 	}
 
 	var sub = now - a.lastVersion
-	if now == 0 {
-
-		return
-	}
-
 	if sub <= a.versionChunkSize {
 		a.versionQueue.In <- version{Start: a.lastVersion, Limit: sub}
 	} else {
@@ -132,6 +131,45 @@ func (a *aptos) versionRoll(ctx context.Context) {
 	}
 
 	a.lastVersion = now
+}
+
+func (a *aptos) syncVersionBackward(ctx context.Context, now int64) {
+	var o model.Order
+	trade := model.GetNetworkTrades(conf.Aptos)
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)",
+		model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
+	if o.ID == 0 {
+		return
+	}
+
+	start := o.CreatedAt.Time().Unix()
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if syncBreak(conf.Aptos) {
+					return
+				}
+
+				if a.earliestBlockTs.Load() != 0 && a.earliestBlockTs.Load() < start {
+					return
+				}
+
+				a.versionQueue.In <- version{
+					Start: now - a.versionChunkSize,
+					Limit: a.versionChunkSize,
+				}
+
+				now = now - a.versionChunkSize
+			}
+		}
+	}()
 }
 
 func (a *aptos) versionDispatch(ctx context.Context) {
@@ -159,30 +197,6 @@ func (a *aptos) versionDispatch(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func (a *aptos) versionInitOffset(now int64) {
-	if now == 0 || a.lastVersion != 0 {
-
-		return
-	}
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		var end = now + a.versionInitStartOffset
-		for s := now - a.versionChunkSize; s >= end; s = s - a.versionChunkSize {
-			if rollBreak(conf.Aptos) {
-
-				return
-			}
-
-			a.versionQueue.In <- version{Start: s, Limit: a.versionChunkSize}
-
-			<-ticker.C
-		}
-	}()
 }
 
 // 由于 aptos 网络特性，交易数据中不会显示存在交易转账 from => to 的对应关系，
@@ -231,6 +245,8 @@ func (a *aptos) versionParse(n any) {
 	for _, trans := range gjson.ParseBytes(body).Array() {
 		tsNano := trans.Get("timestamp").Int() * 1000
 		timestamp := time.Unix(tsNano/1e9, tsNano%1e9)
+		a.recordEarliestBlockTs(timestamp.Unix())
+
 		ver := trans.Get("version").Int()
 		hash := trans.Get("hash").String()
 		addrOwner := make(map[string]string)                                         // [address] => owner address
@@ -440,4 +456,16 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 	}
 
 	wg.Wait()
+}
+
+func (a *aptos) recordEarliestBlockTs(unix int64) {
+	for {
+		current := a.earliestBlockTs.Load()
+		if current != 0 && unix >= current {
+			return
+		}
+		if a.earliestBlockTs.CompareAndSwap(current, unix) {
+			return
+		}
+	}
 }
