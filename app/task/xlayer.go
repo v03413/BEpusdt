@@ -14,7 +14,6 @@ func xlayerInit() {
 	xlayer := evm{
 		Network: conf.Xlayer,
 		Block: block{
-			InitStartOffset: -600,
 			RollDelayOffset: 3,
 			ConfirmedOffset: 12,
 		},
@@ -23,6 +22,6 @@ func xlayerInit() {
 	}
 
 	Register(Task{Callback: xlayer.blockDispatch})
-	Register(Task{Callback: xlayer.blockRoll, Duration: time.Second * 3})
+	Register(Task{Callback: xlayer.syncBlocksForward, Duration: time.Second * 3})
 	Register(Task{Callback: xlayer.tradeConfirmHandle, Duration: time.Second * 5})
 }

@@ -14,7 +14,6 @@ func arbitrumInit() {
 	arb := evm{
 		Network: conf.Arbitrum,
 		Block: block{
-			InitStartOffset: -600,
 			ConfirmedOffset: 40,
 		},
 		Client:         utils.NewHttpClient(),
@@ -22,6 +21,6 @@ func arbitrumInit() {
 	}
 
 	Register(Task{Callback: arb.blockDispatch})
-	Register(Task{Callback: arb.blockRoll, Duration: time.Second * 5})
+	Register(Task{Callback: arb.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: arb.tradeConfirmHandle, Duration: time.Second * 5})
 }
