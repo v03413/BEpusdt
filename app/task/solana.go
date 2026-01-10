@@ -29,7 +29,6 @@ import (
 
 type solana struct {
 	slotConfirmedOffset int64
-	slotInitStartOffset int64
 	lastSlotNum         int64
 	slotQueue           *chanx.UnboundedChan[int64]
 	client              *http.Client
@@ -45,32 +44,31 @@ var sol solana
 func init() {
 	sol = newSolana()
 	Register(Task{Callback: sol.slotDispatch})
-	Register(Task{Callback: sol.slotRoll, Duration: time.Second * 5})
+	Register(Task{Callback: sol.syncSlotForward, Duration: time.Second * 5})
 	Register(Task{Callback: sol.tradeConfirmHandle, Duration: time.Second * 5})
 }
 
 func newSolana() solana {
 	return solana{
 		slotConfirmedOffset: 60,
-		slotInitStartOffset: -600,
 		lastSlotNum:         0,
 		slotQueue:           chanx.NewUnboundedChan[int64](context.Background(), 30),
 		client:              utils.NewHttpClient(),
 	}
 }
 
-func (s *solana) slotRoll(ctx context.Context) {
-	if rollBreak(conf.Solana) {
+func (s *solana) syncSlotForward(ctx context.Context) {
+	if syncBreak(conf.Solana) {
 
 		return
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer([]byte(`{"jsonrpc":"2.0","id":1,"method":"getSlot"}`)))
+	req, _ := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer([]byte(`{"jsonrpc":"2.0","id":1,"method":"getSlot"}`)))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		log.Task.Warn("slotRoll Error sending request:", err)
+		log.Task.Warn("syncSlotForward Error sending request:", err)
 
 		return
 	}
@@ -78,28 +76,31 @@ func (s *solana) slotRoll(ctx context.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Task.Warn("slotRoll Error response status code:", resp.StatusCode)
+		log.Task.Warn("syncSlotForward Error response status code:", resp.StatusCode)
 
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Task.Warn("slotRoll Error reading response body:", err)
+		log.Task.Warn("syncSlotForward Error reading response body:", err)
 
 		return
 	}
 
 	now := gjson.GetBytes(body, "result").Int()
 	if now <= 0 {
-		log.Task.Warn("slotRoll Error: invalid slot number:", now)
+		log.Task.Warn("syncSlotForward Error: invalid slot number:", now)
 
 		return
 	}
 
+	if s.lastSlotNum == 0 { // 首次启动，往后追溯
+		s.syncSlotBackward(now)
+	}
+
 	if now-s.lastSlotNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) { // 区块高度变化过大，强制丢块重扫
 		s.lastSlotNum = now
-		s.slotInitOffset(now)
 	}
 
 	if now == s.lastSlotNum { // 区块高度没有变化
@@ -114,6 +115,40 @@ func (s *solana) slotRoll(ctx context.Context) {
 	}
 
 	s.lastSlotNum = now
+}
+
+func (s *solana) syncSlotBackward(now int64) {
+	if now == 0 || s.lastSlotNum != 0 {
+
+		return
+	}
+
+	var o model.Order
+	trade := model.GetNetworkTrades(conf.Solana)
+	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
+	if o.ID == 0 {
+
+		return
+	}
+
+	// Solana 大概1秒3个区块（大概值，实际存在波动）
+	num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) * 3 // 计算需要反向扫描的区块数量
+
+	go func() {
+		ticker := time.NewTicker(time.Millisecond * 125)
+		defer ticker.Stop()
+
+		for i := int64(0); i < num; i++ {
+			if syncBreak(conf.Solana) {
+
+				return
+			}
+
+			s.slotQueue.In <- now - i
+
+			<-ticker.C
+		}
+	}()
 }
 
 func (s *solana) slotDispatch(ctx context.Context) {
@@ -141,29 +176,6 @@ func (s *solana) slotDispatch(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func (s *solana) slotInitOffset(now int64) {
-	if now == 0 || s.lastSlotNum != 0 {
-
-		return
-	}
-
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 300)
-		defer ticker.Stop()
-
-		for num := now; num >= now+s.slotInitStartOffset; num-- {
-			if rollBreak(conf.Solana) {
-
-				return
-			}
-
-			s.slotQueue.In <- num
-
-			<-ticker.C
-		}
-	}()
 }
 
 func (s *solana) slotParse(n any) {

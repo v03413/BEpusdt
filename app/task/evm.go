@@ -57,7 +57,7 @@ type evmBlock struct {
 }
 
 func (e *evm) syncBlocksForward(ctx context.Context) {
-	if rollBreak(e.Network) {
+	if syncBreak(e.Network) {
 
 		return
 	}
@@ -144,7 +144,7 @@ func (e *evm) syncBlocksBackward(now int64) {
 		defer ticker.Stop()
 
 		for from := start; from <= now; from += blockParseMaxNum {
-			if rollBreak(e.Network) {
+			if syncBreak(e.Network) {
 
 				return
 			}
@@ -444,7 +444,7 @@ func (e *evm) rpcEndpoint() string {
 	return model.Endpoint(model.Network(e.Network))
 }
 
-func rollBreak(network string) bool {
+func syncBreak(network string) bool {
 	token := model.GetNetworkTrades(model.Network(network))
 	if len(token) == 0 {
 

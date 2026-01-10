@@ -57,7 +57,7 @@ func newTron() tron {
 
 // syncBlocksForward 正向同步区块
 func (t *tron) syncBlocksForward(context.Context) {
-	if t.rollBreak() {
+	if t.syncBreak() {
 
 		return
 	}
@@ -121,7 +121,7 @@ func (t *tron) syncBlocksBackward(now int64) {
 		defer ticker.Stop()
 
 		for b := now; b >= start; {
-			if t.rollBreak() {
+			if t.syncBreak() {
 
 				return
 			}
@@ -459,7 +459,7 @@ func (t *tron) base58CheckEncode(input []byte) string {
 	return base58.Encode(input)
 }
 
-func (t *tron) rollBreak() bool {
+func (t *tron) syncBreak() bool {
 	var count int64 = 0
 	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
