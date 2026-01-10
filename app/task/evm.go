@@ -240,7 +240,7 @@ func (e *evm) getBlockByNumber(a any) {
 			return
 		}
 
-		timestamp := utils.HexStr2Int(itm.Get("result.blockTimestamp").String()).Int64()
+		timestamp := utils.HexStr2Int(itm.Get("result.timestamp").String()).Int64()
 		blockTime := time.Unix(timestamp, 0)
 		blockNumHex := itm.Get("result.number").String()
 		blockTimestamp[blockNumHex] = blockTime
