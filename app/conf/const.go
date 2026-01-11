@@ -24,6 +24,7 @@ const (
 	UsdtErc20    = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 	UsdtBep20    = "0x55d398326f99059ff775485246999027b3197955"
 	UsdtXlayer   = "0x1e4a5963abfd975d8c9021ce480b42188849d41d"
+	UsdtPlasma   = "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb"
 	UsdtPolygon  = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f"
 	UsdtArbitrum = "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
 	UsdtSolana   = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
@@ -44,6 +45,7 @@ const (
 	UsdtBscDecimals      = -18 // USDT BEP20小数位数
 	UsdtEthDecimals      = -6  // USDT ERC20小数位数
 	UsdtXlayerDecimals   = -6  // USDT Xlayer小数位数
+	UsdtPlasmaDecimals   = -6  // USDT Plasma小数位数
 	UsdtPolygonDecimals  = -6  // USDT Polygon小数位数
 	UsdtArbitrumDecimals = -6  // USDT Arbitrum小数位数
 	UsdtAptosDecimals    = -6  // USDT Aptos小数位数
