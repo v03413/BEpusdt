@@ -289,16 +289,46 @@
             const element = document.getElementById(elementId);
             const text = element.textContent;
 
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = '✓ 已复制';
-                button.classList.add('copied');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = '✓ 已复制';
+                    button.classList.add('copied');
 
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            });
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制');
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = button.textContent;
+                    button.textContent = '✓ 已复制';
+                    button.classList.add('copied');
+
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fallback复制失败:', err);
+                    alert('复制失败，请手动复制');
+                }
+                document.body.removeChild(textArea);
+            }
         }
 
         function copyAllInfo() {
@@ -324,9 +354,32 @@
 ═══════════════════════════════════════════
             `.trim();
 
-            navigator.clipboard.writeText(allInfo).then(() => {
-                alert('✓ 所有信息已复制到剪贴板！');
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(allInfo).then(() => {
+                    alert('✓ 所有信息已复制到剪贴板！');
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制');
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = allInfo;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('✓ 所有信息已复制到剪贴板！');
+                } catch (err) {
+                    console.error('Fallback复制失败:', err);
+                    alert('复制失败，请手动复制');
+                }
+                document.body.removeChild(textArea);
+            }
         }
 
         function confirmAndLogin() {
