@@ -5,6 +5,11 @@ After=network.target nss-lookup.target
 
 [Service]
 Type = simple
+LimitAS=infinity
+LimitRSS=infinity
+LimitCORE=infinity
+LimitNOFILE=999999
+WorkingDirectory=/var/lib/bepusdt
 ExecStart=/usr/local/bin/bepusdt start
 Restart=on-failure
 
