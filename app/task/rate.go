@@ -19,7 +19,7 @@ type Rate struct {
 
 func (Rate) Sync(ctx context.Context) {
 	var lastAt model.Rate
-	model.Db.Model(&lastAt).Order("id desc").Find(&lastAt)
+	model.Db.Model(&lastAt).Order("id desc").Limit(1).Find(&lastAt)
 	var interval = cast.ToInt64(model.GetC(model.RateSyncInterval))
 	if lastAt.ID != 0 && time.Now().Unix()-lastAt.CreatedAt.Time().Unix() < interval {
 
