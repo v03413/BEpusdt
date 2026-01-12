@@ -203,7 +203,7 @@ func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType)
 		lock[order.Address+order.Amount] = true
 	}
 
-	var atom, precision = getAtomicity(t)
+	var atom, precision = GetAtomicity(t)
 	if rate.LessThanOrEqual(decimal.Zero) || precision <= 0 {
 
 		return "", "", errors.New(fmt.Sprintf("[%v - %v]原子颗粒度计算异常，联系管理员处理！", atom, precision))
@@ -240,7 +240,7 @@ func CalcTradeExpiredAt(sec int64) time.Time {
 	return time.Now().Add(time.Duration(cast.ToUint64(GetK(PaymentTimeout))) * time.Second)
 }
 
-func getAtomicity(t TradeType) (decimal.Decimal, int32) {
+func GetAtomicity(t TradeType) (decimal.Decimal, int32) {
 	confKey, ok := GetTradeAtomKey(t)
 	if !ok {
 		confKey = "atom_usdt"

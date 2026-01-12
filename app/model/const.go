@@ -7,6 +7,7 @@ type Fiat string
 type CoinId string
 type Crypto string
 type TradeType string
+type MatchMode string
 type Network string
 type Range struct {
 	MinAmount decimal.Decimal
@@ -46,6 +47,7 @@ const (
 	PaymentMaxAmount  ConfKey = "payment_max_amount"
 	PaymentTimeout    ConfKey = "payment_timeout"     // 订单支付超时时间，单位秒
 	PaymentStaticPath ConfKey = "payment_static_path" // 收银台静态资源路径
+	PaymentMatchMode  ConfKey = "payment_match_mode"  // 订单金额匹配模式
 
 	RpcEndpointPlasma         ConfKey = "rpc_endpoint_plasma"            // Plasma RPC节点
 	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点
@@ -81,6 +83,11 @@ const (
 	TRX  Crypto = "TRX"
 	BNB  Crypto = "BNB"
 	ETH  Crypto = "ETH"
+)
+const (
+	Classic   MatchMode = "classic"    // 经典模式，精确匹配
+	HasPrefix MatchMode = "has_prefix" // 前缀匹配，允许多付
+	RoundOff  MatchMode = "round_off"  // 数值修约，四舍五入，允许容错
 )
 
 // USD 交易类型常见扫描范围

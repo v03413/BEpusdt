@@ -140,6 +140,7 @@ func ConfInit() {
 		BlockHeightMaxDiff:  "1000",
 		PaymentTimeout:      "1200", // 20分钟
 		PaymentStaticPath:   "",
+		PaymentMatchMode:    string(Classic),
 		SystemInstallLock:   "0",
 	}
 

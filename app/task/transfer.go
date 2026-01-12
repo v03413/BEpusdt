@@ -84,12 +84,14 @@ func orderTransferHandle(ctx context.Context) {
 				var matched bool
 				for _, o := range orderList {
 					// 金额前缀匹配
-					if !strings.HasPrefix(t.Amount.String(), o.Amount) {
+					if !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
+
 						continue
 					}
 
 					// 有效期检测
 					if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
+
 						continue
 					}
 
@@ -254,4 +256,41 @@ func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
 	}
 
 	return data
+}
+
+func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
+	mode := model.GetC(model.PaymentMatchMode)
+	switch model.MatchMode(mode) {
+	case model.Classic:
+		return amount.String() == target
+	case model.HasPrefix:
+		return strings.HasPrefix(amount.String(), target)
+	case model.RoundOff:
+		t, err := decimal.NewFromString(target)
+		if err != nil {
+
+			return false
+		}
+
+		_, precision := model.GetAtomicity(model.TradeType(tradeType)) // 标准精度
+		precision2 := abs(t.Exponent())                                // 实际精度
+		if precision2 != precision {
+
+			precision = precision2
+		}
+
+		a := amount.Round(precision)
+		t = t.Round(precision)
+
+		return a.Equal(t)
+	}
+
+	return false
+}
+
+func abs(n int32) int32 {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
