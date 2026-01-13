@@ -23,8 +23,7 @@ archives:
       - goos: windows
         formats: [ zip ]
     files:
-      - conf.example.toml
-      - conf.simple.toml
+      - .env.example
       - src: docs/bepusdt.service
         dst: .
         strip_parent: true
