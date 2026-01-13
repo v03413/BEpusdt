@@ -27,7 +27,7 @@ import (
 var Start = &cli.Command{
 	Name:  "start",
 	Usage: "启动收款网关",
-	Flags: []cli.Flag{SQLiteLogFlag, LogFlag, ListenFlag},
+	Flags: []cli.Flag{SQLiteFlag, LogFlag, ListenFlag},
 	Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 		if err := model.Init(c.String("sqlite")); err != nil {
 

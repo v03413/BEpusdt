@@ -3,19 +3,19 @@ package main
 import (
 	"context"
 	"os"
-	"log"
 
-	"github.com/urfave/cli/v3"
 	"github.com/joho/godotenv"
+	"github.com/urfave/cli/v3"
 	"github.com/v03413/bepusdt/app/cmd"
 	"github.com/v03413/bepusdt/app/conf"
 )
 
-func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, default environment variables will be used.")
-	}
+func init() {
+	// 不推荐引导小白参与修改各种配置文件
+	_ = godotenv.Load()
+}
 
+func main() {
 	c := &cli.Command{
 		Name:  "BEpusdt",
 		Usage: conf.Desc,

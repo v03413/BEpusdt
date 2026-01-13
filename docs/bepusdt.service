@@ -1,5 +1,5 @@
 [Unit]
-Description=Bepusdt Service
+Description=BEpusdt Service
 Documentation=https://github.com/v03413/bepusdt
 After=network.target nss-lookup.target
 

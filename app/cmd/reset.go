@@ -15,7 +15,7 @@ import (
 var Reset = &cli.Command{
 	Name:  "reset",
 	Usage: "忘记密码时，此命令可重置账号密码登录入口",
-	Flags: []cli.Flag{SQLiteLogFlag},
+	Flags: []cli.Flag{SQLiteFlag},
 	Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 		if err := model.Init(c.String("sqlite")); err != nil {
 
