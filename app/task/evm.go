@@ -88,6 +88,12 @@ func (e *evm) syncBlocksForward(ctx context.Context) {
 	}
 
 	var res = gjson.ParseBytes(body)
+	if !res.IsObject() {
+		log.Task.Warn(fmt.Sprintf("EVM 数据解析错误(%s): %s", e.Network, string(body)))
+
+		return
+	}
+
 	var now = utils.HexStr2Int(res.Get("result").String()).Int64() - e.Block.RollDelayOffset
 	if now <= 0 {
 
@@ -447,23 +453,23 @@ func (e *evm) rpcEndpoint() string {
 }
 
 func syncBreak(network string) bool {
-	token := model.GetNetworkTrades(model.Network(network))
-	if len(token) == 0 {
+	trades := model.GetNetworkTrades(model.Network(network))
+	if len(trades) == 0 {
 
 		return true
 	}
 
 	var count int64
-	model.Db.Model(&model.Order{}).
-		Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, token).
+	model.Db.Model(&model.Wallet{}).
+		Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, trades).
 		Count(&count)
 	if count > 0 {
 
 		return false
 	}
 
-	model.Db.Model(&model.Wallet{}).
-		Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, token).
+	model.Db.Model(&model.Order{}).
+		Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trades).
 		Count(&count)
 
 	return count == 0

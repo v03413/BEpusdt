@@ -135,7 +135,7 @@ func ConfInit() {
 		RpcEndpointEthereum: "https://ethereum-public.nodies.app/",
 		RpcEndpointBase:     "https://base-public.nodies.app/",
 		RpcEndpointAptos:    "https://aptos-rest.publicnode.com/",
-		RpcEndpointPlasma:   "https://9745.rpc.thirdweb.com/",
+		RpcEndpointPlasma:   "https://rpc.plasma.to/",
 		NotifyMaxRetry:      "10",
 		BlockHeightMaxDiff:  "1000",
 		PaymentTimeout:      "1200", // 20分钟

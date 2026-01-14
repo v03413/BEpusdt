@@ -198,7 +198,8 @@ const networks = [
   { key: "rpc_endpoint_xlayer", label: "X Layer RPC", icon: IconLink },
   { key: "rpc_endpoint_tron", label: "Tron RPC", icon: IconLink },
   { key: "rpc_endpoint_solana", label: "Solana RPC", icon: IconLink },
-  { key: "rpc_endpoint_aptos", label: "Aptos RPC", icon: IconLink }
+  { key: "rpc_endpoint_aptos", label: "Aptos RPC", icon: IconLink },
+  { key: "rpc_endpoint_plasma", label: "Plasma RPC", icon: IconLink }
 ];
 
 const infoList = [
