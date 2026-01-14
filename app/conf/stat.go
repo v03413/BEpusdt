@@ -9,9 +9,10 @@ const maxRecords = 1000
 
 type stat struct {
 	mu      sync.RWMutex
-	records []bool // true表示成功，false表示失败
-	index   int    // 当前写入位置
-	count   int    // 已记录的总数（最多maxRecords）
+	records []bool
+	index   int // 当前位置
+	total   int // 已记录总数
+	succ    int // 成功记录数
 }
 
 var (
@@ -30,10 +31,16 @@ func RecordSuccess(net string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.total >= maxRecords && !s.records[s.index] {
+		s.succ++
+	} else if s.total < maxRecords {
+		s.succ++
+	}
+
 	s.records[s.index] = true
 	s.index = (s.index + 1) % maxRecords
-	if s.count < maxRecords {
-		s.count++
+	if s.total < maxRecords {
+		s.total++
 	}
 }
 
@@ -42,10 +49,14 @@ func RecordFailure(net string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.total >= maxRecords && s.records[s.index] {
+		s.succ--
+	}
+
 	s.records[s.index] = false
 	s.index = (s.index + 1) % maxRecords
-	if s.count < maxRecords {
-		s.count++
+	if s.total < maxRecords {
+		s.total++
 	}
 }
 
@@ -54,16 +65,9 @@ func GetSuccessRate(net string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if s.count == 0 {
+	if s.total == 0 {
 		return "100.00%"
 	}
 
-	successCount := 0
-	for i := 0; i < s.count; i++ {
-		if s.records[i] {
-			successCount++
-		}
-	}
-
-	return fmt.Sprintf("%.2f%%", float64(successCount)/float64(s.count)*100)
+	return fmt.Sprintf("%.2f%%", float64(s.succ)/float64(s.total)*100)
 }

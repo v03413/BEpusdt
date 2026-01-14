@@ -229,6 +229,8 @@ func (e *evm) getBlockByNumber(a any) {
 		return
 	}
 
+	conf.RecordSuccess(e.Network)
+
 	nativeTransfers := make([]transfer, 0)
 	blockTimestamp := make(map[string]time.Time)
 	for _, itm := range gjson.ParseBytes(body).Array() {
