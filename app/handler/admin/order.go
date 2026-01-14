@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/task/notify"
 )
 
 type Order struct {
@@ -146,6 +147,8 @@ func (Order) Paid(ctx *gin.Context) {
 
 		return
 	}
+
+	go notify.Handle(order)
 
 	base.Ok(ctx, "操作成功")
 }
