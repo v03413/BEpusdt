@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/glebarez/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -13,7 +14,7 @@ var Db *gorm.DB
 var err error
 
 type Id struct {
-	ID int64 `gorm:"column:id;type:INTEGER PRIMARY KEY AUTOINCREMENT;;not null;comment:主键ID" json:"id"`
+	ID int64 `gorm:"column:id;primaryKey;autoIncrement;not null;comment:主键ID" json:"id"`
 }
 
 type AutoTimeAt struct {
@@ -22,6 +23,10 @@ type AutoTimeAt struct {
 }
 
 func Init(path string) error {
+	return InitSQLite(path)
+}
+
+func InitSQLite(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 
 		return fmt.Errorf("创建数据库目录失败：%w", err)
@@ -48,6 +53,48 @@ func Init(path string) error {
 		}
 		sqlDB.SetMaxOpenConns(5)
 		sqlDB.SetMaxIdleConns(3)
+		sqlDB.SetConnMaxLifetime(0)
+	}
+
+	if err = AutoMigrate(); err != nil {
+
+		return fmt.Errorf("数据库结构迁移失败：%w", err)
+	}
+
+	var count int64
+	Db.Model(&Conf{}).Count(&count)
+	if count == 0 {
+		ConfInit()
+	}
+
+	RefreshC()
+
+	return nil
+}
+
+func InitMySQL(dsn string) error {
+	var err error
+	Db, err = gorm.Open(mysql.New(mysql.Config{
+		DSN:                       dsn,
+		DefaultStringSize:         256,   // string 类型字段的默认长度
+		DisableDatetimePrecision:  true,  // 禁用 datetime 精度，MySQL 5.6 之前的数据库不支持
+		DontSupportRenameIndex:    true,  // 重命名索引时采用删除并新建的方式，MySQL 5.7 之前的数据库和 MariaDB 不支持重命名索引
+		DontSupportRenameColumn:   true,  // 用 `change` 重命名列，MySQL 8 之前的数据库和 MariaDB 不支持重命名列
+		SkipInitializeWithVersion: false, // 根据当前 MySQL 版本自动配置
+	}), &gorm.Config{})
+	if err != nil {
+
+		return fmt.Errorf("数据库初始化失败：%w", err)
+	}
+
+	{
+		sqlDB, err := Db.DB()
+		if err != nil {
+
+			return fmt.Errorf("获取数据库连接失败：%w", err)
+		}
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetConnMaxLifetime(0)
 	}
 
