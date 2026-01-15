@@ -128,6 +128,15 @@
               >
                 补单
               </a-button>
+              <a-button
+                v-if="record.status === 2 && record.notify_state === 0"
+                size="mini"
+                type="primary"
+                status="danger"
+                @click="handleManualNotify(record)"
+              >
+                手动回调
+              </a-button>
             </a-space>
           </template>
         </a-table>
@@ -176,9 +185,9 @@
 </template>
 
 <script setup lang="ts">
-import { listAPI, paidAPI } from "@/api/modules/order/index";
+import { listAPI, paidAPI, manualNotifyAPI } from "@/api/modules/order/index";
 import { List, FormData, Pagination } from "./config";
-import { Notification } from "@arco-design/web-vue";
+import { Notification, Modal } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
 import DetailModal from "./detail.vue";
 import { useOrderDetail } from "./detail";
@@ -334,6 +343,24 @@ const confirmPaid = async () => {
   } catch (error) {
     Notification.error(error);
   }
+};
+
+const handleManualNotify = (record: List) => {
+  Modal.confirm({
+    title: "确认手动回调",
+    content: `确定要手动触发订单 ${record.order_id} 的回调吗？系统将立即向商户发送回调通知。`,
+    okText: "确认回调",
+    cancelText: "取消",
+    onOk: async () => {
+      try {
+        await manualNotifyAPI({ id: record.id });
+        Notification.success("回调已触发，请稍后查看回调状态");
+        getOrderList();
+      } catch (error) {
+        Notification.error(error);
+      }
+    }
+  });
 };
 
 getOrderList();

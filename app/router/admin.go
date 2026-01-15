@@ -34,6 +34,7 @@ func adminInit(e *gin.Engine) {
 		PostRegister(orderRtr, "/list", true, orderHdr.List)
 		PostRegister(orderRtr, "/detail", true, orderHdr.Detail)
 		PostRegister(orderRtr, "/paid", true, orderHdr.Paid)
+		PostRegister(orderRtr, "/manual_notify", true, orderHdr.ManualNotify)
 	}
 
 	var rateRtr = e.Group("/api/rate")

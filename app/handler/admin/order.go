@@ -152,3 +152,30 @@ func (Order) Paid(ctx *gin.Context) {
 
 	base.Ok(ctx, "操作成功")
 }
+
+func (Order) ManualNotify(ctx *gin.Context) {
+	var req base.IDRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, err.Error())
+
+		return
+	}
+
+	var order model.Order
+	model.Db.Where("id = ?", req.ID).Find(&order)
+	if order.ID == 0 {
+		base.BadRequest(ctx, "订单不存在")
+
+		return
+	}
+
+	if order.Status != model.OrderStatusSuccess {
+		base.BadRequest(ctx, "订单状态不是交易成功,无法手动回调")
+
+		return
+	}
+
+	go notify.Handle(order)
+
+	base.Ok(ctx, "回调已触发")
+}

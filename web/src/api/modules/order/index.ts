@@ -23,3 +23,11 @@ export const paidAPI = (data: any) => {
     data
   });
 };
+
+export const manualNotifyAPI = (data: any) => {
+  return axios({
+    url: "/api/order/manual_notify",
+    method: "post",
+    data
+  });
+};
