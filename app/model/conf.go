@@ -16,8 +16,8 @@ import (
 var confCache sync.Map
 
 type Conf struct {
-	K ConfKey `gorm:"column:k;type:varchar(32);primaryKey" json:"key"`
-	V string  `gorm:"column:v;type:varchar(255)" json:"val"`
+	K ConfKey `gorm:"column:k;type:varchar(32);not null;primaryKey" json:"key"`
+	V string  `gorm:"column:v;type:varchar(255);not null" json:"val"`
 }
 
 func (c Conf) TableName() string {

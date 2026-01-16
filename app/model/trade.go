@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
@@ -112,6 +113,7 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 		return Order{}, err
 	}
 
+	zero := time.Unix(0, 0)
 	crypto, _ := GetCrypto(p.TradeType)
 	tradeOrder := Order{
 		OrderId:     p.OrderId,
@@ -132,6 +134,7 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 		ExpiredAt:   CalcTradeExpiredAt(p.Timeout),
 		Fiat:        p.Fiat,
 		Crypto:      crypto,
+		ConfirmedAt: &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
 	}
 
 	if tradeOrder.Name == "" {
