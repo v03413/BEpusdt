@@ -25,9 +25,8 @@ func notifyRetry(context.Context) {
 	}
 
 	for _, order := range tradeOrders {
-		var next = utils.CalcNextNotifyTime(order.ConfirmedAt, order.NotifyNum)
+		next := utils.CalcNextNotifyTime(*order.ConfirmedAt, order.NotifyNum)
 		if time.Now().Unix() >= next.Unix() {
-
 			go notify.Handle(order)
 		}
 	}

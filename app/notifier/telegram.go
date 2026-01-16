@@ -26,7 +26,7 @@ type Telegram struct {
 }
 
 func (t *Telegram) Initialize(params string) error {
-	var info = gjson.Parse(params)
+	info := gjson.Parse(params)
 
 	t.token = info.Get("bot_token").String()
 	t.chatID = info.Get("chat_id").Int()
@@ -44,7 +44,6 @@ func (t *Telegram) Initialize(params string) error {
 
 func (t *Telegram) Success(o model.Order) {
 	if o.Status != model.OrderStatusSuccess {
-
 		return
 	}
 
@@ -58,7 +57,7 @@ func (t *Telegram) Success(o model.Order) {
 
 	token := string(tokenType)
 
-	var text = `
+	text := `
 \#收款成功 \#订单交易 \#` + token + `
 \-\-\-
 ` + "```" + `
@@ -106,7 +105,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 
 	token := string(tokenT)
 
-	var text = fmt.Sprintf(`
+	text := fmt.Sprintf(`
 \#回调失败 \#订单交易 \#`+token+`
 \-\-\-
 `+"```"+`
@@ -124,7 +123,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 		o.Money, o.Rate,
 		strings.ToUpper(tradeType),
 		o.ConfirmedAt.Format(time.DateTime),
-		utils.CalcNextNotifyTime(o.ConfirmedAt, o.NotifyNum+1).Format(time.DateTime),
+		utils.CalcNextNotifyTime(*o.ConfirmedAt, o.NotifyNum+1).Format(time.DateTime),
 		reason,
 	)
 
@@ -142,12 +141,12 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 }
 
 func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
-	var title = "收入"
+	title := "收入"
 	if trans.RecvAddress != wa.Address {
 		title = "支出"
 	}
 
-	var text = fmt.Sprintf(
+	text := fmt.Sprintf(
 		"\\#账户%s \\#非订单交易\n\\-\\-\\-\n```\n💲交易数额：%v \n💍交易类别："+strings.ToUpper(string(trans.TradeType))+"\n⏱️交易时间：%v\n✅接收地址：%v\n🅾️发送地址：%v```\n",
 		title,
 		trans.Amount.String(),
@@ -170,12 +169,12 @@ func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
 }
 
 func (t *Telegram) TronResourceChange(res model.TronResource) {
-	var title = "代理"
+	title := "代理"
 	if res.Type == core.Transaction_Contract_UnDelegateResourceContract {
 		title = "回收"
 	}
 
-	var text = fmt.Sprintf(
+	text := fmt.Sprintf(
 		"\\#资源动态 \\#能量"+title+"\n\\-\\-\\-\n```\n🔋质押数量："+cast.ToString(res.Balance/1000000)+"\n⏱️交易时间：%v\n✅操作地址：%v\n🅾️资源来源：%v```\n",
 		res.Timestamp.Format(time.DateTime),
 		utils.MaskAddress(res.RecvAddress),
@@ -196,7 +195,7 @@ func (t *Telegram) TronResourceChange(res model.TronResource) {
 }
 
 func (t *Telegram) Welcome() {
-	var text = `
+	text := `
 👋 欢迎使用 BEpusdt，` + conf.Desc + `，如果您看到此消息，说明系统已启动成功！
 
 📌当前版本：` + app.Version + `
@@ -232,12 +231,11 @@ func (t *Telegram) sendMessage(p *bot.SendMessageParams) {
 	p.ChatID = t.chatID
 	p.MessageThreadID = t.topicID
 
-	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	_, err := t.api.SendMessage(ctx, p)
 	if err != nil {
-
 		log.Warn("Bot Send Message Error:", err.Error())
 	}
 }
