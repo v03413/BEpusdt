@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
@@ -100,7 +101,7 @@ func initMySQL(dsn string) error {
 		}
 		sqlDB.SetMaxOpenConns(100)
 		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetConnMaxLifetime(0)
+		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
 
 	if err = AutoMigrate(); err != nil {
