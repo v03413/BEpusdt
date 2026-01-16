@@ -22,11 +22,16 @@ type AutoTimeAt struct {
 	UpdatedAt *Datetime `gorm:"column:updated_at;type:Datetime;not null;comment:最后更新时间" json:"updated_at"`
 }
 
-func Init(path string) error {
-	return InitSQLite(path)
+func Init(path, dsn string) error {
+	if dsn != "" {
+
+		return initMySQL(dsn)
+	}
+
+	return initSqlite(path)
 }
 
-func InitSQLite(path string) error {
+func initSqlite(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 
 		return fmt.Errorf("创建数据库目录失败：%w", err)
@@ -72,7 +77,7 @@ func InitSQLite(path string) error {
 	return nil
 }
 
-func InitMySQL(dsn string) error {
+func initMySQL(dsn string) error {
 	var err error
 	Db, err = gorm.Open(mysql.New(mysql.Config{
 		DSN:                       dsn,

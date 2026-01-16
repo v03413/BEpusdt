@@ -29,17 +29,10 @@ var Start = &cli.Command{
 	Usage: "启动收款网关",
 	Flags: []cli.Flag{SQLiteFlag, MySQLDSNFlag, LogFlag, ListenFlag},
 	Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-		// 优先使用 MySQL，如果配置了 MySQL DSN
-		mysqlDSN := c.String("mysql")
-		if mysqlDSN != "" {
-			if err := model.InitMySQL(mysqlDSN); err != nil {
-				return ctx, fmt.Errorf("MySQL 数据库初始化失败 %w", err)
-			}
-		} else {
-			// 否则使用 SQLite
-			if err := model.Init(c.String("sqlite")); err != nil {
-				return ctx, fmt.Errorf("SQLite 数据库初始化失败 %w", err)
-			}
+		dsn := c.String("mysql")
+		sqlite := c.String("sqlite")
+		if err := model.Init(sqlite, dsn); err != nil {
+			return ctx, fmt.Errorf("数据库初始化失败 %w", err)
 		}
 
 		if err := log.Init(c.String("log")); err != nil {
