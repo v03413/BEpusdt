@@ -74,8 +74,8 @@ type Order struct {
 	NotifyState int        `gorm:"column:notify_state;type:tinyint(1);not null;default:0;comment:回调状态 1：成功 0：失败" json:"notify_state"`
 	RefHash     string     `gorm:"column:ref_hash;type:varchar(128);not null;default:'';index;comment:交易哈希" json:"ref_hash"`
 	RefBlockNum int64      `gorm:"column:ref_block_num;type:bigint(20);not null;default:0;comment:区块索引" json:"ref_block_num"`
-	ExpiredAt   time.Time  `gorm:"column:expired_at;type:timestamp;not null;comment:失效时间" json:"expired_at"`
-	ConfirmedAt *time.Time `gorm:"column:confirmed_at;type:timestamp;not null;comment:交易确认时间" json:"confirmed_at"`
+	ExpiredAt   time.Time  `gorm:"column:expired_at;type:datetime;not null;comment:失效时间" json:"expired_at"`
+	ConfirmedAt *time.Time `gorm:"column:confirmed_at;type:datetime;not null;comment:交易确认时间" json:"confirmed_at"`
 	AutoTimeAt
 }
 
