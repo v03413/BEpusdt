@@ -12,7 +12,7 @@ var SQLiteFlag = &cli.StringFlag{
 var MySQLDSNFlag = &cli.StringFlag{
 	Name:    "mysql",
 	Value:   "",
-	Usage:   "MySQL 数据库连接字符串 (DSN)，例如: user:password@tcp(127.0.0.1:3306)/bepusdt?charset=utf8mb4&parseTime=True&loc=Local",
+	Usage:   "MySQL 数据库连接字符串 (DSN)，例如: user:password@tcp(127.0.0.1:3306)/bepusdt?charset=utf8mb4&parseTime=True&loc=Local&timeout=3s&readTimeout=10s&writeTimeout=10s",
 	Sources: cli.EnvVars("MYSQL_DSN"),
 }
 
