@@ -3,7 +3,6 @@ package epay
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
-	"github.com/tidwall/gjson"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/utils"
 )
@@ -29,7 +27,7 @@ type submit struct {
 	ReturnURL  string     `form:"return_url" json:"return_url" binding:"required"`
 	OutTradeNo string     `form:"out_trade_no" json:"out_trade_no" binding:"required"`
 	Name       string     `form:"name" json:"name" binding:"required"`
-	Money      float64    `form:"money" json:"money" binding:"required,gt=0"`
+	Money      string     `form:"money" json:"money" binding:"required,gt=0"`
 	Sign       string     `form:"sign" json:"sign" binding:"required"`
 	Fiat       model.Fiat `form:"fiat" json:"fiat"`
 	Rate       string     `form:"rate" json:"rate"`
@@ -41,34 +39,39 @@ type submit struct {
 func (e Epay) Submit(ctx *gin.Context) {
 	var err error
 	var data submit
+
+	var dataMap = make(map[string]string)
 	if ctx.Request.Method != http.MethodPost {
-		err = ctx.ShouldBindQuery(&data)
+		for key, values := range ctx.Request.URL.Query() {
+			if len(values) > 0 {
+				dataMap[key] = values[0]
+			}
+		}
 	} else {
-		err = ctx.ShouldBind(&data)
+		_ = ctx.Request.ParseForm()
+		for key, values := range ctx.Request.PostForm {
+			if len(values) > 0 {
+				dataMap[key] = values[0]
+			}
+		}
 	}
 
+	data, err = e.verify(dataMap)
 	if err != nil {
-		ctx.String(200, "参数解析错误："+err.Error())
-
-		return
-	}
-	if data.Pid != Pid {
-		ctx.String(200, "BEpusdt 易支付兼容模式，商户号【PID】必须固定为"+Pid)
+		ctx.String(200, err.Error())
 
 		return
 	}
 
-	if e.sign(data, model.AuthToken()) != data.Sign {
+	if e.sign(dataMap, model.AuthToken()) != data.Sign {
 		ctx.String(200, "签名错误")
 
 		return
 	}
 
-	e.fillDefaultParams(&data)
-
-	money := decimal.NewFromFloat(data.Money)
-	if money.LessThanOrEqual(decimal.Zero) {
-		ctx.String(200, "参数 money 格式错误，必须是一个大于0的数字")
+	money, err := decimal.NewFromString(data.Money)
+	if err != nil {
+		ctx.String(200, "参数 money 解析错误，"+err.Error())
 
 		return
 	}
@@ -87,7 +90,7 @@ func (e Epay) Submit(ctx *gin.Context) {
 		Fiat:        data.Fiat,
 	})
 	if err2 != nil {
-		ctx.String(200, fmt.Sprintf("订单创建失败：%v", err))
+		ctx.String(200, fmt.Sprintf("订单创建失败：%v", err2))
 
 		return
 	}
@@ -101,47 +104,65 @@ func (e Epay) Submit(ctx *gin.Context) {
 	ctx.Redirect(http.StatusFound, model.CheckoutCounter(host, order.TradeId))
 }
 
-// 填充默认参数
-func (e Epay) fillDefaultParams(data *submit) {
-	if data.Pid == "" {
-		data.Pid = Pid
+// verify 验证请求参数
+func (e Epay) verify(data map[string]string) (submit, error) {
+	var params = submit{}
+
+	pid, ok := data["pid"]
+	if !ok || pid != Pid {
+
+		return params, fmt.Errorf("BEpusdt 易支付兼容模式，商户号【PID】必须固定为" + Pid)
 	}
-	if data.Type == "" {
-		data.Type = string(model.UsdtTrc20)
+
+	var requiredFields = []string{"pid", "type", "out_trade_no", "notify_url", "return_url", "name", "money", "sign"}
+	for _, field := range requiredFields {
+		if _, ok := data[field]; !ok || data[field] == "" {
+
+			return params, fmt.Errorf("参数 %s 缺失或为空", field)
+		}
 	}
-	if data.Fiat == "" {
-		data.Fiat = model.CNY
+
+	params.Pid = pid
+	params.Type = data["type"]
+	params.OutTradeNo = data["out_trade_no"]
+	params.NotifyURL = data["notify_url"]
+	params.ReturnURL = data["return_url"]
+	params.Name = data["name"]
+	params.Money = data["money"]
+	params.Sign = data["sign"]
+
+	if address, ok := data["address"]; ok {
+		params.Address = address
 	}
+	if rate, ok := data["rate"]; ok && rate != "" {
+		params.Rate = rate
+	}
+	if timeout, ok := data["timeout"]; ok && timeout != "" {
+		params.Timeout = timeout
+	}
+
+	fiat, ok := data["fiat"]
+	if ok && fiat != "" {
+		params.Fiat = model.Fiat(fiat)
+	} else {
+		params.Fiat = model.CNY
+	}
+
+	return params, nil
 }
 
-func (e Epay) sign(params submit, token string) string {
-	jsonBytes, err := json.Marshal(params)
-	if err != nil {
-
-		return ""
-	}
-
-	result := gjson.ParseBytes(jsonBytes)
-	fields := make(map[string]string)
-	result.ForEach(func(k, value gjson.Result) bool {
-		fields[k.String()] = value.String()
-
-		return true
-	})
-
-	// 提取 keys 并排序
-	var keys = make([]string, 0, len(fields))
-	for k := range fields {
+func (e Epay) sign(data map[string]string, token string) string {
+	var keys = make([]string, 0, len(data))
+	for k := range data {
 		keys = append(keys, k)
 	}
 
 	sort.Strings(keys)
 
-	// 构建签名字符串
 	signStr := ""
 	for _, k := range keys {
-		if k != "sign" && k != "sign_type" && fields[k] != "" {
-			signStr += fmt.Sprintf("%s=%s&", k, fields[k])
+		if k != "sign" && k != "sign_type" && data[k] != "" {
+			signStr += fmt.Sprintf("%s=%s&", k, data[k])
 		}
 	}
 	signStr = signStr[:len(signStr)-1]
