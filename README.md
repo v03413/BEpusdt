@@ -62,7 +62,7 @@
 - [服务器配置选型推荐](./docs/faq/server.md)
 - [服务器宽带占用过大解释](./docs/faq/bandwidth.md)
 - [Telegram 通知 Chat ID 获取教程](docs/faq/telegram-chat-id.md)
-- [推荐配置 Key 提高 Tron 扫块稳定性‼️](./docs/tron-grid/readme.md)  
+- [推荐配置提高 Tron 扫块稳定性‼️](./docs/tron-grid/readme.md)  
 
 ## ⚠️ 重要提示
 
