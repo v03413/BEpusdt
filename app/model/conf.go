@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -107,7 +108,7 @@ func CheckoutCounter(host, id string) string {
 func ConfInit() {
 	var hash = utils.StrSha256(utils.Md5String(time.Now().String()))
 	var secure = "/" + hash[:10]
-	var token = utils.Md5String(hash[18:28])
+	var token = strings.ToUpper(utils.Md5String(hash[18:28]))
 	var username = hash[10:20]
 	var password = hash[20:30]
 	var encrypt, _ = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
