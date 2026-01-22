@@ -15,6 +15,7 @@ const (
 	OrderNotifyStateSucc = 1 // 回调成功
 	OrderNotifyStateFail = 0 // 回调失败
 
+	OrderStatusDelete     = 0
 	OrderStatusWaiting    = 1 // 等待支付
 	OrderStatusSuccess    = 2 // 交易确认成功
 	OrderStatusExpired    = 3 // 订单过期

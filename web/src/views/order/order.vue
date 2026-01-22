@@ -3,7 +3,7 @@
     <div class="snow-page">
       <div class="snow-inner">
         <a-form ref="formRef" :model="formData.form" auto-label-width>
-          <a-row :gutter="16">
+          <a-row>
             <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
               <a-form-item field="order_id" label="商户订单">
                 <a-input v-model="formData.form.order_id" placeholder="请输入商户订单" allow-clear />
@@ -39,6 +39,10 @@
                     <template #icon><icon-refresh /></template>
                     重置
                   </a-button>
+                  <a-button status="danger" @click="orderBin = true">
+                    <template #icon><icon-delete /></template>
+                    订单回收站
+                  </a-button>
                   <a-button type="text" @click="formData.search = !formData.search">
                     {{ formData.search ? "收起" : "展开" }}
                     <icon-down :class="{ 'rotate-icon': formData.search }" />
@@ -60,26 +64,17 @@
               </a-col>
               <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
                 <a-form-item field="createTime" label="创建时间">
-                  <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+                  <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss"
+                    style="width: 100%" />
                 </a-form-item>
               </a-col>
             </template>
           </a-row>
         </a-form>
 
-        <a-table
-          row-key="id"
-          size="small"
-          :bordered="{ cell: true }"
-          :scroll="{ x: 'max-content', y: '60vh' }"
-          :loading="loading"
-          :columns="columns"
-          :data="data"
-          v-model:selectedKeys="selectedKeys"
-          :pagination="pagination"
-          @page-change="pageChange"
-          @page-size-change="pageSizeChange"
-        >
+        <a-table row-key="id" size="small" :bordered="{ cell: true }" :scroll="{ x: 'max-content', y: '60vh' }"
+          :loading="loading" :columns="columns" :data="data" v-model:selectedKeys="selectedKeys"
+          :pagination="pagination" @page-change="pageChange" @page-size-change="pageSizeChange">
           <template #wallet="{ record }">
             <a-tooltip :content="record.address" position="top">
               <span class="wallet-name">
@@ -119,22 +114,15 @@
           <template #optional="{ record }">
             <a-space>
               <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
-              <a-button
-                size="mini"
-                type="primary"
-                status="warning"
-                :disabled="record.status === 2"
-                @click="showPaidModal(record)"
-              >
+              <a-button size="mini" type="primary" status="warning" :disabled="record.status === 2"
+                @click="showPaidModal(record)">
                 补单
               </a-button>
-              <a-button
-                v-if="record.status === 2 && record.notify_state === 0"
-                size="mini"
-                type="primary"
-                status="danger"
-                @click="handleManualNotify(record)"
-              >
+              <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="handleMoveToBin(record)">
+                <a-button size="mini" type="primary" status="danger">删除</a-button>
+              </a-popconfirm>
+              <a-button v-if="record.status === 2 && record.notify_state === 0" size="mini" type="primary"
+                status="danger" @click="handleManualNotify(record)">
                 手动回调
               </a-button>
             </a-space>
@@ -146,16 +134,8 @@
     <DetailModal :visible="detailVisible" :detailData="detailData" @close="closeDetail" />
 
     <!-- 补单弹窗 -->
-    <a-modal
-      v-model:visible="paidModalVisible"
-      title="确认补单操作"
-      @ok="confirmPaid"
-      @cancel="closePaidModal"
-      ok-text="确认补单"
-      cancel-text="取消"
-      width="500px"
-      :mask-closable="false"
-    >
+    <a-modal v-model:visible="paidModalVisible" title="确认补单操作" @ok="confirmPaid" @cancel="closePaidModal" ok-text="确认补单"
+      cancel-text="取消" width="500px" :mask-closable="false">
       <div class="paid-modal-content">
         <a-alert type="warning" style="margin-bottom: 20px">
           <template #icon>
@@ -181,11 +161,72 @@
         </a-form>
       </div>
     </a-modal>
+
+    <a-modal v-model:visible="orderBin" width="1200px" @before-open="getOrderBinList">
+      <template #title>
+        订单回收站 |
+        <a-popconfirm content="确定清空回收站吗?" type="warning" @ok="handleEmptyBin">
+          <a-button style="margin-left: 3px;" status="danger" @click="orderBin = true">
+            <template #icon><icon-delete /></template>
+            清空回收站
+          </a-button>
+        </a-popconfirm>
+
+      </template>
+      <a-table row-key="id" size="small" :bordered="{ cell: true }" :scroll="{ x: 'max-content', y: '60vh' }"
+        :loading="binDialogLoading" :columns="binColumns" :data="binData" v-model:selectedKeys="selectedKeys"
+        :pagination="binPagination" @page-change="binPageChange" @page-size-change="binPageSizeChange">
+        <template #wallet="{ record }">
+          <a-tooltip :content="record.address" position="top">
+            <span class="wallet-name">
+              {{ record.wallet?.name || `⁉ ${record.address?.slice(-8) || "-"}` }}
+            </span>
+          </a-tooltip>
+        </template>
+
+        <template #amount="{ record }">
+          <span>
+            {{ record.amount }}
+            <a-tag size="mini" :color="getCryptoColor(record.crypto)" bordered style="margin-left: 4px">{{
+              record.crypto
+            }}</a-tag>
+          </span>
+        </template>
+
+        <template #money="{ record }">
+          <span>
+            {{ record.money }}
+            <a-tag size="mini" color="arcoblue" style="margin-left: 4px">{{ record.fiat }}</a-tag>
+          </span>
+        </template>
+
+        <template #status="{ record }">
+          <a-tag size="small" :color="getStatusColor(record.status)">
+            {{ getStatusText(record.status) }}
+          </a-tag>
+        </template>
+
+        <template #notify_state="{ record }">
+          <a-tag size="small" :color="record.status === 2 ? (record.notify_state === 1 ? 'blue' : 'red') : 'gray'">
+            {{ record.status === 2 ? (record.notify_state === 1 ? "成功" : "失败") : "-" }}
+          </a-tag>
+        </template>
+
+        <template #optional="{ record }">
+          <a-space>
+            <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="handleRemoveFormBin(record)">
+              <a-button size="mini" type="primary" status="danger">永久删除</a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </a-table>
+    </a-modal>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { listAPI, paidAPI, manualNotifyAPI } from "@/api/modules/order/index";
+import { listAPI, paidAPI, manualNotifyAPI, move2BinApi, orderBinListAPI, removeFromBin, emptyBin } from "@/api/modules/order/index";
 import { List, FormData, Pagination } from "./config";
 import { Notification, Modal } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
@@ -218,10 +259,12 @@ const formData = reactive<FormData>({
   },
   search: false
 });
-
+const orderBin = ref<boolean>(false)
 const selectedKeys = ref<string[]>([]);
 const loading = ref(false);
+const binDialogLoading = ref(false);
 const data = reactive<List[]>([]);
+const binData = reactive<List[]>([]);
 const pagination = ref<Pagination>({
   showPageSize: true,
   showTotal: true,
@@ -229,7 +272,13 @@ const pagination = ref<Pagination>({
   pageSize: 10,
   total: 10
 });
-
+const binPagination = ref<Pagination>({
+  showPageSize: true,
+  showTotal: true,
+  current: 1,
+  pageSize: 10,
+  total: 10
+});
 const columns = [
   { title: "ID", align: "center", dataIndex: "id", width: 80 },
   { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
@@ -242,7 +291,15 @@ const columns = [
   { title: "创建时间", dataIndex: "created_at", align: "center", width: 160 },
   { title: "操作", slotName: "optional", align: "center", fixed: "right", width: 150 }
 ];
-
+const binColumns = [
+  { title: "ID", align: "center", dataIndex: "id", width: 80 },
+  { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
+  { title: "交易类型", align: "center", dataIndex: "trade_type", width: 120 },
+  { title: "交易数额", align: "center", dataIndex: "amount", slotName: "amount", width: 150 },
+  { title: "交易金额", align: "center", dataIndex: "money", slotName: "money", width: 150 },
+  { title: "收款钱包", align: "center", dataIndex: "wallet.name", slotName: "wallet", width: 150, ellipsis: true },
+  { title: "操作", slotName: "optional", align: "center", fixed: "right", width: 150 }
+];
 const statusMap: Record<number, { color: string; text: string }> = {
   1: { color: "blue", text: "等待支付" },
   2: { color: "green", text: "交易成功" },
@@ -264,7 +321,15 @@ const pageSizeChange = (pageSize: number) => {
   pagination.value.pageSize = pageSize;
   getOrderList();
 };
+const binPageChange = (page: number) => {
+  pagination.value.current = page;
+  getOrderList();
+};
 
+const binPageSizeChange = (pageSize: number) => {
+  pagination.value.pageSize = pageSize;
+  getOrderList();
+};
 const onReset = () => {
   formData.form = {
     order_id: "",
@@ -313,6 +378,25 @@ const getOrderList = async () => {
   }
 };
 
+const getOrderBinList = async () => {
+  try {
+    binDialogLoading.value = true
+    const params: any = {
+      page: binPagination.value.current,
+      size: binPagination.value.pageSize,
+      sort: "desc",
+    };
+    const res = await orderBinListAPI(params)
+    binData.length = 0
+    binData.push(...res.data);
+    binPagination.value.total = res.total;
+  } finally {
+    binDialogLoading.value = false;
+  }
+
+
+}
+
 const paidModalVisible = ref(false);
 const paidForm = reactive({
   ref_hash: "",
@@ -344,7 +428,33 @@ const confirmPaid = async () => {
     Notification.error(error);
   }
 };
-
+const handleMoveToBin = async (record: List) => {
+  try {
+    await move2BinApi({ id: record.id })
+    getOrderList();
+  } catch (error) {
+    Notification.error(error);
+  }
+}
+const handleRemoveFormBin = async (record: List) => {
+  try {
+    await removeFromBin({ id: record.id })
+    getOrderBinList();
+  } catch (error) {
+    Notification.error(error);
+  }
+}
+const handleEmptyBin = async () => {
+  try {
+    binDialogLoading.value = true
+    await emptyBin()
+    getOrderBinList();
+  } catch (error) {
+    Notification.error(error);
+  } finally {
+    binDialogLoading.value = false
+  }
+}
 const handleManualNotify = (record: List) => {
   Modal.confirm({
     title: "确认手动回调",
@@ -448,6 +558,7 @@ getOrderList();
 
 // 响应式处理
 @media (max-width: 1200px) {
+
   :deep(.arco-table-th),
   :deep(.arco-table-td) {
     padding: 8px 6px !important;

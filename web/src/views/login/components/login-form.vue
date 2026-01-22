@@ -139,17 +139,20 @@ const handleForgotPassword = () => {
 <style lang="scss" scoped>
 .login_form_box {
   margin-top: 28px;
+
   .verifyCode {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
   }
+
   .remember {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
+
     .forgot-password {
       color: $color-primary;
       cursor: pointer;

@@ -35,6 +35,11 @@ func adminInit(e *gin.Engine) {
 		PostRegister(orderRtr, "/detail", true, orderHdr.Detail)
 		PostRegister(orderRtr, "/paid", true, orderHdr.Paid)
 		PostRegister(orderRtr, "/manual_notify", true, orderHdr.ManualNotify)
+		PostRegister(orderRtr, "/move_to_bin", true, orderHdr.Delete)
+		PostRegister(orderRtr, "/order_bin_list", true, orderHdr.OrderBinList)
+		PostRegister(orderRtr, "/remove_form_bin", true, orderHdr.RemoveFormBin)
+		PostRegister(orderRtr, "/empty_bin", true, orderHdr.EmptyBin)
+
 	}
 
 	var rateRtr = e.Group("/api/rate")
