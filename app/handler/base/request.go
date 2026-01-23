@@ -13,3 +13,7 @@ type ListRequest struct {
 type IDRequest struct {
 	ID int `json:"id" form:"id" binding:"required"` // *ID(必须)
 }
+
+type IDListRequest struct {
+	IDList []int `json:"ids" form:"ids" binding:"required"` // *ID列表(必须)
+}

@@ -8,14 +8,6 @@ export const listAPI = (data: any) => {
   });
 };
 
-export const orderBinListAPI = (data: any) => {
-  return axios({
-    url: "/api/order/order_bin_list",
-    method: "post",
-    data
-  });
-};
-
 export const detailAPI = (data: any) => {
   return axios({
     url: "/api/order/detail",
@@ -32,26 +24,22 @@ export const paidAPI = (data: any) => {
   });
 };
 
-export const move2BinApi = (data:any) => {
+export const delOrderApi = (data:any) => {
     return axios({
-    url: "/api/order/move_to_bin",
+    url: "/api/order/del",
     method: "post",
     data
   });
 }
-export const removeFromBin = (data:any) => {
+
+export const batchDelOrderApi = (data:any) => {
     return axios({
-    url: "/api/order/remove_form_bin",
+    url: "/api/order/batch_del",
     method: "post",
     data
   });
 }
-export const emptyBin = () => {
-    return axios({
-    url: "/api/order/empty_bin",
-    method: "post"
-  });
-}
+
 export const manualNotifyAPI = (data: any) => {
   return axios({
     url: "/api/order/manual_notify",

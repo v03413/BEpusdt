@@ -92,35 +92,6 @@ func (Order) List(ctx *gin.Context) {
 
 	base.Response(ctx, 200, data, total)
 }
-func (Order) OrderBinList(ctx *gin.Context) {
-	var req oListReq
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		base.Response(ctx, 400, err.Error())
-
-		return
-	}
-
-	type order struct {
-		model.Order
-		Wallet model.Wallet `gorm:"foreignKey:MatchAddr,TradeType;references:Address,TradeType" json:"wallet"`
-	}
-
-	var data []order
-	var db = model.Db
-	db = db.Where("status = ?", 0)
-	var total int64
-
-	db.Model(&model.Order{}).Count(&total)
-
-	err := db.Preload("Wallet").Limit(req.Size).Offset((req.Page - 1) * req.Size).Order("id " + req.Sort).Find(&data).Error
-	if err != nil {
-		base.Response(ctx, 400, err.Error())
-
-		return
-	}
-
-	base.Response(ctx, 200, data, total)
-}
 
 func (Order) Detail(ctx *gin.Context) {
 	var req base.IDRequest
@@ -148,32 +119,7 @@ func (Order) Detail(ctx *gin.Context) {
 		TxUrl: o.GetTxUrl(),
 	})
 }
-func (Order) RemoveFormBin(ctx *gin.Context) {
-	var req paidReq
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		base.BadRequest(ctx, err.Error())
 
-		return
-	}
-
-	err := model.Db.Where("id = ?", req.ID).Delete(&model.Order{}).Error
-	if err != nil {
-		base.Error(ctx, err)
-
-		return
-	}
-
-	base.Ok(ctx, "删除成功")
-}
-func (Order) EmptyBin(ctx *gin.Context) {
-	err := model.Db.Delete(&model.Order{}, "status = ?", model.OrderStatusDelete).Error
-	if err != nil {
-		base.Error(ctx, err)
-		return
-	}
-
-	base.Ok(ctx, "清空回收站成功")
-}
 func (Order) Paid(ctx *gin.Context) {
 	var req paidReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -235,7 +181,7 @@ func (Order) ManualNotify(ctx *gin.Context) {
 	base.Ok(ctx, "回调已触发")
 }
 
-func (Order) Delete(ctx *gin.Context) {
+func (Order) Del(ctx *gin.Context) {
 	var req paidReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, err.Error())
@@ -243,26 +189,29 @@ func (Order) Delete(ctx *gin.Context) {
 		return
 	}
 
-	var order model.Order
-	model.Db.Where("id = ?", req.ID).Find(&order)
-	if order.ID == 0 {
-		base.BadRequest(ctx, "订单不存在")
-
-		return
-	}
-
-	var update = map[string]interface{}{
-		"status": model.OrderStatusDelete,
-	}
-
-	err := model.Db.Model(&order).Updates(update).Error
+	err := model.Db.Where("id = ?", req.ID).Delete(&model.Order{}).Error
 	if err != nil {
 		base.Error(ctx, err)
 
 		return
 	}
 
-	go notify.Handle(order)
+	base.Ok(ctx, "删除成功")
+}
+func (Order) BatchDel(ctx *gin.Context) {
+	var req base.IDListRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, err.Error())
 
-	base.Ok(ctx, "操作成功")
+		return
+	}
+
+	err := model.Db.Delete(&model.Order{}, req.IDList).Error
+	if err != nil {
+		base.Error(ctx, err)
+
+		return
+	}
+
+	base.Ok(ctx, "批量删除成功")
 }

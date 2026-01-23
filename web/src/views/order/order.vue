@@ -3,7 +3,7 @@
     <div class="snow-page">
       <div class="snow-inner">
         <a-form ref="formRef" :model="formData.form" auto-label-width>
-          <a-row>
+          <a-row :gutter="16">
             <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
               <a-form-item field="order_id" label="商户订单">
                 <a-input v-model="formData.form.order_id" placeholder="请输入商户订单" allow-clear />
@@ -39,10 +39,12 @@
                     <template #icon><icon-refresh /></template>
                     重置
                   </a-button>
-                  <a-button status="danger" @click="orderBin = true">
-                    <template #icon><icon-delete /></template>
-                    订单回收站
-                  </a-button>
+                  <a-popconfirm :content="batchDelConfirm" type="warning" @ok="onBatchDelete">
+                    <a-button v-show="selectedKeys.length > 0" type="primary" status="danger">
+                      <template #icon><icon-delete /></template>
+                      批量删除
+                    </a-button>
+                  </a-popconfirm>
                   <a-button type="text" @click="formData.search = !formData.search">
                     {{ formData.search ? "收起" : "展开" }}
                     <icon-down :class="{ 'rotate-icon': formData.search }" />
@@ -73,7 +75,7 @@
         </a-form>
 
         <a-table row-key="id" size="small" :bordered="{ cell: true }" :scroll="{ x: 'max-content', y: '60vh' }"
-          :loading="loading" :columns="columns" :data="data" v-model:selectedKeys="selectedKeys"
+          :loading="loading" :columns="columns" :data="data" v-model:selectedKeys="selectedKeys"  :row-selection="orderSelection"
           :pagination="pagination" @page-change="pageChange" @page-size-change="pageSizeChange">
           <template #wallet="{ record }">
             <a-tooltip :content="record.address" position="top">
@@ -118,7 +120,7 @@
                 @click="showPaidModal(record)">
                 补单
               </a-button>
-              <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="handleMoveToBin(record)">
+              <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="onDelete(record)">
                 <a-button size="mini" type="primary" status="danger">删除</a-button>
               </a-popconfirm>
               <a-button v-if="record.status === 2 && record.notify_state === 0" size="mini" type="primary"
@@ -161,72 +163,11 @@
         </a-form>
       </div>
     </a-modal>
-
-    <a-modal v-model:visible="orderBin" width="1200px" @before-open="getOrderBinList">
-      <template #title>
-        订单回收站 |
-        <a-popconfirm content="确定清空回收站吗?" type="warning" @ok="handleEmptyBin">
-          <a-button style="margin-left: 3px;" status="danger" @click="orderBin = true">
-            <template #icon><icon-delete /></template>
-            清空回收站
-          </a-button>
-        </a-popconfirm>
-
-      </template>
-      <a-table row-key="id" size="small" :bordered="{ cell: true }" :scroll="{ x: 'max-content', y: '60vh' }"
-        :loading="binDialogLoading" :columns="binColumns" :data="binData" v-model:selectedKeys="selectedKeys"
-        :pagination="binPagination" @page-change="binPageChange" @page-size-change="binPageSizeChange">
-        <template #wallet="{ record }">
-          <a-tooltip :content="record.address" position="top">
-            <span class="wallet-name">
-              {{ record.wallet?.name || `⁉ ${record.address?.slice(-8) || "-"}` }}
-            </span>
-          </a-tooltip>
-        </template>
-
-        <template #amount="{ record }">
-          <span>
-            {{ record.amount }}
-            <a-tag size="mini" :color="getCryptoColor(record.crypto)" bordered style="margin-left: 4px">{{
-              record.crypto
-            }}</a-tag>
-          </span>
-        </template>
-
-        <template #money="{ record }">
-          <span>
-            {{ record.money }}
-            <a-tag size="mini" color="arcoblue" style="margin-left: 4px">{{ record.fiat }}</a-tag>
-          </span>
-        </template>
-
-        <template #status="{ record }">
-          <a-tag size="small" :color="getStatusColor(record.status)">
-            {{ getStatusText(record.status) }}
-          </a-tag>
-        </template>
-
-        <template #notify_state="{ record }">
-          <a-tag size="small" :color="record.status === 2 ? (record.notify_state === 1 ? 'blue' : 'red') : 'gray'">
-            {{ record.status === 2 ? (record.notify_state === 1 ? "成功" : "失败") : "-" }}
-          </a-tag>
-        </template>
-
-        <template #optional="{ record }">
-          <a-space>
-            <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="handleRemoveFormBin(record)">
-              <a-button size="mini" type="primary" status="danger">永久删除</a-button>
-            </a-popconfirm>
-          </a-space>
-        </template>
-      </a-table>
-    </a-modal>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { listAPI, paidAPI, manualNotifyAPI, move2BinApi, orderBinListAPI, removeFromBin, emptyBin } from "@/api/modules/order/index";
+import { listAPI, paidAPI, manualNotifyAPI, delOrderApi, batchDelOrderApi } from "@/api/modules/order/index";
 import { List, FormData, Pagination } from "./config";
 import { Notification, Modal } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
@@ -259,12 +200,15 @@ const formData = reactive<FormData>({
   },
   search: false
 });
-const orderBin = ref<boolean>(false)
 const selectedKeys = ref<string[]>([]);
+const orderSelection = reactive({
+    type: 'checkbox',
+    showCheckedAll: true,
+    onlyCurrent: false,
+  });
+const batchDelConfirm = computed(() => `确定删除这${selectedKeys.value.length}条数据吗？`)
 const loading = ref(false);
-const binDialogLoading = ref(false);
 const data = reactive<List[]>([]);
-const binData = reactive<List[]>([]);
 const pagination = ref<Pagination>({
   showPageSize: true,
   showTotal: true,
@@ -272,13 +216,7 @@ const pagination = ref<Pagination>({
   pageSize: 10,
   total: 10
 });
-const binPagination = ref<Pagination>({
-  showPageSize: true,
-  showTotal: true,
-  current: 1,
-  pageSize: 10,
-  total: 10
-});
+
 const columns = [
   { title: "ID", align: "center", dataIndex: "id", width: 80 },
   { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
@@ -291,15 +229,7 @@ const columns = [
   { title: "创建时间", dataIndex: "created_at", align: "center", width: 160 },
   { title: "操作", slotName: "optional", align: "center", fixed: "right", width: 150 }
 ];
-const binColumns = [
-  { title: "ID", align: "center", dataIndex: "id", width: 80 },
-  { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
-  { title: "交易类型", align: "center", dataIndex: "trade_type", width: 120 },
-  { title: "交易数额", align: "center", dataIndex: "amount", slotName: "amount", width: 150 },
-  { title: "交易金额", align: "center", dataIndex: "money", slotName: "money", width: 150 },
-  { title: "收款钱包", align: "center", dataIndex: "wallet.name", slotName: "wallet", width: 150, ellipsis: true },
-  { title: "操作", slotName: "optional", align: "center", fixed: "right", width: 150 }
-];
+
 const statusMap: Record<number, { color: string; text: string }> = {
   1: { color: "blue", text: "等待支付" },
   2: { color: "green", text: "交易成功" },
@@ -321,15 +251,7 @@ const pageSizeChange = (pageSize: number) => {
   pagination.value.pageSize = pageSize;
   getOrderList();
 };
-const binPageChange = (page: number) => {
-  pagination.value.current = page;
-  getOrderList();
-};
 
-const binPageSizeChange = (pageSize: number) => {
-  pagination.value.pageSize = pageSize;
-  getOrderList();
-};
 const onReset = () => {
   formData.form = {
     order_id: "",
@@ -378,25 +300,6 @@ const getOrderList = async () => {
   }
 };
 
-const getOrderBinList = async () => {
-  try {
-    binDialogLoading.value = true
-    const params: any = {
-      page: binPagination.value.current,
-      size: binPagination.value.pageSize,
-      sort: "desc",
-    };
-    const res = await orderBinListAPI(params)
-    binData.length = 0
-    binData.push(...res.data);
-    binPagination.value.total = res.total;
-  } finally {
-    binDialogLoading.value = false;
-  }
-
-
-}
-
 const paidModalVisible = ref(false);
 const paidForm = reactive({
   ref_hash: "",
@@ -428,31 +331,24 @@ const confirmPaid = async () => {
     Notification.error(error);
   }
 };
-const handleMoveToBin = async (record: List) => {
+const onDelete = async (record: List) => {
   try {
-    await move2BinApi({ id: record.id })
+    await delOrderApi({ id: record.id })
     getOrderList();
+    Notification.success("删除成功");
   } catch (error) {
     Notification.error(error);
   }
 }
-const handleRemoveFormBin = async (record: List) => {
-  try {
-    await removeFromBin({ id: record.id })
-    getOrderBinList();
+const onBatchDelete = async () => {
+  try{
+    await batchDelOrderApi({ids: selectedKeys.value});
+    pagination.value.current = 1;
+    getOrderList();
+    Notification.success("批量删除成功");
+    selectedKeys.value = []
   } catch (error) {
-    Notification.error(error);
-  }
-}
-const handleEmptyBin = async () => {
-  try {
-    binDialogLoading.value = true
-    await emptyBin()
-    getOrderBinList();
-  } catch (error) {
-    Notification.error(error);
-  } finally {
-    binDialogLoading.value = false
+        Notification.error(error);
   }
 }
 const handleManualNotify = (record: List) => {
