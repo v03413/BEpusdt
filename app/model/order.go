@@ -160,9 +160,9 @@ func (o *Order) TableName() string {
 
 func GetTradeOrder(tradeId string) (Order, bool) {
 	var order Order
-	res := Db.Where("trade_id = ?", tradeId).Take(&order)
+	res := Db.Where("trade_id = ?", tradeId).Limit(1).Find(&order)
 
-	return order, res.Error == nil
+	return order, res.RowsAffected > 0
 }
 
 func GetOrderByStatus(Status int) []Order {
