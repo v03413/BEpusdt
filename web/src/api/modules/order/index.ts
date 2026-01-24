@@ -24,21 +24,13 @@ export const paidAPI = (data: any) => {
   });
 };
 
-export const delOrderApi = (data:any) => {
-    return axios({
+export const delOrderApi = (data: any) => {
+  return axios({
     url: "/api/order/del",
     method: "post",
     data
   });
-}
-
-export const batchDelOrderApi = (data:any) => {
-    return axios({
-    url: "/api/order/batch_del",
-    method: "post",
-    data
-  });
-}
+};
 
 export const manualNotifyAPI = (data: any) => {
   return axios({

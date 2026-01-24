@@ -1,19 +1,25 @@
 <template>
-  <a-modal
-    width="680px"
-    :visible="visible"
-    @close="onClose"
-    @cancel="onClose"
-    @update:visible="onClose"
-    :footer="false"
-    unmount-on-close
-  >
+  <a-modal width="680px" :visible="visible" @close="onClose" @cancel="onClose" @update:visible="onClose" unmount-on-close>
     <template #title>
       <div class="detail-modal-title">
         <icon-star />
         <span>订单详情</span>
       </div>
     </template>
+
+    <!-- 功能操作按钮 -->
+    <template #footer>
+      <a-space>
+        <a-popconfirm content="确定删除该订单吗？删除后将无法恢复！" type="error" @ok="handleDelete">
+          <a-button type="primary" status="danger">
+            <template #icon><icon-delete /></template>
+            删除订单
+          </a-button>
+        </a-popconfirm>
+        <a-button @click="onClose">关闭</a-button>
+      </a-space>
+    </template>
+
     <div class="detail-content">
       <!-- 基础信息卡片 -->
       <a-card class="detail-card" title="基础信息" :bordered="false">
@@ -243,6 +249,8 @@
 
 <script setup lang="ts">
 import { getCryptoColor } from "@/views/rate/common";
+import { delOrderApi } from "@/api/modules/order/index";
+import { Notification } from "@arco-design/web-vue";
 
 const props = defineProps({
   visible: Boolean,
@@ -252,7 +260,7 @@ const props = defineProps({
   }
 });
 
-const emits = defineEmits(["close"]);
+const emits = defineEmits(["close", "refresh"]);
 
 const onClose = () => emits("close");
 
@@ -276,6 +284,17 @@ const openMerchantWebsite = () => {
   if (props.detailData.return_url) {
     const merchantUrl = getMerchantWebsite(props.detailData.return_url);
     window.open(merchantUrl, "_blank");
+  }
+};
+
+const handleDelete = async () => {
+  try {
+    await delOrderApi({ ids: [props.detailData.id] });
+    Notification.success("删除成功");
+    emits("refresh");
+    onClose();
+  } catch (error) {
+    Notification.error(error);
   }
 };
 
