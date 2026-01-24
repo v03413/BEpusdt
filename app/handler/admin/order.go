@@ -179,3 +179,38 @@ func (Order) ManualNotify(ctx *gin.Context) {
 
 	base.Ok(ctx, "回调已触发")
 }
+
+func (Order) Del(ctx *gin.Context) {
+	var req paidReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, err.Error())
+
+		return
+	}
+
+	err := model.Db.Where("id = ?", req.ID).Delete(&model.Order{}).Error
+	if err != nil {
+		base.Error(ctx, err)
+
+		return
+	}
+
+	base.Ok(ctx, "删除成功")
+}
+func (Order) BatchDel(ctx *gin.Context) {
+	var req base.IDListRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, err.Error())
+
+		return
+	}
+
+	err := model.Db.Delete(&model.Order{}, req.IDList).Error
+	if err != nil {
+		base.Error(ctx, err)
+
+		return
+	}
+
+	base.Ok(ctx, "批量删除成功")
+}

@@ -39,6 +39,12 @@
                     <template #icon><icon-refresh /></template>
                     重置
                   </a-button>
+                  <a-popconfirm :content="batchDelConfirm" type="warning" @ok="onBatchDelete">
+                    <a-button v-show="selectedKeys.length > 0" type="primary" status="danger">
+                      <template #icon><icon-delete /></template>
+                      批量删除
+                    </a-button>
+                  </a-popconfirm>
                   <a-button type="text" @click="formData.search = !formData.search">
                     {{ formData.search ? "收起" : "展开" }}
                     <icon-down :class="{ 'rotate-icon': formData.search }" />
@@ -60,26 +66,17 @@
               </a-col>
               <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
                 <a-form-item field="createTime" label="创建时间">
-                  <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+                  <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss"
+                    style="width: 100%" />
                 </a-form-item>
               </a-col>
             </template>
           </a-row>
         </a-form>
 
-        <a-table
-          row-key="id"
-          size="small"
-          :bordered="{ cell: true }"
-          :scroll="{ x: 'max-content', y: '60vh' }"
-          :loading="loading"
-          :columns="columns"
-          :data="data"
-          v-model:selectedKeys="selectedKeys"
-          :pagination="pagination"
-          @page-change="pageChange"
-          @page-size-change="pageSizeChange"
-        >
+        <a-table row-key="id" size="small" :bordered="{ cell: true }" :scroll="{ x: 'max-content', y: '60vh' }"
+          :loading="loading" :columns="columns" :data="data" v-model:selectedKeys="selectedKeys"  :row-selection="orderSelection"
+          :pagination="pagination" @page-change="pageChange" @page-size-change="pageSizeChange">
           <template #wallet="{ record }">
             <a-tooltip :content="record.address" position="top">
               <span class="wallet-name">
@@ -119,22 +116,15 @@
           <template #optional="{ record }">
             <a-space>
               <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
-              <a-button
-                size="mini"
-                type="primary"
-                status="warning"
-                :disabled="record.status === 2"
-                @click="showPaidModal(record)"
-              >
+              <a-button size="mini" type="primary" status="warning" :disabled="record.status === 2"
+                @click="showPaidModal(record)">
                 补单
               </a-button>
-              <a-button
-                v-if="record.status === 2 && record.notify_state === 0"
-                size="mini"
-                type="primary"
-                status="danger"
-                @click="handleManualNotify(record)"
-              >
+              <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="onDelete(record)">
+                <a-button size="mini" type="primary" status="danger">删除</a-button>
+              </a-popconfirm>
+              <a-button v-if="record.status === 2 && record.notify_state === 0" size="mini" type="primary"
+                status="danger" @click="handleManualNotify(record)">
                 手动回调
               </a-button>
             </a-space>
@@ -146,16 +136,8 @@
     <DetailModal :visible="detailVisible" :detailData="detailData" @close="closeDetail" />
 
     <!-- 补单弹窗 -->
-    <a-modal
-      v-model:visible="paidModalVisible"
-      title="确认补单操作"
-      @ok="confirmPaid"
-      @cancel="closePaidModal"
-      ok-text="确认补单"
-      cancel-text="取消"
-      width="500px"
-      :mask-closable="false"
-    >
+    <a-modal v-model:visible="paidModalVisible" title="确认补单操作" @ok="confirmPaid" @cancel="closePaidModal" ok-text="确认补单"
+      cancel-text="取消" width="500px" :mask-closable="false">
       <div class="paid-modal-content">
         <a-alert type="warning" style="margin-bottom: 20px">
           <template #icon>
@@ -185,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { listAPI, paidAPI, manualNotifyAPI } from "@/api/modules/order/index";
+import { listAPI, paidAPI, manualNotifyAPI, delOrderApi, batchDelOrderApi } from "@/api/modules/order/index";
 import { List, FormData, Pagination } from "./config";
 import { Notification, Modal } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
@@ -218,8 +200,13 @@ const formData = reactive<FormData>({
   },
   search: false
 });
-
 const selectedKeys = ref<string[]>([]);
+const orderSelection = reactive({
+    type: 'checkbox',
+    showCheckedAll: true,
+    onlyCurrent: false,
+  });
+const batchDelConfirm = computed(() => `确定删除这${selectedKeys.value.length}条数据吗？`)
 const loading = ref(false);
 const data = reactive<List[]>([]);
 const pagination = ref<Pagination>({
@@ -344,7 +331,26 @@ const confirmPaid = async () => {
     Notification.error(error);
   }
 };
-
+const onDelete = async (record: List) => {
+  try {
+    await delOrderApi({ id: record.id })
+    getOrderList();
+    Notification.success("删除成功");
+  } catch (error) {
+    Notification.error(error);
+  }
+}
+const onBatchDelete = async () => {
+  try{
+    await batchDelOrderApi({ids: selectedKeys.value});
+    pagination.value.current = 1;
+    getOrderList();
+    Notification.success("批量删除成功");
+    selectedKeys.value = []
+  } catch (error) {
+        Notification.error(error);
+  }
+}
 const handleManualNotify = (record: List) => {
   Modal.confirm({
     title: "确认手动回调",
@@ -448,6 +454,7 @@ getOrderList();
 
 // 响应式处理
 @media (max-width: 1200px) {
+
   :deep(.arco-table-th),
   :deep(.arco-table-td) {
     padding: 8px 6px !important;
