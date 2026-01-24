@@ -77,7 +77,6 @@ func (Order) List(ctx *gin.Context) {
 	if req.EndAt != "" {
 		db = db.Where("created_at <= ?", req.EndAt)
 	}
-	db = db.Where("status <> ?", 0)
 
 	var total int64
 

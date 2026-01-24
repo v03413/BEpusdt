@@ -111,7 +111,6 @@ func ConfInit() {
 	var token = strings.ToUpper(utils.Md5String(hash[18:28]))
 	var username = hash[10:20]
 	var password = hash[20:30]
-
 	var encrypt, _ = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	var data = map[ConfKey]string{
 		ApiAppUri:           "",
