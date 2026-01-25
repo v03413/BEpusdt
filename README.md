@@ -7,7 +7,7 @@
 # BEpusdt (Better Easy Payment USDT)
 
 <p align="center">
-<img src="./static/payment/static/img/tether.svg" width="15%" alt="tether">
+<img src="./static/payment/assets/img/tether.svg" width="15%" alt="tether">
 </p>
 <p align="center">
 <a href="https://www.gnu.org/licenses/gpl-3.0.html"><img src="https://img.shields.io/badge/license-GPLV3-blue" alt="license GPLV3"></a>
