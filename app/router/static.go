@@ -31,8 +31,8 @@ func initCustomPayment(e *gin.Engine, path string) {
 	template.Must(tmpl.ParseFS(static.Secure, "secure/secure.html"))
 	e.SetHTMLTemplate(tmpl)
 
-	e.StaticFS("/payment", http.Dir(filepath.Join(path, "static")))
-	e.StaticFS("/static", http.FS(subFS(static.Secure, "secure/static")))
+	e.StaticFS("/payment/assets", http.Dir(filepath.Join(path, "assets")))
+	e.StaticFS("/secure/assets", http.FS(subFS(static.Secure, "secure/assets")))
 
 	log.Info("成功注册自定义静态资源路径：", path)
 }
@@ -44,8 +44,8 @@ func initDefaultPayment(e *gin.Engine) {
 	template.Must(tmpl.ParseFS(static.Payment, "payment/views/*.html"))
 	e.SetHTMLTemplate(tmpl)
 
-	e.StaticFS("/payment", http.FS(subFS(static.Payment, "payment/static")))
-	e.StaticFS("/static", http.FS(subFS(static.Secure, "secure/static")))
+	e.StaticFS("/payment/assets", http.FS(subFS(static.Payment, "payment/assets")))
+	e.StaticFS("/secure/assets", http.FS(subFS(static.Secure, "secure/assets")))
 }
 
 func subFS(src fs.FS, dir string) fs.FS {

@@ -17,7 +17,7 @@
 
             <a-form-item
               field="payment_static_path"
-              label="静态资源"
+              label="收银台静态资源"
               extra="收银台静态资源路径,可通过此功能自定义前端收银台样式;不懂请勿修改,否则可能导致收银台异常!【修改重启生效】"
             >
               <a-input v-model="form.payment_static_path" placeholder="/var/lib/bepusdt/payment/" allow-clear />
