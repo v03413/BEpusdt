@@ -87,12 +87,12 @@ export default defineConfig(({ mode }) => {
             // 自定义文件命名,避免下划线开头
             const name = chunkInfo.name;
             if (name.startsWith("_")) {
-              return `static/js/helper-${name.slice(1)}-[hash].js`;
+              return `assets/js/helper-${name.slice(1)}-[hash].js`;
             }
-            return "static/js/[name]-[hash].js";
+            return "assets/js/[name]-[hash].js";
           },
-          entryFileNames: "static/js/[name]-[hash].js",
-          assetFileNames: "static/[ext]/[name]-[hash].[ext]"
+          entryFileNames: "assets/js/[name]-[hash].js",
+          assetFileNames: "assets/[ext]/[name]-[hash].[ext]"
         }
       }
     }
