@@ -118,6 +118,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 	// 返回响应数据
 	ctx.JSON(200, respSuccJson(gin.H{
 		"fiat":            order.Fiat,
+		"trade_type":      order.TradeType,
 		"trade_id":        order.TradeId,
 		"order_id":        order.OrderId,
 		"status":          order.Status,
