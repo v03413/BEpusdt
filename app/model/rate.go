@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -44,7 +45,7 @@ func (r *Rate) BeforeCreate(*gorm.DB) error {
 	return nil
 }
 
-func CoingeckoRate() {
+func CoingeckoRate() error {
 	var fiats = make([]string, 0)
 	for k := range supportFiat {
 		fiats = append(fiats, string(k))
@@ -61,30 +62,26 @@ func CoingeckoRate() {
 	var client = &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		log.Warn("汇率同步错误", err)
 
-		return
+		return err
 	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warn("汇率同步错误", err)
 
-		return
+		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Warn("汇率同步错误 StatusCode != 200", resp.StatusCode)
 
-		return
+		return errors.New("响应异常 StatusCode != 200")
 	}
 
 	var data = gjson.ParseBytes(body)
 	if data.Get("status.error_code").Exists() {
-		log.Warn(fmt.Sprintf("汇率同步错误 %s", data.Get("status.error_message").String()))
 
-		return
+		return errors.New(data.Get("status.error_message").String())
 	}
 
 	var rows = make([]Rate, 0)
@@ -106,13 +103,13 @@ func CoingeckoRate() {
 	}
 
 	if len(rows) == 0 {
-		log.Warn("汇率同步错误 无数据")
 
-		return
+		return errors.New("响应无数据")
 	}
 
 	Db.Create(&rows)
-	log.Info("汇率同步成功")
+
+	return nil
 }
 
 func ParseFloatRate(syntax string, rawVal float64) float64 {

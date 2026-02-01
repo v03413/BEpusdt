@@ -97,7 +97,12 @@ func (Rate) SetSyntax(ctx *gin.Context) {
 }
 
 func (Rate) Sync(ctx *gin.Context) {
-	model.CoingeckoRate()
+	err := model.CoingeckoRate()
+	if err != nil {
+		base.BadRequest(ctx, "同步异常: "+err.Error())
+
+		return
+	}
 
 	base.Ok(ctx, "同步完成。")
 }
