@@ -64,6 +64,7 @@
 
 - [服务器配置性能选型推荐 ⚡️](./docs/faq/server.md)
 - [服务器流量消耗说明解释](./docs/faq/bandwidth.md)
+- [后台入口账密忘记重置教程](./docs/faq/login-reset.md)
 - [Telegram 通知 Chat ID 获取教程](docs/faq/telegram-chat-id.md)
 - [推荐配置提高 Tron 扫块稳定性‼️](./docs/tron-grid/readme.md)
 
