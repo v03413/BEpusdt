@@ -47,10 +47,17 @@
 - ✅ 收银台支持中英适配 助力出海需求
 - ✅ 快速迭代期 超多实用特性功能等你发现
 
-## 🚀 安装部署  
+## 🚀 快捷启动
+
+Docker 快速启动，执行完命令打开地址`http://服务器IP:8080`即可看到初始页面
+
+```bash  
+docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
+```
+## 📃 技术文档  
 
 - 安装：[Docker](docs/docker/docker.md) [Linux](docs/linux/install.md) [1Panel](./docs/1panel/README.md) [宝塔](./docs/bt_panel/README.md)
-- 开发：[API对接](docs/api/api.md) [订单回调](docs/notify/readme.md) [Python SDK](https://github.com/luoyanglang/bepusdt-python-sdk)
+- 开发：[API对接](docs/api/api.md) [订单回调](docs/notify/readme.md) [Python](https://github.com/luoyanglang/bepusdt-python-sdk) [PHP](https://github.com/v03413/bepusdt-php-sdk)
 - 对接：[独角数卡](docs/dujiaoka/dujiaoka.md) [异次元](./docs/acg-faka.md) [萌次元](./docs/mcy-shop.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [WHMCS](https://github.com/v03413/whmcs-gateway-epusdt)
 - 其它：[https 配置](./docs/ssl.md) [时钟同步](docs/linux/systemd-timesyncd.md) [收银台修改](docs/payment-template/README.md)
 
