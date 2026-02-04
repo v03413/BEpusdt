@@ -13,10 +13,10 @@
         <a-popconfirm content="确定删除该订单吗？删除后将无法恢复！" type="error" @ok="handleDelete">
           <a-button type="primary" status="danger">
             <template #icon><icon-delete /></template>
-            删除订单
+            删除
           </a-button>
         </a-popconfirm>
-        <a-button @click="onClose">关闭</a-button>
+        <a-button @click="onClose">关闭窗口</a-button>
       </a-space>
     </template>
 
