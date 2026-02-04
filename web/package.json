@@ -36,7 +36,7 @@
     "@visactor/vchart": "^1.11.0",
     "@visactor/vchart-arco-theme": "^1.11.0",
     "@vueuse/core": "^12.4.0",
-    "axios": "^1.6.8",
+    "axios": "^1.12.0",
     "nprogress": "^0.2.0",
     "pinia": "^2.3.0",
     "pinia-plugin-persistedstate": "^3.2.1",
