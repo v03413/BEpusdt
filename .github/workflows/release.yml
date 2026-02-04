@@ -11,9 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
+          ref: 'main'
           fetch-depth: 0
+          fetch-tags: true
       - name: Git Fetch Tags
         run: git fetch --force --tags
       - name: Set up Node.js
@@ -32,6 +34,9 @@ jobs:
         run: |
           mkdir -p static/secure
           cp -r web/dist/* static/secure/
+      - name: Generate App Version
+        run: |
+          echo "VERSION_TAG=$(git describe --tags --abbrev=0)-$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -43,4 +48,5 @@ jobs:
           version: latest
           args: release --clean --verbose
         env:
+          VERSION: ${{ env.VERSION_TAG }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

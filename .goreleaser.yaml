@@ -8,6 +8,7 @@ builds:
     main: ./main
     binary: bepusdt
     ldflags:
+      - -X '{{ .ModulePath }}/app.Version={{ .Env.VERSION }}'
       - -s -w -buildid=
     goos:
       - windows

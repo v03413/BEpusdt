@@ -19,8 +19,13 @@ ADD . .
 
 COPY --from=web_builder /web/dist ./static/secure
 
+ARG VERSION=unknown
+
 RUN set -x \
-    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -buildid=" -o bepusdt ./main
+    && MODULE_PATH=$(go list -m) \
+    && CGO_ENABLED=0 go build -trimpath \
+    -ldflags="-X '${MODULE_PATH}/app.Version=${VERSION}' -s -w -buildid=" \
+    -o bepusdt ./main
 
 FROM alpine:3.20
 

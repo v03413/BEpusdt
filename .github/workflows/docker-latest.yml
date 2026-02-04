@@ -14,9 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: 'main'
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -27,7 +29,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Generate App Version
-        run: echo APP_VERSION=`grep -o 'Version = "[^"]*"' ./app/version.go | cut -d'"' -f2` >> $GITHUB_ENV
+        run: |
+          echo "APP_VERSION=$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
+          echo "VERSION_TAG=$(git describe --tags --abbrev=0)-$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -37,8 +41,7 @@ jobs:
             linux/arm64
           push: true
           build-args: |
-            APP_NAME=${{ env.APP_NAME }}
-            APP_VERSION=${{ env.APP_VERSION }}
+            VERSION=${{ env.VERSION_TAG }}
           tags: |
             ${{ env.DOCKERHUB_REPO }}:latest
             ${{ env.DOCKERHUB_REPO }}:${{ env.APP_VERSION }}
