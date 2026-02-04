@@ -77,7 +77,7 @@
           row-key="id"
           size="small"
           :bordered="{ cell: true }"
-          :scroll="{ x: 'max-content', y: '60vh' }"
+          :scroll="{ x: '100%', y: '60vh' }"
           :loading="loading"
           :columns="columns"
           :data="data"
@@ -244,7 +244,7 @@ const pagination = ref<Pagination>({
 
 const columns = [
   { title: "ID", align: "center", dataIndex: "id", width: 80 },
-  { title: "商户订单", align: "center", dataIndex: "order_id", width: 200, ellipsis: true, tooltip: true },
+  { title: "商户订单", align: "center", dataIndex: "order_id", width: 220, ellipsis: true, tooltip: true },
   { title: "交易类型", align: "center", dataIndex: "trade_type", width: 120 },
   { title: "交易数额", align: "center", dataIndex: "amount", slotName: "amount", width: 150 },
   { title: "交易金额", align: "center", dataIndex: "money", slotName: "money", width: 150 },
