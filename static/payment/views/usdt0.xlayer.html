@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USDT・X Layer 一款更好用的个人USDT收款网关 BEpusdt</title>
+    <title>USD₮0・X Layer 一款更好用的个人加密货币收款网关 BEpusdt</title>
     <link rel="shortcut icon" href="/payment/assets/img/tether.svg">
     <link rel="stylesheet" href="/payment/assets/css/core.min.css">
     <script src="/payment/assets/js/jquery.min.js"></script>
@@ -12,9 +11,8 @@
     <script src="/payment/assets/i18n/i18next.min.js"></script>
     <script src="/payment/assets/js/core.min.js"></script>
 </head>
-
 <body>
-<div class="payment-container" data-token="USDT" data-network="X Layer" data-network-name="X Layer"
+<div class="payment-container" data-token="USD₮0" data-network="X Layer" data-network-name="X Layer"
      data-warning-token="OKB">
     <div class="language-switcher">
         <select id="languageSwitcher" onchange="changeLanguage(this.value)">
@@ -23,8 +21,8 @@
         </select>
     </div>
 
-    <div class="crypto-icon">USDT</div>
-    <h1 class="payment-title" data-i18n="payment.title">USDT 支付</h1>
+    <div class="crypto-icon">USD₮0</div>
+    <h1 class="payment-title" data-i18n="payment.title">USD₮0 支付</h1>
     <p class="payment-subtitle">
         <span class="status-indicator"></span>
         <span data-i18n="payment.subtitle">请使用 <strong>X Layer</strong> 网络进行转账</span>
@@ -35,7 +33,7 @@
         <div class="order-item">
             <span class="order-label" data-i18n="payment.paymentAmount">付款数额:</span>
             <span class="order-value amount-value" id="payAmount" onclick="copyAmount()"
-                  data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USDT</span>
+                  data-i18n="[title]payment.clickToCopy" title="点击复制金额">{{.amount}} USD₮0</span>
         </div>
         <div class="order-item">
             <span class="order-label" data-i18n="payment.merchantOrder">商户订单:</span>
@@ -81,7 +79,7 @@
     <div class="instructions">
         <h4 data-i18n="payment.instructionsTitle">📋 转账说明</h4>
         <ol>
-            <li data-i18n="[html]payment.instruction1">必须使用 <strong>X Layer 网络</strong> 进行转账，请勿转入 OKB！
+            <li data-i18n="[html]payment.instruction1">必须使用 <strong>X Layer 网络</strong> 进行转账，请勿转入其他货币！
             </li>
             <li data-i18n="payment.instruction2">转账完成后系统会自动确认到账</li>
             <li data-i18n="payment.instruction3">转账金额必须与显示金额完全一致</li>
@@ -112,6 +110,5 @@
     });
 </script>
 </body>
-
 </html>
 

@@ -37,6 +37,7 @@ const (
 	UsdtBep20    TradeType = "usdt.bep20"
 	UsdcBep20    TradeType = "usdc.bep20"
 	UsdtXlayer   TradeType = "usdt.xlayer"
+	Usdt0Xlayer  TradeType = "usdt0.xlayer"
 	UsdcXlayer   TradeType = "usdc.xlayer"
 	UsdcBase     TradeType = "usdc.base"
 	UsdtSolana   TradeType = "usdt.solana"

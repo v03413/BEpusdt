@@ -89,6 +89,16 @@ var registry = map[TradeType]TradeTypeConf{
 		ExplorerFmt: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/%s",
 		EndpointKey: RpcEndpointXlayer,
 	},
+	Usdt0Xlayer: {
+		Alias:       "USD₮0・X Layer",
+		Network:     conf.Xlayer,
+		Crypto:      USDT,
+		Contract:    conf.Usdt0Xlayer,
+		Decimal:     conf.UsdtXlayerDecimals,
+		AmountRange: usdGeneralRange,
+		ExplorerFmt: "https://web3.okx.com/zh-hans/explorer/x-layer/tx/%s",
+		EndpointKey: RpcEndpointXlayer,
+	},
 	UsdtSolana: {
 		Alias:        "USDT・Solana",
 		Network:      conf.Solana,
