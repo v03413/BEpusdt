@@ -23,8 +23,7 @@ const (
 const (
 	UsdtErc20    = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 	UsdtBep20    = "0x55d398326f99059ff775485246999027b3197955"
-	UsdtXlayer   = "0x1e4a5963abfd975d8c9021ce480b42188849d41d"
-	Usdt0Xlayer  = "0x779ded0c9e1022225f8e0630b35a9b54be713736"
+	UsdtXlayer   = "0x779ded0c9e1022225f8e0630b35a9b54be713736"
 	UsdtPlasma   = "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb"
 	UsdtPolygon  = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f"
 	UsdtArbitrum = "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
