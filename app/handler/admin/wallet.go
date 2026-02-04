@@ -13,10 +13,11 @@ type Wallet struct {
 }
 
 type wAddReq struct {
-	Name      string `json:"name"`
-	Remark    string `json:"remark"`
-	Address   string `json:"address" binding:"required"`
-	TradeType string `json:"trade_type" binding:"required"`
+	Name        string `json:"name"`
+	Remark      string `json:"remark"`
+	Address     string `json:"address" binding:"required"`
+	TradeType   string `json:"trade_type" binding:"required"`
+	OtherNotify uint8  `json:"other_notify"`
 }
 
 type wModReq struct {
@@ -57,7 +58,7 @@ func (Wallet) Add(ctx *gin.Context) {
 		MatchAddr:   strings.TrimSpace(req.Address),
 		TradeType:   req.TradeType,
 		Status:      model.WaStatusEnable,
-		OtherNotify: model.WaOtherDisable,
+		OtherNotify: req.OtherNotify,
 	}
 
 	if !wallet.IsValid() {

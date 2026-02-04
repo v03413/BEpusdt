@@ -437,7 +437,11 @@ const addWallet = async () => {
   if (state) return;
 
   try {
-    await addWalletAPI(addFrom.value);
+    const submitData = {
+      ...addFrom.value,
+      other_notify: addFrom.value.other_notify ?? 0
+    };
+    await addWalletAPI(submitData);
     open.value = false;
     getCommonTableList();
     Notification.success("添加成功");
