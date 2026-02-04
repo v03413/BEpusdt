@@ -98,7 +98,11 @@
                         </div>
                       </template>
                       <template #suffix>
-                        <a href="https://github.com/v03413/BEpusdt/" target="_blank" class="help-link">
+                        <a
+                          href="https://github.com/v03413/BEpusdt/blob/main/docs/tron-grid/readme.md"
+                          target="_blank"
+                          class="help-link"
+                        >
                           <icon-question-circle />
                           获取方法
                         </a>
