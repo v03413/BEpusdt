@@ -57,7 +57,7 @@ type evmBlock struct {
 }
 
 func (e *evm) syncBlocksForward(ctx context.Context) {
-	if syncBreak(e.Network) {
+	if syncBreak(e.Network, e.blockScanQueue.Len()) {
 
 		return
 	}
@@ -150,7 +150,7 @@ func (e *evm) syncBlocksBackward(now int64) {
 		defer ticker.Stop()
 
 		for from := start; from <= now; from += blockParseMaxNum {
-			if syncBreak(e.Network) {
+			if syncBreak(e.Network, e.blockScanQueue.Len()) {
 
 				return
 			}
@@ -452,7 +452,13 @@ func (e *evm) rpcEndpoint() string {
 	return model.Endpoint(model.Network(e.Network))
 }
 
-func syncBreak(network string) bool {
+func syncBreak(network string, num int) bool {
+	if num >= blockQueueLimit {
+		log.Task.Warn(fmt.Sprintf("%s 同步阻塞，当前区块消费堆积数量：%d", network, num))
+
+		return true
+	}
+
 	trades := model.GetNetworkTrades(model.Network(network))
 	if len(trades) == 0 {
 

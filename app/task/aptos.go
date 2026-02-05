@@ -68,7 +68,7 @@ func newAptos() aptos {
 }
 
 func (a *aptos) syncVersionForward(ctx context.Context) {
-	if syncBreak(conf.Aptos) {
+	if syncBreak(conf.Aptos, a.versionQueue.Len()) {
 
 		return
 	}
@@ -153,7 +153,7 @@ func (a *aptos) syncVersionBackward(ctx context.Context, now int64) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if syncBreak(conf.Aptos) {
+				if syncBreak(conf.Aptos, a.versionQueue.Len()) {
 					return
 				}
 

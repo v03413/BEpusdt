@@ -8,6 +8,11 @@ import (
 	"github.com/v03413/bepusdt/app/model"
 )
 
+// 区块扫描队列最大长度，避免可能因为 Rpc Rate Limit 问题导致消费队列堆积，进而导致OOM，暂时简单限制队列长度
+// 如果直接使用固定长度的 Channel 控制，会导致区块高度同步时也彻底阻塞，无法对外界输出日志导致无法观察，彻底垮掉
+// 如果确实是因为 Rate Limit 问题导致的异常，优先考虑的是提升 Rpc 节点的质量和稳定性
+const blockQueueLimit = 100
+
 type Task struct {
 	Duration time.Duration
 	Callback func(ctx context.Context)

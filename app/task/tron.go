@@ -460,6 +460,12 @@ func (t *tron) base58CheckEncode(input []byte) string {
 }
 
 func (t *tron) syncBreak() bool {
+	if t.blockScanQueue.Len() >= blockQueueLimit {
+		log.Task.Warn("tron 同步阻塞，当前区块消费堆积数量：", t.blockScanQueue.Len())
+
+		return true
+	}
+
 	var count int64 = 0
 	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)

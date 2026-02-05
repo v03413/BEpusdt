@@ -58,7 +58,7 @@ func newSolana() solana {
 }
 
 func (s *solana) syncSlotForward(ctx context.Context) {
-	if syncBreak(conf.Solana) {
+	if syncBreak(conf.Solana, s.slotQueue.Len()) {
 
 		return
 	}
@@ -139,7 +139,7 @@ func (s *solana) syncSlotBackward(now int64) {
 		defer ticker.Stop()
 
 		for i := int64(0); i < num; i++ {
-			if syncBreak(conf.Solana) {
+			if syncBreak(conf.Solana, s.slotQueue.Len()) {
 
 				return
 			}
