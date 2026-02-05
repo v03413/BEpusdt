@@ -1,0 +1,53 @@
+name: BUG 反馈｜使用异常｜功能建议｜其它问题
+description: "提交在使用 BEpusdt 过程中遇到的 BUG 反馈、使用异常、对接失败等问题"
+body:
+  - type: checkboxes
+    attributes:
+      label: 完整性要求
+      description: |-
+        请勾选以下所有选项以证明您已经阅读并理解了以下要求，否则该 issue 将被关闭。
+      options:
+        - label: 我保证阅读了相关文档和 FAQ，确认问题不是由于误解功能或配置错误引起的。
+          required: true
+        - label: 我提供了完整环境和日志信息，而不是出于自己的判断只给出截取的部分。
+          required: true
+        - label: 我搜索了 issues, 没有发现已提出的类似问题。
+          required: true
+        - label: 问题在 Release 最新的版本上可以成功复现
+          required: true
+        - label: 我理解如果没有提供足够的信息，维护者可以直接关闭该 issue，而不需要进一步的解释。
+          required: true
+        - label: 我明白任何人针对我提交的问题没有义务提供帮助，包括项目维护者。
+          required: true
+  - type: dropdown
+    attributes:
+      label: 问题类型
+      description: 请选择您遇到的问题类型
+      options:
+        - BUG 反馈
+        - 使用异常
+        - 对接失败
+        - 功能建议
+        - 其它问题
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 报告描述
+      description: |-
+        请提供问题的详细描述。以及你认为有价值的信息。
+        如果问题在更新后出现，请提供**具体**出现问题的版本号。
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |-
+        ## 日志信息
+        默认的日志目录在 `/var/log/bepusdt/` 下，请将相关时间段的日志内容粘贴在下面的代码块中。
+  - type: textarea
+    attributes:
+      label: 日志内容
+      description: 请粘贴对应的日志信息，如果有的话
+      placeholder: |
+        请在这里粘贴日志内容...
+      render: shell
