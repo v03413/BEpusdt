@@ -6,13 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/natefinch/lumberjack"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	Task     *logrus.Logger
-	bepusdt  *logrus.Logger
-	logFiles []*os.File
+	Task    *logrus.Logger
+	be      *logrus.Logger
+	loggers []*lumberjack.Logger
 )
 
 func newLogger(file string) (*logrus.Logger, error) {
@@ -25,15 +26,16 @@ func newLogger(file string) (*logrus.Logger, error) {
 	})
 
 	logger.SetLevel(logrus.InfoLevel)
-
-	output, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
+	output := &lumberjack.Logger{
+		Filename:   file,
+		MaxSize:    300,
+		MaxBackups: 5,
+		MaxAge:     7,
+		Compress:   true,
 	}
 
-	// 保存文件句柄
-	logFiles = append(logFiles, output)
 	logger.SetOutput(output)
+	loggers = append(loggers, output)
 
 	return logger, nil
 }
@@ -46,7 +48,7 @@ func Init(dir string) error {
 
 	var err error
 
-	bepusdt, err = newLogger(filepath.Join(dir, "bepusdt.log"))
+	be, err = newLogger(filepath.Join(dir, "bepusdt.log"))
 	if err != nil {
 		return err
 	}
@@ -60,39 +62,34 @@ func Init(dir string) error {
 }
 
 func Debug(args ...interface{}) {
-	bepusdt.Debugln(args...)
+	be.Debugln(args...)
 }
 
 func Info(args ...interface{}) {
-	bepusdt.Infoln(args...)
+	be.Infoln(args...)
 }
 
 func Error(args ...interface{}) {
-	bepusdt.Errorln(args...)
+	be.Errorln(args...)
 }
 
 func Warn(args ...interface{}) {
-	bepusdt.Warnln(args...)
+	be.Warnln(args...)
 }
 
 func GetWriter() *io.PipeWriter {
 
-	return bepusdt.Writer()
+	return be.Writer()
 }
 
 func Close() {
-	var lastErr error
-	for _, f := range logFiles {
+	for _, f := range loggers {
 		if f != nil {
 			if err := f.Close(); err != nil {
-				lastErr = err
+				_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("日志句柄资源关闭错误：%s", err.Error()))
 			}
 		}
 	}
 
-	logFiles = nil
-
-	if lastErr != nil {
-		_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("日志句柄资源关闭错误：%s", lastErr.Error()))
-	}
+	loggers = nil
 }
