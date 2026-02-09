@@ -9,17 +9,17 @@
 
 > 路径：后台 -> 插件管理 -> 应用商店 -> 支付插件 -> 易支付
 
-![易支付插件](./mcy-shop/1.png)
+![易支付插件](../../mcy-shop/1.png)
 
 找到这个插件，并把他安装下来，随后启用。
 
-![启用插件](./mcy-shop/2.png)
+![启用插件](../../mcy-shop/2.png)
 
 ### 2.支付配置
 
 点击添加配置，配置自己的`Bepusdt`信息，参考如下：
 
-![配置支付](./mcy-shop/3.png)
+![配置支付](../../mcy-shop/3.png)
 
 ### 3.增加支付通道
 
@@ -27,7 +27,7 @@
 ，需有对原版代码进行替换；请把这个文件[Pay.php](https://raw.githubusercontent.com/v03413/bepusdt/refs/heads/main/docs/mcy-shop/Pay.php)
 下载下来，替换到你的网站路径`/app/Plugin/Epay/Config`下的同名文件。
 
-![Pay.php](./mcy-shop/4.png)
+![Pay.php](../../mcy-shop/4.png)
 
 ### 4.增加支付接口
 
@@ -36,7 +36,7 @@
 > 支付通道：自行选择    
 > 支付配置：选择第二步添加的配置
 >
-![支付接口](./mcy-shop/5.png)
-![支付接口](./mcy-shop/6.png)
+![支付接口](../../mcy-shop/5.png)
+![支付接口](../../mcy-shop/6.png)
 
 其它参数根据自己的需求填写即可，填好之后即可开始测试是否对接成功！

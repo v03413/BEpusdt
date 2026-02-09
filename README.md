@@ -10,16 +10,20 @@
 <img src="./static/payment/assets/img/tether.svg" width="15%" alt="tether">
 </p>
 <p align="center">
-<a href="https://www.gnu.org/licenses/gpl-3.0.html"><img src="https://img.shields.io/badge/license-GPLV3-blue" alt="license GPLV3"></a>
-<a href="https://golang.org"><img src="https://img.shields.io/badge/Golang-1.24-red" alt="Go version 1.24"></a>
-<a href="https://github.com/gin-gonic/gin">
-    <img src="https://img.shields.io/badge/Gin-v1.10-blue" alt="Gin Web Framework">
+<a href="https://www.gnu.org/licenses/gpl-3.0.html">
+    <img src="https://img.shields.io/github/license/v03413/bepusdt" alt="license GPLV3">
 </a>
 <a href="https://github.com/v03413/bepusdt">
   <img src="https://img.shields.io/github/v/release/v03413/bepusdt" alt="GitHub Release">
 </a>
+<a href="https://github.com/v03413/bepusdt">
+  <img src="https://img.shields.io/github/downloads/v03413/bepusdt/total" alt="GitHub Release">
+</a>
 <a href="https://hub.docker.com/r/v03413/bepusdt">
     <img src="https://img.shields.io/docker/pulls/v03413/bepusdt?style=flat-square&logo=docker" alt="Docker Pulls">
+</a>
+<a href="https://github.com/gin-gonic/gin">
+    <img src="https://img.shields.io/github/stars/v03413/bepusdt?style=flat-square&logo=github" alt="GitHub Stars">
 </a>
 </p>
 
@@ -58,7 +62,7 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 
 - 安装：[Docker](docs/docker/docker.md) [Linux](docs/linux/install.md) [1Panel](./docs/1panel/README.md) [宝塔](./docs/bt_panel/README.md)
 - 开发：[API对接](docs/api/api.md) [订单回调](docs/notify/readme.md) [Python](https://github.com/luoyanglang/bepusdt-python-sdk) [PHP](https://github.com/v03413/bepusdt-php-sdk)
-- 对接：[独角数卡](docs/dujiaoka/dujiaoka.md) [异次元](./docs/acg-faka.md) [萌次元](./docs/mcy-shop.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [WHMCS](https://github.com/v03413/whmcs-gateway-epusdt)
+- 对接：[独角数卡](docs/api/dujiaoka/dujiaoka.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [whmcs](https://github.com/v03413/whmcs-gateway-epusdt) [其它](docs/api/other.md)
 - 其它：[https 配置](./docs/ssl.md) [时钟同步](docs/linux/systemd-timesyncd.md) [收银台修改](docs/payment-template/README.md)
 
 ## 🖼 功能截图
