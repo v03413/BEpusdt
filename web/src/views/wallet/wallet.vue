@@ -1,276 +1,274 @@
 <template>
-  <div class="wallet">
-    <div class="snow-page">
-      <div class="snow-inner">
-        <a-form ref="formRef" auto-label-width :model="formData.form">
-          <a-row :gutter="16">
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-              <a-input v-model="formData.form.name" placeholder="请输入名称" allow-clear />
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-              <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-              <a-select v-model="formData.form.trade_type" placeholder="请选择交易类型" allow-clear allow-search>
-                <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
-                  {{ item.label }}
-                </a-option>
-              </a-select>
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
-              <a-space class="search-btn">
-                <a-button type="primary" @click="getCommonTableList">
-                  <template #icon><icon-search /></template>
-                  查询
-                </a-button>
-                <a-button @click="onReset">
-                  <template #icon><icon-refresh /></template>
-                  重置
-                </a-button>
-              </a-space>
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
-              <a-button type="primary" status="success" @click="onAdd">
-                <template #icon><icon-plus /></template>
-                新增钱包
+  <div class="snow-page">
+    <div class="snow-inner">
+      <a-form ref="formRef" auto-label-width :model="formData.form">
+        <a-row :gutter="16">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-input v-model="formData.form.name" placeholder="请输入名称" allow-clear />
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-select v-model="formData.form.trade_type" placeholder="请选择交易类型" allow-clear allow-search>
+              <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </a-option>
+            </a-select>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
+            <a-space class="search-btn">
+              <a-button type="primary" @click="getCommonTableList">
+                <template #icon><icon-search /></template>
+                查询
               </a-button>
-            </a-col>
-          </a-row>
-        </a-form>
-
-        <a-table
-          row-key="key"
-          size="small"
-          :bordered="{ cell: true }"
-          :scroll="{ x: 'max-content', y: '60vh' }"
-          :loading="loading"
-          :columns="columns"
-          :data="data"
-          v-model:selectedKeys="selectedKeys"
-          :pagination="pagination"
-          @page-change="pageChange"
-          @page-size-change="pageSizeChange"
-        >
-          <template #address="{ record }">
-            <div class="address-cell">
-              <a-typography-text copyable class="address-text">
-                {{ record.address }}
-              </a-typography-text>
-            </div>
-          </template>
-
-          <template #status="{ record }">
-            <a-tag size="small" :color="record.status === 1 ? 'green' : 'red'">
-              {{ record.status === 1 ? "启用" : "停用" }}
-            </a-tag>
-          </template>
-
-          <template #other_notify="{ record }">
-            <a-tag size="small" :color="record.other_notify === 1 ? 'arcoblue' : 'gray'">
-              {{ record.other_notify === 1 ? "开启" : "关闭" }}
-            </a-tag>
-          </template>
-
-          <template #optional="{ record }">
-            <a-space>
-              <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
-              <a-button size="mini" @click="onMod(record)">修改</a-button>
-              <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="onDelete(record)">
-                <a-button size="mini" type="primary" status="danger">删除</a-button>
-              </a-popconfirm>
+              <a-button @click="onReset">
+                <template #icon><icon-refresh /></template>
+                重置
+              </a-button>
             </a-space>
-          </template>
-        </a-table>
-      </div>
-    </div>
-
-    <!-- 新增钱包对话框 -->
-    <a-modal width="40%" v-model:visible="open" @close="afterClose" @ok="addWallet" @cancel="afterClose">
-      <template #title>{{ title }}</template>
-      <a-form ref="formRef" auto-label-width :rules="rules" :model="addFrom">
-        <a-form-item field="name" label="钱包名称" validate-trigger="blur">
-          <a-input v-model="addFrom.name" placeholder="请输入钱包名称" allow-clear />
-        </a-form-item>
-        <a-form-item field="address" label="钱包地址" validate-trigger="blur">
-          <a-input v-model="addFrom.address" placeholder="请输入钱包地址" allow-clear />
-        </a-form-item>
-        <a-form-item field="trade_type" label="交易类型" :rules="[{ required: true, message: '交易类型不能为空' }]">
-          <a-select v-model="addFrom.trade_type" placeholder="请选择" allow-clear allow-search>
-            <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="other_notify" label="其他通知">
-          <a-select v-model="addFrom.other_notify" placeholder="请选择" allow-clear>
-            <a-option :value="0">关闭</a-option>
-            <a-option :value="1">启用</a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="remark" label="备注信息" validate-trigger="blur">
-          <a-textarea v-model="addFrom.remark" placeholder="请输入备注信息" allow-clear />
-        </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
+            <a-button type="primary" status="success" @click="onAdd">
+              <template #icon><icon-plus /></template>
+              新增钱包
+            </a-button>
+          </a-col>
+        </a-row>
       </a-form>
-    </a-modal>
 
-    <!-- 修改钱包对话框 -->
-    <a-modal width="40%" v-model:visible="modOpen" @close="afterModClose" @ok="modWallet" @cancel="afterModClose">
-      <template #title>{{ modTitle }}</template>
-      <a-form ref="modFormRef" auto-label-width :rules="rules" :model="modFrom">
-        <a-form-item field="name" label="钱包名称" validate-trigger="blur">
-          <a-input v-model="modFrom.name" placeholder="请输入钱包名称" allow-clear />
-        </a-form-item>
-        <a-form-item field="address" label="钱包地址" validate-trigger="blur">
-          <a-input v-model="modFrom.address" placeholder="请输入钱包地址" allow-clear />
-        </a-form-item>
-        <a-form-item field="trade_type" label="交易类型" :rules="[{ required: true, message: '交易类型不能为空' }]">
-          <a-select v-model="modFrom.trade_type" placeholder="请选择" allow-clear allow-search>
-            <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="status" label="收款状态">
-          <a-select v-model="modFrom.status" placeholder="请选择" allow-clear>
-            <a-option :value="1">启用</a-option>
-            <a-option :value="0">停用</a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="other_notify" label="其他通知">
-          <a-select v-model="modFrom.other_notify" placeholder="请选择" allow-clear>
-            <a-option :value="0">关闭</a-option>
-            <a-option :value="1">开启</a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="remark" label="备注信息" validate-trigger="blur">
-          <a-textarea v-model="modFrom.remark" placeholder="请输入备注信息" allow-clear />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 详情对话框 -->
-    <a-modal
-      width="680px"
-      v-model:visible="detailVisible"
-      @close="closeDetail"
-      @cancel="closeDetail"
-      :footer="false"
-      unmount-on-close
-    >
-      <template #title>
-        <div class="detail-modal-title">
-          <icon-star />
-          <span>钱包详情信息</span>
-        </div>
-      </template>
-
-      <div class="detail-content">
-        <a-card class="detail-card" title="基础信息" :bordered="false">
-          <template #extra>
-            <a-tag size="medium" :color="detailData.status === 1 ? 'green' : 'red'" class="status-tag">
-              <icon-check-circle v-if="detailData.status === 1" />
-              <icon-close-circle v-else />
-              {{ detailData.status === 1 ? "启用中" : "已停用" }}
-            </a-tag>
-          </template>
-
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-idcard />
-                  <span>钱包ID</span>
-                </div>
-                <div class="detail-value">{{ detailData.id }}</div>
-              </div>
-            </a-col>
-            <a-col :span="12">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-user />
-                  <span>钱包名称</span>
-                </div>
-                <div class="detail-value">{{ detailData.name }}</div>
-              </div>
-            </a-col>
-          </a-row>
-
-          <a-row :gutter="24">
-            <a-col :span="24">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-location />
-                  <span>钱包地址</span>
-                </div>
-                <div class="detail-value address-value">
-                  <a-typography-text copyable>{{ detailData.address }}</a-typography-text>
-                </div>
-              </div>
-            </a-col>
-          </a-row>
-
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-swap />
-                  <span>交易类型</span>
-                </div>
-                <div class="detail-value">
-                  <a-tag color="blue">{{ detailData.trade_type }}</a-tag>
-                </div>
-              </div>
-            </a-col>
-            <a-col :span="12">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-notification />
-                  <span>监控状态</span>
-                </div>
-                <div class="detail-value">
-                  <a-tag :color="detailData.other_notify === 1 ? 'arcoblue' : 'gray'">
-                    <icon-eye v-if="detailData.other_notify === 1" />
-                    <icon-eye-invisible v-else />
-                    {{ detailData.other_notify === 1 ? "已开启" : "已关闭" }}
-                  </a-tag>
-                </div>
-              </div>
-            </a-col>
-          </a-row>
-        </a-card>
-
-        <a-card class="detail-card" title="备注信息" :bordered="false" v-if="detailData.remark">
-          <div class="remark-content">
-            <icon-message />
-            <span>{{ detailData.remark }}</span>
+      <a-table
+        row-key="key"
+        size="small"
+        :bordered="{ cell: true }"
+        :scroll="{ x: '100%', y: '100%', minWidth: 1000 }"
+        :loading="loading"
+        :columns="columns"
+        :data="data"
+        v-model:selectedKeys="selectedKeys"
+        :pagination="pagination"
+        @page-change="pageChange"
+        @page-size-change="pageSizeChange"
+      >
+        <template #address="{ record }">
+          <div class="address-cell">
+            <a-typography-text copyable class="address-text">
+              {{ record.address }}
+            </a-typography-text>
           </div>
-        </a-card>
+        </template>
 
-        <a-card class="detail-card" title="时间信息" :bordered="false" v-if="detailData.created_at || detailData.updated_at">
-          <a-row :gutter="24">
-            <a-col :span="12" v-if="detailData.created_at">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-plus-circle />
-                  <span>创建时间</span>
-                </div>
-                <div class="detail-value">{{ detailData.created_at }}</div>
-              </div>
-            </a-col>
-            <a-col :span="12" v-if="detailData.updated_at">
-              <div class="detail-item">
-                <div class="detail-label">
-                  <icon-edit />
-                  <span>更新时间</span>
-                </div>
-                <div class="detail-value">{{ detailData.updated_at }}</div>
-              </div>
-            </a-col>
-          </a-row>
-        </a-card>
-      </div>
-    </a-modal>
+        <template #status="{ record }">
+          <a-tag size="small" :color="record.status === 1 ? 'green' : 'red'">
+            {{ record.status === 1 ? "启用" : "停用" }}
+          </a-tag>
+        </template>
+
+        <template #other_notify="{ record }">
+          <a-tag size="small" :color="record.other_notify === 1 ? 'arcoblue' : 'gray'">
+            {{ record.other_notify === 1 ? "开启" : "关闭" }}
+          </a-tag>
+        </template>
+
+        <template #optional="{ record }">
+          <a-space>
+            <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
+            <a-button size="mini" @click="onMod(record)">修改</a-button>
+            <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="onDelete(record)">
+              <a-button size="mini" type="primary" status="danger">删除</a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </a-table>
+    </div>
   </div>
+
+  <!-- 新增钱包对话框 -->
+  <a-modal width="40%" v-model:visible="open" @close="afterClose" @ok="addWallet" @cancel="afterClose">
+    <template #title>{{ title }}</template>
+    <a-form ref="formRef" auto-label-width :rules="rules" :model="addFrom">
+      <a-form-item field="name" label="钱包名称" validate-trigger="blur">
+        <a-input v-model="addFrom.name" placeholder="请输入钱包名称" allow-clear />
+      </a-form-item>
+      <a-form-item field="address" label="钱包地址" validate-trigger="blur">
+        <a-input v-model="addFrom.address" placeholder="请输入钱包地址" allow-clear />
+      </a-form-item>
+      <a-form-item field="trade_type" label="交易类型" :rules="[{ required: true, message: '交易类型不能为空' }]">
+        <a-select v-model="addFrom.trade_type" placeholder="请选择" allow-clear allow-search>
+          <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </a-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item field="other_notify" label="其他通知">
+        <a-select v-model="addFrom.other_notify" placeholder="请选择" allow-clear>
+          <a-option :value="0">关闭</a-option>
+          <a-option :value="1">启用</a-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item field="remark" label="备注信息" validate-trigger="blur">
+        <a-textarea v-model="addFrom.remark" placeholder="请输入备注信息" allow-clear />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <!-- 修改钱包对话框 -->
+  <a-modal width="40%" v-model:visible="modOpen" @close="afterModClose" @ok="modWallet" @cancel="afterModClose">
+    <template #title>{{ modTitle }}</template>
+    <a-form ref="modFormRef" auto-label-width :rules="rules" :model="modFrom">
+      <a-form-item field="name" label="钱包名称" validate-trigger="blur">
+        <a-input v-model="modFrom.name" placeholder="请输入钱包名称" allow-clear />
+      </a-form-item>
+      <a-form-item field="address" label="钱包地址" validate-trigger="blur">
+        <a-input v-model="modFrom.address" placeholder="请输入钱包地址" allow-clear />
+      </a-form-item>
+      <a-form-item field="trade_type" label="交易类型" :rules="[{ required: true, message: '交易类型不能为空' }]">
+        <a-select v-model="modFrom.trade_type" placeholder="请选择" allow-clear allow-search>
+          <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </a-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item field="status" label="收款状态">
+        <a-select v-model="modFrom.status" placeholder="请选择" allow-clear>
+          <a-option :value="1">启用</a-option>
+          <a-option :value="0">停用</a-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item field="other_notify" label="其他通知">
+        <a-select v-model="modFrom.other_notify" placeholder="请选择" allow-clear>
+          <a-option :value="0">关闭</a-option>
+          <a-option :value="1">开启</a-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item field="remark" label="备注信息" validate-trigger="blur">
+        <a-textarea v-model="modFrom.remark" placeholder="请输入备注信息" allow-clear />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <!-- 详情对话框 -->
+  <a-modal
+    width="680px"
+    v-model:visible="detailVisible"
+    @close="closeDetail"
+    @cancel="closeDetail"
+    :footer="false"
+    unmount-on-close
+  >
+    <template #title>
+      <div class="detail-modal-title">
+        <icon-star />
+        <span>钱包详情信息</span>
+      </div>
+    </template>
+
+    <div class="detail-content">
+      <a-card class="detail-card" title="基础信息" :bordered="false">
+        <template #extra>
+          <a-tag size="medium" :color="detailData.status === 1 ? 'green' : 'red'" class="status-tag">
+            <icon-check-circle v-if="detailData.status === 1" />
+            <icon-close-circle v-else />
+            {{ detailData.status === 1 ? "启用中" : "已停用" }}
+          </a-tag>
+        </template>
+
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-idcard />
+                <span>钱包ID</span>
+              </div>
+              <div class="detail-value">{{ detailData.id }}</div>
+            </div>
+          </a-col>
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-user />
+                <span>钱包名称</span>
+              </div>
+              <div class="detail-value">{{ detailData.name }}</div>
+            </div>
+          </a-col>
+        </a-row>
+
+        <a-row :gutter="24">
+          <a-col :span="24">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-location />
+                <span>钱包地址</span>
+              </div>
+              <div class="detail-value address-value">
+                <a-typography-text copyable>{{ detailData.address }}</a-typography-text>
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-swap />
+                <span>交易类型</span>
+              </div>
+              <div class="detail-value">
+                <a-tag color="blue">{{ detailData.trade_type }}</a-tag>
+              </div>
+            </div>
+          </a-col>
+          <a-col :span="12">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-notification />
+                <span>监控状态</span>
+              </div>
+              <div class="detail-value">
+                <a-tag :color="detailData.other_notify === 1 ? 'arcoblue' : 'gray'">
+                  <icon-eye v-if="detailData.other_notify === 1" />
+                  <icon-eye-invisible v-else />
+                  {{ detailData.other_notify === 1 ? "已开启" : "已关闭" }}
+                </a-tag>
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+      </a-card>
+
+      <a-card class="detail-card" title="备注信息" :bordered="false" v-if="detailData.remark">
+        <div class="remark-content">
+          <icon-message />
+          <span>{{ detailData.remark }}</span>
+        </div>
+      </a-card>
+
+      <a-card class="detail-card" title="时间信息" :bordered="false" v-if="detailData.created_at || detailData.updated_at">
+        <a-row :gutter="24">
+          <a-col :span="12" v-if="detailData.created_at">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-plus-circle />
+                <span>创建时间</span>
+              </div>
+              <div class="detail-value">{{ detailData.created_at }}</div>
+            </div>
+          </a-col>
+          <a-col :span="12" v-if="detailData.updated_at">
+            <div class="detail-item">
+              <div class="detail-label">
+                <icon-edit />
+                <span>更新时间</span>
+              </div>
+              <div class="detail-value">{{ detailData.updated_at }}</div>
+            </div>
+          </a-col>
+        </a-row>
+      </a-card>
+    </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -468,25 +466,6 @@ getCommonTableList();
 </script>
 
 <style lang="scss" scoped>
-.wallet {
-  height: 100%;
-
-  .snow-page {
-    height: 100%;
-
-    .snow-inner {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-
-      .arco-table-container {
-        flex: 1;
-        overflow: hidden;
-      }
-    }
-  }
-}
-
 .search-btn {
   margin-bottom: 20px;
 }
