@@ -61,9 +61,11 @@ const (
 	RpcEndpointTron           ConfKey = "rpc_endpoint_tron"              // TRON RPC节点
 	RpcEndpointTronGridApiKey ConfKey = "rpc_endpoint_tron_grid_api_key" // TRON RPC节点 TronGrid Api Key
 
-	RateSyncInterval   ConfKey = "rate_sync_interval"    // 汇率同步间隔，单位秒
-	NotifyMaxRetry     ConfKey = "notify_max_retry"      // 最大重试次数，订单回调失败
-	BlockHeightMaxDiff ConfKey = "block_height_max_diff" // 区块高度最大差值，超过此值则以当前区块高度为准，重新开始扫描
+	RateSyncCoingeckoApiUrl ConfKey = "rate_sync_coingecko_api_url" // 汇率同步 Coingecko Api URL
+	RateSyncCoingeckoApiKey ConfKey = "rate_sync_coingecko_api_key" // 汇率同步 Coingecko Api Key
+	RateSyncInterval        ConfKey = "rate_sync_interval"          // 汇率同步间隔，单位秒
+	NotifyMaxRetry          ConfKey = "notify_max_retry"            // 最大重试次数，订单回调失败
+	BlockHeightMaxDiff      ConfKey = "block_height_max_diff"       // 区块高度最大差值，超过此值则以当前区块高度为准，重新开始扫描
 
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email

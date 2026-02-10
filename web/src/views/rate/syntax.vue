@@ -7,9 +7,9 @@
             <a-space size="medium">
               <a-button type="primary" @click="showSyncModal">
                 <template #icon>
-                  <icon-clock-circle />
+                  <icon-settings />
                 </template>
-                同步频率
+                同步配置
               </a-button>
               <a-button type="primary" @click="showAtomModal" :status="'danger'">
                 <template #icon>
@@ -120,11 +120,11 @@
     <!-- 同步频率设置模态框 -->
     <a-modal
       v-model:visible="syncModalVisible"
-      title="设置同步频率"
+      title="汇率同步配置"
       @ok="handleSyncSubmit"
       @cancel="handleSyncCancel"
       :ok-loading="syncLoading"
-      width="400px"
+      width="480px"
       class="sync-modal"
     >
       <a-form ref="syncFormRef" :model="syncForm" layout="vertical">
@@ -139,10 +139,26 @@
           />
         </a-form-item>
 
+        <a-form-item label="API 接口">
+          <a-select v-model="syncForm.apiUrl" placeholder="请选择 API 接口" style="width: 100%">
+            <a-option v-for="option in apiUrlOptions" :key="option.value" :value="option.value" :label="option.label">
+              {{ option.label }}
+            </a-option>
+          </a-select>
+        </a-form-item>
+
+        <a-form-item label="API Key">
+          <a-input v-model="syncForm.apiKey" placeholder="请输入 API Key（可选）" allow-clear style="width: 100%" />
+        </a-form-item>
+
         <div class="sync-tip">
           <a-typography-text type="secondary">
             <icon-info-circle style="margin-right: 4px" />
-            推荐60分钟，范围：10-1440分钟
+            同步频率：10-1440分钟，推荐60分钟<br />
+            官方接口：免费但有速率限制，配置 <a href="https://www.coingecko.com/" target="_blank">API Key</a> 可解除限制<br />
+            开源接口：作者提供的免费缓存接口（落后官方接口3分钟），无速率限制<br />
+            <b style="color: red">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
+            <hr />
           </a-typography-text>
         </div>
       </a-form>
@@ -235,7 +251,7 @@ import { ref, reactive } from "vue";
 import { Message } from "@arco-design/web-vue";
 import { IconInfoCircle } from "@arco-design/web-vue/es/icon";
 import { getSyntaxListAPI, setSyntaxAPI } from "@/api/modules/rate/index";
-import { setConfAPI, getConfAPI, getsConfAPI, setsConfAPI } from "@/api/modules/conf/index";
+import { getsConfAPI, setsConfAPI } from "@/api/modules/conf/index";
 import { List, EditForm } from "./syntax";
 import { getFiatFlag, getCryptoColor } from "@/views/rate/common";
 
@@ -470,27 +486,53 @@ const syncLoading = ref<boolean>(false);
 const syncFormRef = ref();
 
 const syncForm = reactive({
-  minutes: 60 // 默认60分钟
+  minutes: 60,
+  apiUrl: "https://api.coingecko.com", // 默认官方接口
+  apiKey: ""
 });
+
+// API 接口选项
+const apiUrlOptions = [
+  {
+    label: "官方接口 免费额度存在速率限制",
+    value: "https://api.coingecko.com"
+  },
+  {
+    label: "开源免费 作者自建 没有速率限制",
+    value: "https://api-coingecko-com.bepusdt.online"
+  }
+];
 
 // 显示同步频率模态框
 const showSyncModal = async () => {
   try {
-    const res = await getConfAPI({
-      key: "rate_sync_interval"
+    const res = await getsConfAPI({
+      keys: ["rate_sync_interval", "rate_sync_coingecko_api_url", "rate_sync_coingecko_api_key"]
     });
 
-    if (res.data && res.data.value) {
-      const seconds = parseInt(res.data.value);
-      const minutes = Math.round(seconds / 60);
-      syncForm.minutes = minutes;
+    if (res.data) {
+      // 设置同步频率
+      if (res.data.rate_sync_interval) {
+        const seconds = parseInt(res.data.rate_sync_interval);
+        const minutes = Math.round(seconds / 60);
+        syncForm.minutes = minutes;
+      } else {
+        syncForm.minutes = 60;
+      }
+
+      syncForm.apiUrl = res.data.rate_sync_coingecko_api_url || "https://api.coingecko.com";
+      syncForm.apiKey = res.data.rate_sync_coingecko_api_key || "";
     } else {
       syncForm.minutes = 60;
+      syncForm.apiUrl = "https://api.coingecko.com";
+      syncForm.apiKey = "";
     }
   } catch (error) {
     console.error("获取同步频率配置失败:", error);
     syncForm.minutes = 60;
-    Message.warning("获取当前配置失败，使用默认值60分钟");
+    syncForm.apiUrl = "https://api.coingecko.com";
+    syncForm.apiKey = "";
+    Message.warning("获取当前配置失败，使用默认值");
   }
 
   syncModalVisible.value = true;
@@ -503,18 +545,24 @@ const handleSyncSubmit = async () => {
       return;
     }
 
+    if (!syncForm.apiUrl) {
+      Message.error("请选择 API 接口");
+      return;
+    }
+
     syncLoading.value = true;
     const seconds = syncForm.minutes * 60;
 
-    await setConfAPI({
-      key: "rate_sync_interval",
-      value: seconds.toString()
-    });
+    await setsConfAPI([
+      { key: "rate_sync_interval", value: seconds.toString() },
+      { key: "rate_sync_coingecko_api_url", value: syncForm.apiUrl },
+      { key: "rate_sync_coingecko_api_key", value: syncForm.apiKey }
+    ]);
 
-    Message.success(`同步频率已设置为 ${syncForm.minutes} 分钟`);
+    Message.success("汇率同步配置已保存");
     syncModalVisible.value = false;
   } catch (error) {
-    console.error("设置同步频率失败:", error);
+    console.error("设置同步配置失败:", error);
     Message.error("设置失败");
   } finally {
     syncLoading.value = false;
@@ -525,6 +573,8 @@ const handleSyncCancel = () => {
   syncModalVisible.value = false;
   syncFormRef.value?.resetFields();
   syncForm.minutes = 60;
+  syncForm.apiUrl = "https://api.coingecko.com";
+  syncForm.apiKey = "";
 };
 
 // 支付颗粒度相关状态
@@ -658,12 +708,19 @@ getCommonTableList();
   }
 
   .sync-tip {
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: #f6f8fa;
     border: 1px solid #e1e4e8;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.4;
     margin-top: 8px;
+
+    hr {
+      margin: 6px 0 0 0;
+      border: none;
+      border-top: 1px solid #e1e4e8;
+    }
   }
 }
 

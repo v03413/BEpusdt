@@ -58,9 +58,17 @@ func CoingeckoRate() error {
 		tokens[id] = token
 	}
 
-	var url = fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=%s", strings.Join(ids, ","), strings.Join(fiats, ","))
+	var url = fmt.Sprintf("%s/api/v3/simple/price?ids=%s&vs_currencies=%s", GetC(RateSyncCoingeckoApiUrl), strings.Join(ids, ","), strings.Join(fiats, ","))
 	var client = &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("x-cg-demo-api-key", GetC(RateSyncCoingeckoApiKey))
+
+	resp, err := client.Do(req)
 	if err != nil {
 
 		return err
