@@ -2,12 +2,10 @@
   <a-watermark :content="watermark" v-bind="watermarkConfig">
     <a-layout-content class="layout-main-content">
       <Tabs v-if="isTabs" />
-      <router-view v-slot="{ Component, route }">
-        <s-main-transition>
-          <keep-alive :include="cacheRoutes">
-            <component :is="createComponentWrapper(Component, route)" :key="route.fullPath" v-if="refreshPage" />
-          </keep-alive>
-        </s-main-transition>
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="cacheRoutes">
+          <component :is="Component" v-if="refreshPage" />
+        </keep-alive>
       </router-view>
     </a-layout-content>
   </a-watermark>
@@ -22,19 +20,6 @@ const themeStore = useThemeConfig();
 let { refreshPage, isTabs, watermark, watermarkStyle, watermarkRotate, watermarkGap } = storeToRefs(themeStore);
 const routerStore = useRouteConfigStore();
 const { cacheRoutes } = storeToRefs(routerStore);
-
-// 组件包装器
-const wrapperMap = new Map();
-const createComponentWrapper = (component: any, route: any) => {
-  if (!component) return;
-  const wrapperName = route.fullPath;
-  let wrapper = wrapperMap.get(wrapperName);
-  if (!wrapper) {
-    wrapper = { name: wrapperName, render: () => h(component) };
-    wrapperMap.set(wrapperName, wrapper);
-  }
-  return h(wrapper);
-};
 
 // 水印配置
 const watermarkConfig = computed(() => {
