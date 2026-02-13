@@ -157,7 +157,7 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	}
 
 	// 获取订单汇率
-	rate, err := getOrderRate(crypto, p.Fiat, p.Rate)
+	rate, err := GetOrderRate(crypto, p.Fiat, p.Rate)
 	if err != nil {
 		return Trade{}, err
 	}

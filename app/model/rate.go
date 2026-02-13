@@ -171,7 +171,7 @@ func round(val float64, precision int) float64 {
 	return math.Floor(val*p+0.5) / p
 }
 
-func getOrderRate(token Crypto, fiat Fiat, syntax string) (decimal.Decimal, error) {
+func GetOrderRate(token Crypto, fiat Fiat, syntax string) (decimal.Decimal, error) {
 	var r Rate
 	Db.Where("crypto = ? and fiat = ?", token, fiat).Order("created_at desc").Limit(1).Find(&r)
 	if r.ID == 0 {
