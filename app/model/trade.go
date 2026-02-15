@@ -114,7 +114,6 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 	}
 
 	zero := time.Unix(0, 0)
-	crypto, _ := GetCrypto(p.TradeType)
 	tradeOrder := Order{
 		OrderId:     p.OrderId,
 		TradeId:     tradeId,
@@ -133,7 +132,7 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 		NotifyState: OrderNotifyStateFail,
 		ExpiredAt:   CalcTradeExpiredAt(p.Timeout),
 		Fiat:        p.Fiat,
-		Crypto:      crypto,
+		Crypto:      data.Crypto,
 		ConfirmedAt: &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
 	}
 
@@ -157,7 +156,7 @@ func BuildTrade(p OrderParams) (Trade, error) {
 	}
 
 	// 获取订单汇率
-	rate, err := getOrderRate(crypto, p.Fiat, p.Rate)
+	rate, err := GetOrderRate(crypto, p.Fiat, p.Rate)
 	if err != nil {
 		return Trade{}, err
 	}

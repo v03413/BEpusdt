@@ -90,7 +90,7 @@
         <template #wallet="{ record }">
           <a-tooltip :content="record.address" position="top">
             <span class="wallet-name">
-              {{ record.wallet?.name || `⁉ ${record.address?.slice(-8) || "-"}` }}
+              {{ record.wallet?.name || record.channel?.name || (record.address ? `${record.address.slice(-8)}` : "--") }}
             </span>
           </a-tooltip>
         </template>

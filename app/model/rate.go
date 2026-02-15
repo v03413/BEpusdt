@@ -83,13 +83,13 @@ func CoingeckoRate() error {
 
 	if resp.StatusCode != http.StatusOK {
 
-		return errors.New("响应异常 StatusCode != 200")
+		return errors.New("CoingeckoRate: " + http.StatusText(resp.StatusCode))
 	}
 
 	var data = gjson.ParseBytes(body)
 	if data.Get("status.error_code").Exists() {
 
-		return errors.New(data.Get("status.error_message").String())
+		return errors.New("CoingeckoRate: " + data.Get("status.error_message").String())
 	}
 
 	var rows = make([]Rate, 0)
@@ -112,7 +112,7 @@ func CoingeckoRate() error {
 
 	if len(rows) == 0 {
 
-		return errors.New("响应无数据")
+		return errors.New("CoingeckoRate: no data")
 	}
 
 	Db.Create(&rows)
@@ -171,7 +171,7 @@ func round(val float64, precision int) float64 {
 	return math.Floor(val*p+0.5) / p
 }
 
-func getOrderRate(token Crypto, fiat Fiat, syntax string) (decimal.Decimal, error) {
+func GetOrderRate(token Crypto, fiat Fiat, syntax string) (decimal.Decimal, error) {
 	var r Rate
 	Db.Where("crypto = ? and fiat = ?", token, fiat).Order("created_at desc").Limit(1).Find(&r)
 	if r.ID == 0 {
