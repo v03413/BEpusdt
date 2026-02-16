@@ -157,7 +157,7 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"status":          order.Status,
 		"amount":          order.Money,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"payment_url":     "",
+		"payment_url":     model.CheckoutCashier(host, order.TradeId),
 	}))
 }
 
@@ -339,6 +339,35 @@ func (Epusdt) CheckoutCounter(ctx *gin.Context) {
 		"trade_id":   tradeId,
 		"order_id":   order.OrderId,
 		"trade_type": order.TradeType,
+		"money":      order.Money,
+		"fiat":       order.Fiat,
+	})
+}
+
+func (Epusdt) CheckoutCashier(ctx *gin.Context) {
+	tradeId := ctx.Param("trade_id")
+	order, ok := model.GetTradeOrder(tradeId)
+	if !ok {
+		ctx.String(200, "order not found")
+
+		return
+	}
+
+	uri, err := url.ParseRequestURI(order.ReturnUrl)
+	if err != nil {
+		ctx.String(200, "sync address error")
+		log.Error("CheckoutCashier: sync address error: ", err.Error())
+
+		return
+	}
+
+	ctx.HTML(200, "cashier.html", gin.H{
+		"http_host":  uri.Host,
+		"amount":     order.Amount,
+		"expire":     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
+		"return_url": order.ReturnUrl,
+		"trade_id":   tradeId,
+		"order_id":   order.OrderId,
 		"money":      order.Money,
 		"fiat":       order.Fiat,
 	})
