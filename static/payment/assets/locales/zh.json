@@ -2,6 +2,8 @@
   "payment": {
     "title": "{{token}} 支付",
     "subtitle": "请使用 <strong>{{networkName}}</strong> {{network}} 网络进行转账",
+    "subtitleCashier": "请使用 <strong>{{token}} {{networkName}}</strong> 网络进行转账",
+    "subtitle2": "请选择支付币种和网络",
     "networkBadge": "{{network}}",
     "paymentAmount": "付款数额:",
     "merchantOrder": "商户订单:",
@@ -14,11 +16,15 @@
     "seconds": "秒",
     "addressLabel": "收款地址 ({{network}} 网络)",
     "copyAddress": "复制地址",
+    "selectCurrency": "请选择币种",
+    "selectNetwork": "请选择网络",
+    "payNow": "立即支付",
     "instructionsTitle": "📋 转账说明",
     "instruction1": "必须使用 <strong>{{network}} 网络</strong> 进行转账，请勿转入 {{warningToken}}！",
     "instruction2": "转账完成后系统会自动确认到账",
     "instruction3": "转账金额必须与显示金额完全一致",
     "instruction4": "如果有其它疑问，请联系客服处理",
+    "cashierInstr1": "请选择您喜欢的付款方式进行转账",
     "poweredBy": "Powered by",
     "github": "Github",
     "copied": "已复制!",
@@ -36,4 +42,3 @@
     "processing": "处理中..."
   }
 }
-
