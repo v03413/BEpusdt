@@ -423,3 +423,12 @@ func AddrCaseSens(t TradeType) bool {
 
 	return true
 }
+
+func GetTradeTypeByCurrencyAndNetwork(currency, network string) (TradeType, error) {
+	for t, c := range registry {
+		if string(c.Crypto) == currency && (string(c.Network) == network || c.NetworkName == network) {
+			return t, nil
+		}
+	}
+	return "", fmt.Errorf("no matching trade type found for currency %s on network %s", currency, network)
+}

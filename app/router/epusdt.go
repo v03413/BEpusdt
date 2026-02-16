@@ -24,5 +24,6 @@ func epusdtInit(engine *gin.Engine) {
 	payApiGrp := engine.Group("/api/v1/pay")
 	{
 		payApiGrp.POST("/methods", epHdr.GetPaymentMethods)
+		payApiGrp.POST("/update-order", epHdr.UpdateOrder)
 	}
 }

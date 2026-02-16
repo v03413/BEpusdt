@@ -46,6 +46,12 @@ type createOrderReq struct {
 	Timeout     int64      `json:"timeout"`
 }
 
+type updateOrderReq struct {
+	TradeID  string `json:"trade_id" binding:"required"`
+	Currency string `json:"currency" binding:"required"`
+	Network  string `json:"network" binding:"required"`
+}
+
 type cancelReq struct {
 	TradeID   string `json:"trade_id" binding:"required"`
 	Signature string `json:"signature" binding:"required"`
@@ -154,6 +160,69 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"payment_url":     "",
 	}))
 }
+
+// 更新订单，返回付款链接。更新订单不需要签名，因为创建订单时已经验证，只需要提交参数更新订单即可。
+func (Epusdt) UpdateOrder(ctx *gin.Context) {
+	// 接收 trade_id, currency, network 三个参数
+	var req updateOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("UpdateOrder: request error: %s", err.Error())))
+		return
+	}
+
+	// 解析请求地址
+	host := "http://" + ctx.Request.Host
+	if ctx.Request.TLS != nil {
+		host = "https://" + ctx.Request.Host
+	}
+
+	// 获取订单
+	order, ok := model.GetTradeOrder(req.TradeID)
+	if !ok {
+		ctx.JSON(200, respFailJson("order not found"))
+		return
+	}
+
+	// 根据 currency 和 network 解析出 TradeType
+	tradeType, err := model.GetTradeTypeByCurrencyAndNetwork(req.Currency, req.Network)
+	if err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("UpdateOrder: unsupported payment method: %s - %s", req.Currency, req.Network)))
+		return
+	}
+
+	// 重建订单（更新支付方式）
+	// 注意：RebuildOrder 需要 OrderParams，我们需要从现有订单构造参数
+	money, _ := decimal.NewFromString(order.Money)
+	params := model.OrderParams{
+		Money:       money,
+		OrderId:     order.OrderId,
+		TradeType:   tradeType, // 新的交易类型
+		RedirectUrl: order.ReturnUrl,
+		NotifyUrl:   order.NotifyUrl,
+		Name:        order.Name,
+		Timeout:     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
+		Fiat: order.Fiat,
+	}
+
+	newOrder, err := model.RebuildOrder(order, params)
+	if err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("update order failed: %s", err.Error())))
+		return
+	}
+
+	// 返回响应数据
+	ctx.JSON(200, respSuccJson(gin.H{
+		"fiat":            newOrder.Fiat,
+		"trade_type":      newOrder.TradeType,
+		"trade_id":        newOrder.TradeId,
+		"order_id":        newOrder.OrderId,
+		"status":          newOrder.Status,
+		"amount":          newOrder.Money,
+		"actual_amount":   newOrder.Amount,
+		"token":           newOrder.Address,
+		"expiration_time": uint64(newOrder.ExpiredAt.Sub(time.Now()).Seconds()),
+		"payment_url":     model.CheckoutCounter(host, newOrder.TradeId),
+	}))
 }
 
 func (Epusdt) CreateTransaction(ctx *gin.Context) {
