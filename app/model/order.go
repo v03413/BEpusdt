@@ -55,27 +55,28 @@ var calcMutex sync.Mutex
 
 type Order struct {
 	Id
-	OrderId     string     `gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
-	TradeId     string     `gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
-	TradeType   TradeType  `gorm:"column:trade_type;type:varchar(20);not null;index;comment:交易类型" json:"trade_type"`
-	Fiat        Fiat       `gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法定货币" json:"fiat"`
-	Crypto      Crypto     `gorm:"column:crypto;type:varchar(16);not null;index;default:USDT;comment:加密货币" json:"crypto"`
-	Rate        string     `gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`
-	Amount      string     `gorm:"column:amount;type:varchar(32);not null;default:0.00;comment:交易数额" json:"amount"`
-	Money       string     `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:交易金额" json:"money"`
-	Address     string     `gorm:"column:address;type:varchar(128);index;not null;comment:收款地址" json:"address"`
-	FromAddress string     `gorm:"column:from_address;type:varchar(128);not null;default:'';comment:支付地址" json:"from_address"`
-	Status      int        `gorm:"column:status;type:tinyint(1);not null;default:1;index;comment:交易状态" json:"status"`
-	Name        string     `gorm:"column:name;type:varchar(64);not null;default:'';comment:商品名称" json:"name"`
-	ApiType     string     `gorm:"column:api_type;type:varchar(20);not null;default:'epusdt';comment:API类型" json:"api_type"`
-	ReturnUrl   string     `gorm:"column:return_url;type:varchar(255);not null;default:'';comment:同步地址" json:"return_url"`
-	NotifyUrl   string     `gorm:"column:notify_url;type:varchar(255);not null;default:'';comment:异步地址" json:"notify_url"`
-	NotifyNum   int        `gorm:"column:notify_num;type:int(11);not null;default:0;comment:回调次数" json:"notify_num"`
-	NotifyState int        `gorm:"column:notify_state;type:tinyint(1);not null;default:0;comment:回调状态 1：成功 0：失败" json:"notify_state"`
-	RefHash     string     `gorm:"column:ref_hash;type:varchar(128);not null;default:'';index;comment:交易哈希" json:"ref_hash"`
-	RefBlockNum int64      `gorm:"column:ref_block_num;type:varchar(64);not null;default:0;comment:区块索引" json:"ref_block_num"`
-	ExpiredAt   time.Time  `gorm:"column:expired_at;type:datetime;not null;comment:失效时间" json:"expired_at"`
-	ConfirmedAt *time.Time `gorm:"column:confirmed_at;type:datetime;not null;comment:交易确认时间" json:"confirmed_at"`
+	OrderId       string     `gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
+	TradeId       string     `gorm:"column:trade_id;type:varchar(128);not null;uniqueIndex;comment:本地ID" json:"trade_id"`
+	TradeType     TradeType  `gorm:"column:trade_type;type:varchar(20);not null;index;comment:交易类型" json:"trade_type"`
+	Fiat          Fiat       `gorm:"column:fiat;type:varchar(16);not null;index;default:CNY;comment:法定货币" json:"fiat"`
+	Crypto        Crypto     `gorm:"column:crypto;type:varchar(16);not null;index;default:USDT;comment:加密货币" json:"crypto"`
+	CurrencyLimit string     `gorm:"column:currency_limit;type:varchar(255);not null;default:'';comment:限定币种" json:"currency_limit"`
+	Rate          string     `gorm:"column:rate;type:varchar(10);not null;comment:交易汇率" json:"rate"`
+	Amount        string     `gorm:"column:amount;type:varchar(32);not null;default:0.00;comment:交易数额" json:"amount"`
+	Money         string     `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:交易金额" json:"money"`
+	Address       string     `gorm:"column:address;type:varchar(128);index;not null;comment:收款地址" json:"address"`
+	FromAddress   string     `gorm:"column:from_address;type:varchar(128);not null;default:'';comment:支付地址" json:"from_address"`
+	Status        int        `gorm:"column:status;type:tinyint(1);not null;default:1;index;comment:交易状态" json:"status"`
+	Name          string     `gorm:"column:name;type:varchar(64);not null;default:'';comment:商品名称" json:"name"`
+	ApiType       string     `gorm:"column:api_type;type:varchar(20);not null;default:'epusdt';comment:API类型" json:"api_type"`
+	ReturnUrl     string     `gorm:"column:return_url;type:varchar(255);not null;default:'';comment:同步地址" json:"return_url"`
+	NotifyUrl     string     `gorm:"column:notify_url;type:varchar(255);not null;default:'';comment:异步地址" json:"notify_url"`
+	NotifyNum     int        `gorm:"column:notify_num;type:int(11);not null;default:0;comment:回调次数" json:"notify_num"`
+	NotifyState   int        `gorm:"column:notify_state;type:tinyint(1);not null;default:0;comment:回调状态 1：成功 0：失败" json:"notify_state"`
+	RefHash       string     `gorm:"column:ref_hash;type:varchar(128);not null;default:'';index;comment:交易哈希" json:"ref_hash"`
+	RefBlockNum   int64      `gorm:"column:ref_block_num;type:varchar(64);not null;default:0;comment:区块索引" json:"ref_block_num"`
+	ExpiredAt     time.Time  `gorm:"column:expired_at;type:datetime;not null;comment:失效时间" json:"expired_at"`
+	ConfirmedAt   *time.Time `gorm:"column:confirmed_at;type:datetime;not null;comment:交易确认时间" json:"confirmed_at"`
 	AutoTimeAt
 }
 

@@ -13,17 +13,18 @@ import (
 )
 
 type OrderParams struct {
-	Money       decimal.Decimal `json:"money"`        // 交易金额 (单位：法币)s
-	ApiType     string          `json:"api_type"`     // 支付 API 类型
-	Address     string          `json:"address"`      // 收款地址
-	OrderId     string          `json:"order_id"`     // 商户订单 ID
-	TradeType   TradeType       `json:"trade_type"`   // 交易类型
-	RedirectUrl string          `json:"redirect_url"` // 成功跳转地址
-	NotifyUrl   string          `json:"notify_url"`   // 异步通知地址
-	Name        string          `json:"name"`         // 商品名称
-	Timeout     int64           `json:"timeout"`      // 订单超时时间（秒）
-	Rate        string          `json:"rate"`         // 强制指定汇率
-	Fiat        Fiat            `json:"fiat"`         // 法币类型
+	Money         decimal.Decimal `json:"money"`          // 交易金额 (单位：法币)s
+	ApiType       string          `json:"api_type"`       // 支付 API 类型
+	Address       string          `json:"address"`        // 收款地址
+	OrderId       string          `json:"order_id"`       // 商户订单 ID
+	TradeType     TradeType       `json:"trade_type"`     // 交易类型
+	RedirectUrl   string          `json:"redirect_url"`   // 成功跳转地址
+	NotifyUrl     string          `json:"notify_url"`     // 异步通知地址
+	Name          string          `json:"name"`           // 商品名称
+	Timeout       int64           `json:"timeout"`        // 订单超时时间（秒）
+	Rate          string          `json:"rate"`           // 强制指定汇率
+	Fiat          Fiat            `json:"fiat"`           // 法币类型
+	CurrencyLimit string          `json:"currency_limit"` // 限定币种
 }
 
 type Trade struct {
@@ -115,25 +116,26 @@ func NewOrder(p OrderParams, data Trade) (Order, error) {
 
 	zero := time.Unix(0, 0)
 	tradeOrder := Order{
-		OrderId:     p.OrderId,
-		TradeId:     tradeId,
-		RefHash:     tradeId,
-		TradeType:   p.TradeType,
-		Rate:        fmt.Sprintf("%v", data.Rate),
-		Amount:      data.Amount,
-		Money:       p.Money.String(),
-		Address:     data.Address,
-		Status:      OrderStatusWaiting,
-		Name:        p.Name,
-		ApiType:     p.ApiType,
-		ReturnUrl:   p.RedirectUrl,
-		NotifyUrl:   p.NotifyUrl,
-		NotifyNum:   0,
-		NotifyState: OrderNotifyStateFail,
-		ExpiredAt:   CalcTradeExpiredAt(p.Timeout),
-		Fiat:        p.Fiat,
-		Crypto:      data.Crypto,
-		ConfirmedAt: &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
+		OrderId:       p.OrderId,
+		TradeId:       tradeId,
+		RefHash:       tradeId,
+		TradeType:     p.TradeType,
+		Rate:          fmt.Sprintf("%v", data.Rate),
+		Amount:        data.Amount,
+		Money:         p.Money.String(),
+		Address:       data.Address,
+		Status:        OrderStatusWaiting,
+		Name:          p.Name,
+		ApiType:       p.ApiType,
+		ReturnUrl:     p.RedirectUrl,
+		NotifyUrl:     p.NotifyUrl,
+		NotifyNum:     0,
+		NotifyState:   OrderNotifyStateFail,
+		ExpiredAt:     CalcTradeExpiredAt(p.Timeout),
+		Fiat:          p.Fiat,
+		Crypto:        data.Crypto,
+		CurrencyLimit: p.CurrencyLimit,
+		ConfirmedAt:   &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
 	}
 
 	if tradeOrder.Name == "" {
@@ -189,4 +191,36 @@ func BuildTrade(p OrderParams) (Trade, error) {
 		Address: address,
 		Amount:  amount,
 	}, nil
+}
+
+// BuildPendingOrder 创建待支付订单（不锁定地址和汇率）
+func BuildPendingOrder(p OrderParams) (Order, error) {
+	var order Order
+
+	maxAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMaxAmount)))
+	minAmount := decimal.NewFromFloat(cast.ToFloat64(GetC(PaymentMinAmount)))
+	if p.Money.GreaterThan(maxAmount) || p.Money.LessThan(minAmount) {
+		return order, fmt.Errorf("交易金额必须在 %s - %s 之间", minAmount.String(), maxAmount.String())
+	}
+
+	Db.Where("order_id = ?", p.OrderId).Order("id desc").Limit(1).Find(&order)
+	if order.Status == OrderStatusSuccess || order.Status == OrderStatusConfirming || order.Status == OrderStatusWaiting {
+		return order, nil
+	}
+
+	// 默认使用 USDT
+	crypto := USDT
+	if p.TradeType != "" {
+		c, err := GetCrypto(p.TradeType)
+		if err == nil {
+			crypto = c
+		}
+	}
+
+	return NewOrder(p, Trade{
+		Crypto:  crypto,
+		Rate:    decimal.Zero,
+		Amount:  "0",
+		Address: "",
+	})
 }

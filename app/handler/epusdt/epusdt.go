@@ -34,6 +34,18 @@ type createReq struct {
 	Rate        string     `json:"rate"`
 }
 
+type createOrderReq struct {
+	Amount      float64    `json:"amount" binding:"required"`
+	OrderID     string     `json:"order_id" binding:"required"`
+	NotifyURL   string     `json:"notify_url" binding:"required"`
+	RedirectURL string     `json:"redirect_url" binding:"required"`
+	Signature   string     `json:"signature" binding:"required"`
+	Name        string     `json:"name"`
+	Fiat        model.Fiat `json:"fiat"`
+	Currencies  string     `json:"currencies"`
+	Timeout     int64      `json:"timeout"`
+}
+
 type cancelReq struct {
 	TradeID   string `json:"trade_id" binding:"required"`
 	Signature string `json:"signature" binding:"required"`
@@ -90,6 +102,58 @@ func (Epusdt) SignVerify(ctx *gin.Context) {
 
 	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(rawData)) // 回写数据
 	ctx.Next()
+}
+
+// Order creation API
+func (Epusdt) CreateOrder(ctx *gin.Context) {
+	var req createOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: reqeust error: %s", err.Error())))
+
+		return
+	}
+
+	// 解析请求地址
+	host := "http://" + ctx.Request.Host
+	if ctx.Request.TLS != nil {
+		host = "https://" + ctx.Request.Host
+	}
+
+	if req.Fiat == "" {
+		req.Fiat = model.CNY
+	}
+
+	// 创建待付款订单
+	order, err := model.BuildPendingOrder(model.OrderParams{
+		Money:         decimal.NewFromFloat(req.Amount),
+		ApiType:       model.OrderApiTypeEpusdt,
+		OrderId:       req.OrderID,
+		RedirectUrl:   req.RedirectURL,
+		NotifyUrl:     req.NotifyURL,
+		Name:          req.Name,
+		Timeout:       req.Timeout,
+		Fiat:          req.Fiat,
+		CurrencyLimit: req.Currencies,
+	})
+	if err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: order create failed: %s", err.Error())))
+
+		return
+	}
+
+	log.Info(fmt.Sprintf("订单创建成功 商户订单：%s", req.OrderID))
+
+	// 返回响应数据
+	ctx.JSON(200, respSuccJson(gin.H{
+		"fiat":            order.Fiat,
+		"trade_id":        order.TradeId,
+		"order_id":        order.OrderId,
+		"status":          order.Status,
+		"amount":          order.Money,
+		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
+		"payment_url":     "",
+	}))
+}
 }
 
 func (Epusdt) CreateTransaction(ctx *gin.Context) {
@@ -263,9 +327,23 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 	var methods []methodItem
 	allTrades := model.GetAllTradeConfig()
 
+	// 解析限定币种
+	var allowedCurrencies map[string]bool
+	if order.CurrencyLimit != "" {
+		allowedCurrencies = make(map[string]bool)
+		for _, c := range strings.Split(order.CurrencyLimit, ",") {
+			allowedCurrencies[strings.ToUpper(strings.TrimSpace(c))] = true
+		}
+	}
+
 	for tradeTypeStr, conf := range allTrades {
 		// 如果指定了货币，则进行过滤
 		if req.Currency != "" && string(conf.Crypto) != req.Currency {
+			continue
+		}
+
+		// 如果订单限定了币种，则进行过滤
+		if allowedCurrencies != nil && !allowedCurrencies[string(conf.Crypto)] {
 			continue
 		}
 

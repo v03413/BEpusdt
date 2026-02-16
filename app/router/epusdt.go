@@ -18,6 +18,7 @@ func epusdtInit(engine *gin.Engine) {
 		orderGrp.Use(epHdr.SignVerify)
 		orderGrp.POST("/create-transaction", epHdr.CreateTransaction)
 		orderGrp.POST("/cancel-transaction", epHdr.CancelTransaction)
+		orderGrp.POST("/create-order", epHdr.CreateOrder)
 	}
 
 	payApiGrp := engine.Group("/api/v1/pay")
