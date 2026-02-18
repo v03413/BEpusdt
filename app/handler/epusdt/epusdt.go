@@ -154,6 +154,7 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"fiat":            order.Fiat,
 		"trade_id":        order.TradeId,
 		"order_id":        order.OrderId,
+		"name":            order.Name,
 		"status":          order.Status,
 		"amount":          order.Money,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
@@ -368,6 +369,7 @@ func (Epusdt) CheckoutCashier(ctx *gin.Context) {
 		"return_url": order.ReturnUrl,
 		"trade_id":   tradeId,
 		"order_id":   order.OrderId,
+		"name":       order.Name,
 		"money":      order.Money,
 		"fiat":       order.Fiat,
 	})

@@ -39,6 +39,10 @@
                 <span class="order-value">{{.order_id}}</span>
             </div>
             <div class="order-item">
+                <span class="order-label" data-i18n="payment.productName">商品名称:</span>
+                <span class="order-value">{{.name}}</span>
+            </div>
+            <div class="order-item">
                 <span class="order-label" data-i18n="payment.orderAmount">订单金额:</span>
                 <span class="order-value">
                     <span class="fiat-amount"><span data-i18n="payment.amountPrefix">约</span> {{.money}}
@@ -117,6 +121,7 @@
                 expire: "{{.expire}}",
                 money: "{{.money}}",
                 fiat: "{{.fiat}}",
+                name: "{{.name}}",
                 trade_id: "{{.trade_id}}",
                 order_id: "{{.order_id}}",
                 return_url: "{{.return_url}}"

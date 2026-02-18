@@ -7,6 +7,7 @@
     "networkBadge": "{{network}}",
     "paymentAmount": "付款数额:",
     "merchantOrder": "商户订单:",
+    "productName": "商品名称:",
     "orderAmount": "订单金额:",
     "amountPrefix": "约",
     "clickToCopy": "点击复制金额",
