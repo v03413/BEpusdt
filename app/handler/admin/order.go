@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/task/notify"
@@ -29,6 +30,71 @@ type oListReq struct {
 type paidReq struct {
 	base.IDRequest
 	RefHash string `json:"ref_hash"`
+}
+
+type createReq struct {
+	Amount      float64    `json:"amount" binding:"required"`
+	OrderID     string     `json:"order_id" binding:"required"`
+	Name        string     `json:"name"`
+	Fiat        model.Fiat `json:"fiat"`
+	Currencies  string     `json:"currencies"`
+	Timeout     int64      `json:"timeout"`
+}
+
+func (Order) Create(ctx *gin.Context) {
+	var req createReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.Response(ctx, 400, err.Error())
+
+		return
+	}
+	
+	// 解析请求地址
+	host := "http://" + ctx.Request.Host
+	if ctx.Request.TLS != nil {
+		host = "https://" + ctx.Request.Host
+	}
+	
+	// NotifyURL RedirectURL 为 host + order.TradeId
+
+	// 创建待付款订单
+	order, err := model.BuildPendingOrder(model.OrderParams{
+		Money:         decimal.NewFromFloat(req.Amount),
+		ApiType:       model.OrderApiTypeAdmin, // 使用 Admin 类型
+		OrderId:       req.OrderID,
+		Name:          req.Name,
+		Timeout:       req.Timeout,
+		Fiat:          req.Fiat,
+		CurrencyLimit: req.Currencies,
+	})
+	if err != nil {
+		base.Response(ctx, 400, gin.H{
+			"status":  "failed",
+			"message": "failed to create order: " + err.Error(),
+		})
+		return
+	}
+
+	// NotifyURL RedirectURL 同为付款链接
+	url := model.CheckoutCashier(host, order.TradeId)
+	
+	// Update order with generated URLs
+	order.NotifyUrl = url
+	order.ReturnUrl = url
+	if err := model.Db.Save(&order).Error; err != nil {
+		base.Response(ctx, 400, gin.H{
+			"status":  "failed",
+			"message": "failed to update order urls: " + err.Error(),
+		})
+		return
+	}
+
+	// 返回响应数据
+	base.Response(ctx, 200, gin.H{
+		"status":      "success",
+		"message":     "order created",
+		"payment_url": url,
+	})
 }
 
 func (Order) List(ctx *gin.Context) {

@@ -49,6 +49,7 @@ const (
 const (
 	OrderApiTypeEpusdt = "epusdt" // epusdt
 	OrderApiTypeEpay   = "epay"   // 彩虹易支付
+	OrderApiTypeAdmin  = "admin"  // 管理后台
 )
 
 var calcMutex sync.Mutex
