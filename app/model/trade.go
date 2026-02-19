@@ -215,6 +215,12 @@ func BuildPendingOrder(p OrderParams) (Order, error) {
 		if err == nil {
 			crypto = c
 		}
+	} else if p.CurrencyLimit != "" {
+		// 如果指定了唯一的币种限制，且不是黑名单模式，则使用该币种
+		cur := strings.ToUpper(p.CurrencyLimit)
+		if !strings.Contains(cur, ",") && !strings.HasPrefix(cur, "-") {
+			crypto = Crypto(cur)
+		}
 	}
 
 	return NewOrder(p, Trade{

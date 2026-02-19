@@ -428,11 +428,16 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 	allTrades := model.GetAllTradeConfig()
 
 	// 解析限定币种
-	var allowedCurrencies map[string]bool
+	var whitelist = make(map[string]bool)
+	var blacklist = make(map[string]bool)
 	if order.CurrencyLimit != "" {
-		allowedCurrencies = make(map[string]bool)
 		for _, c := range strings.Split(order.CurrencyLimit, ",") {
-			allowedCurrencies[strings.ToUpper(strings.TrimSpace(c))] = true
+			c = strings.TrimSpace(c)
+			if strings.HasPrefix(c, "-") {
+				blacklist[strings.ToUpper(strings.TrimPrefix(c, "-"))] = true
+			} else {
+				whitelist[strings.ToUpper(c)] = true
+			}
 		}
 	}
 
@@ -442,8 +447,13 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 			continue
 		}
 
-		// 如果订单限定了币种，则进行过滤
-		if allowedCurrencies != nil && !allowedCurrencies[string(conf.Crypto)] {
+		// Check blacklist
+		if len(blacklist) > 0 && blacklist[string(conf.Crypto)] {
+			continue
+		}
+
+		// Check whitelist
+		if len(whitelist) > 0 && !whitelist[string(conf.Crypto)] {
 			continue
 		}
 
