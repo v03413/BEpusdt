@@ -161,7 +161,7 @@ POST /api/v1/order/create-order
 | notify_url   | string | ✅  | 支付结果异步回调地址                                                                                                                                                  |
 | redirect_url | string | ✅  | 支付成功后商户跳转地址                                                                                                                                                 |
 | signature    | string | ✅  | 签名字符串（详见[签名算法](#签名算法)）                                                                                                                                      |
-| currencies   | string | ❌  | 限定交易币种，留空则提不限制付款币种。<br/>多个币种请使用半角逗号分隔。<br/>例如可配置为：<br/>`USDT`（仅限 USDT）<br/>`USDT,USDC` （限 USDT/USDC）等等                                                 |
+| currencies   | string | ❌  | 限定交易币种，留空则提不限制付款币种。<br/>多个币种请使用半角逗号分隔，黑名单模式以短横线开头。<br/>例如可配置为：<br/>`USDT`（仅限 USDT）<br/>`USDT,USDC` （限 USDT/USDC）<br/>`-ETH,-BNB` （表示排除 ETH/BNB 两个币种） |
 | fiat         | string | ❌  | 法币类型，默认 `CNY`<br/>可选：`CNY`、`USD`、`EUR`、`GBP`、`JPY`                                                                                                          |
 | name         | string | ❌  | 商品名称                                                                                                                                                        |
 | timeout      | number | ❌  | 订单超时时间（秒），最低 180 秒<br/>留空则使用配置 `payment_timeout`，默认 600 秒                                                                                                      |
