@@ -110,6 +110,33 @@ func (Epusdt) SignVerify(ctx *gin.Context) {
 	ctx.Next()
 }
 
+func (Epusdt) Notify(ctx *gin.Context) {
+	rawData, err := ctx.GetRawData()
+	if err != nil {
+		ctx.String(200, "fail")
+		return
+	}
+
+	m := make(map[string]any)
+	if err = json.Unmarshal(rawData, &m); err != nil {
+		ctx.String(200, "fail")
+		return
+	}
+
+	sign, ok := m["signature"]
+	if !ok {
+		ctx.String(200, "fail")
+		return
+	}
+
+	if utils.EpusdtSign(m, model.AuthToken()) != sign {
+		ctx.String(200, "fail")
+		return
+	}
+
+	ctx.String(200, "ok")
+}
+
 // Order creation API
 func (Epusdt) CreateOrder(ctx *gin.Context) {
 	var req createOrderReq

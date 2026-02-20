@@ -48,13 +48,13 @@ func (Order) Create(ctx *gin.Context) {
 
 		return
 	}
-	
+
 	// 解析请求地址
 	host := "http://" + ctx.Request.Host
 	if ctx.Request.TLS != nil {
 		host = "https://" + ctx.Request.Host
 	}
-	
+
 	// NotifyURL RedirectURL 为 host + order.TradeId
 
 	// 创建待付款订单
@@ -79,8 +79,13 @@ func (Order) Create(ctx *gin.Context) {
 	url := model.CheckoutCashier(host, order.TradeId)
 	
 	// Update order with generated URLs
-	order.NotifyUrl = url
+	hostUri := model.GetK(model.ApiAppUri)
+	if hostUri == "" {
+		hostUri = host
+	}
+	order.NotifyUrl = hostUri + "/api/v1/pay/notify"
 	order.ReturnUrl = url
+
 	if err := model.Db.Save(&order).Error; err != nil {
 		base.Response(ctx, 400, gin.H{
 			"status":  "failed",
