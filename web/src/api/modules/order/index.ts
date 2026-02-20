@@ -1,5 +1,13 @@
 import axios from "@/api";
 
+export const createOrderApi = (data: any) => {
+  return axios({
+    url: "/api/order/create",
+    method: "post",
+    data
+  });
+};
+
 export const listAPI = (data: any) => {
   return axios({
     url: "/api/order/list",

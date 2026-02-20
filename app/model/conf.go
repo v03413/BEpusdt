@@ -105,6 +105,15 @@ func CheckoutCounter(host, id string) string {
 	return fmt.Sprintf("%s/pay/checkout-counter/%s", uri, id)
 }
 
+func CheckoutCashier(host, id string) string {
+	uri := GetK(ApiAppUri)
+	if uri == "" {
+		uri = host
+	}
+
+	return fmt.Sprintf("%s/pay/order/%s", uri, id)
+}
+
 func ConfInit() {
 	var hash = utils.StrSha256(utils.Md5String(time.Now().String()))
 	var secure = "/" + hash[:10]

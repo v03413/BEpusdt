@@ -15,6 +15,7 @@ type Range struct {
 }
 type TradeTypeConf struct {
 	Alias        string  // 类型别名，主要用户前端展示
+	NetworkName  string  // 网络名称，用于前端展示
 	Network      Network // 所属区块链网络
 	Crypto       Crypto  // 币种类型
 	Native       bool    // 是否原生币

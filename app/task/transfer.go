@@ -41,6 +41,7 @@ var notOrderQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30)
 var transferQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30) // 交易转账队列
 
 const batchInterval = time.Second * 1 // 批处理缓解数据库读取压力
+const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
 
 func init() {
 	Register(Task{Callback: orderTransferHandle})
@@ -50,6 +51,7 @@ func init() {
 
 func orderTransferHandle(ctx context.Context) {
 	var batch = make([]transfer, 0, 1000)
+	var lastCheckTime = time.Now()
 	ticker := time.NewTicker(batchInterval)
 	defer ticker.Stop()
 
@@ -63,11 +65,22 @@ func orderTransferHandle(ctx context.Context) {
 			}
 			batch = append(batch, transfers...)
 		case <-ticker.C:
+			// 每10秒强制检查一次过期订单，即使没有交易，防止无交易时订单不过期
+			var shouldCheck = time.Since(lastCheckTime) >= orderCheckInterval
+			if len(batch) == 0 && !shouldCheck {
+				continue
+			}
+
+			if shouldCheck {
+				lastCheckTime = time.Now()
+			}
+
+			var other = make([]transfer, 0)
+			// getAllWaitingOrders 内部包含过期检查逻辑
+			var orders = getAllWaitingOrders()
 			if len(batch) == 0 {
 				continue
 			}
-			var other = make([]transfer, 0)
-			var orders = getAllWaitingOrders()
 			for _, t := range batch {
 				// 判断数额是否在允许范围内
 				if !model.IsAmountValid(t.TradeType, t.Amount) {
