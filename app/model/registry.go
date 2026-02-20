@@ -351,7 +351,9 @@ func GetContractDecimal(addr string) int32 {
 
 func GetTxUrl(t TradeType, hash string) string {
 	if url, ok := explorerUrlMap[t]; ok {
-
+		if url == "" {
+			return ""
+		}
 		return fmt.Sprintf(url, hash)
 	}
 

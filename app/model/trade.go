@@ -103,6 +103,8 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	t.Amount = data.Amount
 	t.TradeType = p.TradeType
 	t.Address = data.Address
+	t.Crypto = data.Crypto
+	t.Rate = fmt.Sprintf("%v", data.Rate)
 	t.ExpiredAt = CalcTradeExpiredAt(p.Timeout)
 
 	return t, Db.Save(&t).Error
