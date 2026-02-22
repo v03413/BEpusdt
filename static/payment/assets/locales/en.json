@@ -2,9 +2,12 @@
   "payment": {
     "title": "{{token}} Payment",
     "subtitle": "Please use <strong>{{networkName}}</strong> {{network}} network for transfer",
+    "subtitleCashier": "Please use <strong>{{token}} {{networkName}}</strong> network for transfer",
+    "subtitle2": "Please select currency and network",
     "networkBadge": "{{network}}",
     "paymentAmount": "Payment Amount:",
     "merchantOrder": "Merchant Order:",
+    "productName": "Product Name:",
     "orderAmount": "Order Amount:",
     "amountPrefix": "Approx.",
     "clickToCopy": "Click to copy amount",
@@ -14,11 +17,15 @@
     "seconds": "sec",
     "addressLabel": "Receiving Address ({{network}} Network)",
     "copyAddress": "Copy Address",
+    "selectCurrency": "Please select currency",
+    "selectNetwork": "Please select network",
+    "payNow": "Pay Now",
     "instructionsTitle": "📋 Transfer Instructions",
     "instruction1": "Must use <strong>{{network}} network</strong> for transfer, do not send {{warningToken}}!",
     "instruction2": "The system will automatically confirm the receipt after transfer",
     "instruction3": "Transfer amount must exactly match the displayed amount",
     "instruction4": "If you have any questions, please contact customer service",
+    "cashierInstr1": "Please select your preferred payment method for transfer",
     "poweredBy": "Powered by",
     "github": "Github",
     "copied": "Copied!",
@@ -36,4 +43,3 @@
     "processing": "Processing..."
   }
 }
-

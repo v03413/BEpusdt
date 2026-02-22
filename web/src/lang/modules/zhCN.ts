@@ -36,6 +36,7 @@ export default {
     ["rate-syntax"]: "汇率配置",
     ["system-base"]: "基本设置",
     ["system-rpc"]: "区块节点",
+    ["create-order"]: "创建订单",
     ["github-api-doc"]: "对接文档",
     ["file"]: "文件管理",
     ["document-library"]: "文件库",

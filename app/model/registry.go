@@ -30,6 +30,7 @@ var supportCrypto = map[Crypto]CoinId{
 var registry = map[TradeType]TradeTypeConf{
 	UsdtPlasma: {
 		Alias:       "USDT・Plasma",
+		NetworkName: "Plasma",
 		Network:     conf.Plasma,
 		Crypto:      USDT,
 		Contract:    conf.UsdtPlasma,
@@ -40,6 +41,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtTrc20: {
 		Alias:        "USDT・TRC20",
+		NetworkName:  "TRC20",
 		Network:      conf.Tron,
 		Crypto:       USDT,
 		Contract:     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // 占位，目前实际没使用
@@ -51,6 +53,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtErc20: {
 		Alias:       "USDT・ERC20",
+		NetworkName: "ERC20",
 		Network:     conf.Ethereum,
 		Crypto:      USDT,
 		Contract:    conf.UsdtErc20,
@@ -61,6 +64,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtBep20: {
 		Alias:       "USDT・BEP20",
+		NetworkName: "BEP20",
 		Network:     conf.Bsc,
 		Crypto:      USDT,
 		Contract:    conf.UsdtBep20,
@@ -71,6 +75,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtAptos: {
 		Alias:       "USDT・Aptos",
+		NetworkName: "Aptos",
 		Network:     conf.Aptos,
 		Crypto:      USDT,
 		Contract:    conf.UsdtAptos,
@@ -81,6 +86,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtXlayer: {
 		Alias:       "USDT・X Layer",
+		NetworkName: "X Layer",
 		Network:     conf.Xlayer,
 		Crypto:      USDT,
 		Contract:    conf.UsdtXlayer,
@@ -91,6 +97,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtSolana: {
 		Alias:        "USDT・Solana",
+		NetworkName:  "Solana",
 		Network:      conf.Solana,
 		Crypto:       USDT,
 		Contract:     conf.UsdtSolana,
@@ -102,6 +109,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtPolygon: {
 		Alias:       "USDT・Polygon",
+		NetworkName: "Polygon",
 		Network:     conf.Polygon,
 		Crypto:      USDT,
 		Contract:    conf.UsdtPolygon,
@@ -112,6 +120,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtArbitrum: {
 		Alias:       "USDT・Arbitrum",
+		NetworkName: "Arbitrum",
 		Network:     conf.Arbitrum,
 		Crypto:      USDT,
 		Contract:    conf.UsdtArbitrum,
@@ -122,6 +131,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcErc20: {
 		Alias:       "USDC・ERC20",
+		NetworkName: "ERC20",
 		Network:     conf.Ethereum,
 		Crypto:      USDC,
 		Contract:    conf.UsdcErc20,
@@ -132,6 +142,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcBep20: {
 		Alias:       "USDC・BEP20",
+		NetworkName: "BEP20",
 		Network:     conf.Bsc,
 		Crypto:      USDC,
 		Contract:    conf.UsdcBep20,
@@ -142,6 +153,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcXlayer: {
 		Alias:       "USDC・X Layer",
+		NetworkName: "X Layer",
 		Network:     conf.Xlayer,
 		Crypto:      USDC,
 		Contract:    conf.UsdcXlayer,
@@ -152,6 +164,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcPolygon: {
 		Alias:       "USDC・Polygon",
+		NetworkName: "Polygon",
 		Network:     conf.Polygon,
 		Crypto:      USDC,
 		Contract:    conf.UsdcPolygon,
@@ -162,6 +175,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcArbitrum: {
 		Alias:       "USDC・Arbitrum",
+		NetworkName: "Arbitrum",
 		Network:     conf.Arbitrum,
 		Crypto:      USDC,
 		Contract:    conf.UsdcArbitrum,
@@ -172,6 +186,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcBase: {
 		Alias:       "USDC・Base",
+		NetworkName: "Base",
 		Network:     conf.Base,
 		Crypto:      USDC,
 		Contract:    conf.UsdcBase,
@@ -182,6 +197,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcTrc20: {
 		Alias:        "USDC・TRC20",
+		NetworkName:  "TRC20",
 		Network:      conf.Tron,
 		Crypto:       USDC,
 		Contract:     "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", // 占位，目前实际没使用
@@ -193,6 +209,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcSolana: {
 		Alias:        "USDC・Solana",
+		NetworkName:  "Solana",
 		Network:      conf.Solana,
 		Crypto:       USDC,
 		Contract:     conf.UsdcSolana,
@@ -204,6 +221,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcAptos: {
 		Alias:       "USDC・Aptos",
+		NetworkName: "Aptos",
 		Network:     conf.Aptos,
 		Crypto:      USDC,
 		Contract:    conf.UsdcAptos,
@@ -213,11 +231,12 @@ var registry = map[TradeType]TradeTypeConf{
 		EndpointKey: RpcEndpointAptos,
 	},
 	TronTrx: {
-		Alias:   "Tron・Trx",
-		Network: conf.Tron,
-		Crypto:  TRX,
-		Native:  true,
-		Decimal: -6,
+		Alias:       "Tron・Trx",
+		NetworkName: "Tron",
+		Network:     conf.Tron,
+		Crypto:      TRX,
+		Native:      true,
+		Decimal:     -6,
 		AmountRange: Range{
 			MinAmount: decimal.NewFromFloat(0.1),
 			MaxAmount: decimal.NewFromFloat(1000000),
@@ -227,11 +246,12 @@ var registry = map[TradeType]TradeTypeConf{
 		AddrCaseSens: true,
 	},
 	EthereumEth: {
-		Alias:   "Ethereum・Eth",
-		Network: conf.Ethereum,
-		Crypto:  ETH,
-		Native:  true,
-		Decimal: conf.EthereumEthDecimals,
+		Alias:       "Ethereum・Eth",
+		NetworkName: "Ethereum",
+		Network:     conf.Ethereum,
+		Crypto:      ETH,
+		Native:      true,
+		Decimal:     conf.EthereumEthDecimals,
 		AmountRange: Range{
 			MinAmount: decimal.NewFromFloat(0.000001),
 			MaxAmount: decimal.NewFromFloat(1000000),
@@ -240,11 +260,12 @@ var registry = map[TradeType]TradeTypeConf{
 		EndpointKey: RpcEndpointEthereum,
 	},
 	BscBnb: {
-		Alias:   "Bsc・Bnb",
-		Network: conf.Bsc,
-		Crypto:  BNB,
-		Native:  true,
-		Decimal: conf.BscBnbDecimals,
+		Alias:       "Bsc・Bnb",
+		NetworkName: "Bsc",
+		Network:     conf.Bsc,
+		Crypto:      BNB,
+		Native:      true,
+		Decimal:     conf.BscBnbDecimals,
 		AmountRange: Range{
 			MinAmount: decimal.NewFromFloat(0.00001),
 			MaxAmount: decimal.NewFromFloat(1000000),
@@ -293,6 +314,17 @@ func GetAllAlias() map[string]string {
 	return alias
 }
 
+// 获取所有交易类型配置
+func GetAllTradeConfig() map[string]TradeTypeConf {
+	var conf = make(map[string]TradeTypeConf)
+
+	for t, c := range registry {
+		conf[string(t)] = c
+	}
+
+	return conf
+}
+
 func GetNetworkTrades(n Network) []TradeType {
 	list, ok := networkTradesMap[n]
 	if !ok {
@@ -319,7 +351,9 @@ func GetContractDecimal(addr string) int32 {
 
 func GetTxUrl(t TradeType, hash string) string {
 	if url, ok := explorerUrlMap[t]; ok {
-
+		if url == "" {
+			return ""
+		}
 		return fmt.Sprintf(url, hash)
 	}
 
@@ -390,4 +424,13 @@ func AddrCaseSens(t TradeType) bool {
 	}
 
 	return true
+}
+
+func GetTradeTypeByCurrencyAndNetwork(currency, network string) (TradeType, error) {
+	for t, c := range registry {
+		if string(c.Crypto) == currency && (string(c.Network) == network || c.NetworkName == network) {
+			return t, nil
+		}
+	}
+	return "", fmt.Errorf("no matching trade type found for currency %s on network %s", currency, network)
 }

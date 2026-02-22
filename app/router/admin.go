@@ -32,6 +32,7 @@ func adminInit(e *gin.Engine) {
 	var orderHdr = new(admin.Order)
 	{
 		PostRegister(orderRtr, "/list", true, orderHdr.List)
+		PostRegister(orderRtr, "/create", true, orderHdr.Create)
 		PostRegister(orderRtr, "/detail", true, orderHdr.Detail)
 		PostRegister(orderRtr, "/paid", true, orderHdr.Paid)
 		PostRegister(orderRtr, "/manual_notify", true, orderHdr.ManualNotify)
