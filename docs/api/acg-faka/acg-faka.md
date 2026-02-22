@@ -1,7 +1,7 @@
 # 异次元发卡对接教程
 
 异次元发卡开源地址：https://github.com/lizhipay/acg-faka
-后台插件实际支持epusdt，但存在一些问题，这里做了一些修复并且增加了对TRX的支持，修复兼容版下载地址：[点击下载](https://raw.githubusercontent.com/v03413/bepusdt/refs/heads/main/docs/acg-faka/Epusdt.zip)
+后台插件实际支持epusdt，但存在一些问题，这里做了一些修复并且增加了对TRX的支持，修复兼容版下载地址：[点击下载](https://raw.githubusercontent.com/v03413/bepusdt/refs/heads/main/docs/api/acg-faka/Epusdt.zip)
 
 ## 对接教程
 
