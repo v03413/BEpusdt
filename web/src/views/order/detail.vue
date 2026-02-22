@@ -10,6 +10,15 @@
     <!-- 功能操作按钮 -->
     <template #footer>
       <a-space>
+        <a-button
+          v-if="detailData.status === 2 && detailData.notify_state === 0"
+          type="primary"
+          status="warning"
+          @click="handleManualNotify"
+        >
+          <template #icon><icon-notification /></template>
+          回调
+        </a-button>
         <a-popconfirm content="确定删除该订单吗？删除后将无法恢复！" type="error" @ok="handleDelete">
           <a-button type="primary" status="danger">
             <template #icon><icon-delete /></template>
@@ -250,7 +259,8 @@
 <script setup lang="ts">
 import { getCryptoColor } from "@/views/rate/common";
 import { delOrderApi } from "@/api/modules/order/index";
-import { Notification } from "@arco-design/web-vue";
+import { Notification, Modal } from "@arco-design/web-vue";
+import { manualNotifyAPI } from "@/api/modules/order/index";
 
 const props = defineProps({
   visible: Boolean,
@@ -296,6 +306,27 @@ const handleDelete = async () => {
   } catch (error) {
     Notification.error(error);
   }
+};
+
+const handleManualNotify = () => {
+  Modal.confirm({
+    title: "确认手动回调",
+    content: `确定要手动触发订单 ${props.detailData.order_id} 的回调吗?系统将立即向商户发送回调通知。`,
+    okText: "确认回调",
+    cancelText: "取消",
+    onOk: () => {
+      return manualNotifyAPI({ id: props.detailData.id })
+        .then(result => {
+          Notification.success(result.msg || "回调成功");
+          emits("refresh");
+          onClose();
+        })
+        .catch(error => {
+          console.error("回调失败:", error);
+          emits("refresh");
+        });
+    }
+  });
 };
 
 const statusMap: Record<number, { color: string; text: string }> = {

@@ -51,7 +51,7 @@ func (Order) Create(ctx *gin.Context) {
 	}
 
 	host := utils.GetRequestHost(ctx.Request)
-	
+
 	// 创建待付款订单
 	order, err := model.BuildPendingOrder(model.OrderParams{
 		Money:         decimal.NewFromFloat(req.Amount),
@@ -241,9 +241,13 @@ func (Order) ManualNotify(ctx *gin.Context) {
 		return
 	}
 
-	go notify.Handle(order)
+	if err := notify.Handle(order); err != nil {
+		base.BadRequest(ctx, err.Error())
 
-	base.Ok(ctx, "回调已触发")
+		return
+	}
+
+	base.Ok(ctx, "订单回调成功！")
 }
 
 func (Order) Del(ctx *gin.Context) {
