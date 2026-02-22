@@ -10,7 +10,7 @@ func epusdtInit(engine *gin.Engine) {
 	epHdr := new(epusdt.Epusdt)
 	{
 		epGrp.GET("/checkout-counter/:trade_id", epHdr.CheckoutCounter)
-		epGrp.GET("/order/:trade_id", epHdr.CheckoutCashier)
+		epGrp.GET("/cashier/:trade_id", epHdr.CheckoutCashier)
 		epGrp.GET("/check-status/:trade_id", epHdr.CheckStatus)
 	}
 

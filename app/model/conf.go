@@ -111,7 +111,7 @@ func CheckoutCashier(host, id string) string {
 		uri = host
 	}
 
-	return fmt.Sprintf("%s/pay/order/%s", uri, id)
+	return fmt.Sprintf("%s/pay/cashier/%s", uri, id)
 }
 
 func ConfInit() {

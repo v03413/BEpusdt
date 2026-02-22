@@ -314,15 +314,14 @@ func GetAllAlias() map[string]string {
 	return alias
 }
 
-// 获取所有交易类型配置
 func GetAllTradeConfig() map[string]TradeTypeConf {
-	var conf = make(map[string]TradeTypeConf)
+	var config = make(map[string]TradeTypeConf)
 
 	for t, c := range registry {
-		conf[string(t)] = c
+		config[string(t)] = c
 	}
 
-	return conf
+	return config
 }
 
 func GetNetworkTrades(n Network) []TradeType {

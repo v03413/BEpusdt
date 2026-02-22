@@ -137,11 +137,11 @@ func (Epusdt) Notify(ctx *gin.Context) {
 	ctx.String(200, "ok")
 }
 
-// Order creation API
+// CreateOrder Order creation API
 func (Epusdt) CreateOrder(ctx *gin.Context) {
 	var req createOrderReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: reqeust error: %s", err.Error())))
+		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: request error: %s", err.Error())))
 
 		return
 	}
@@ -189,7 +189,7 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 	}))
 }
 
-// 更新订单，返回付款链接。更新订单不需要签名，因为创建订单时已经验证，只需要提交参数更新订单即可。
+// UpdateOrder 更新订单，返回付款链接。更新订单不需要签名，因为创建订单时已经验证，只需要提交参数更新订单即可。
 func (Epusdt) UpdateOrder(ctx *gin.Context) {
 	// 接收 trade_id, currency, network 三个参数
 	var req updateOrderReq
@@ -229,7 +229,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		NotifyUrl:   order.NotifyUrl,
 		Name:        order.Name,
 		Timeout:     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		Fiat: order.Fiat,
+		Fiat:        order.Fiat,
 	}
 
 	newOrder, err := model.RebuildOrder(order, params)
@@ -259,12 +259,6 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("请求参数错误：%s", err.Error())))
 
 		return
-	}
-
-	// 解析请求地址
-	host := "http://" + ctx.Request.Host
-	if ctx.Request.TLS != nil {
-		host = "https://" + ctx.Request.Host
 	}
 
 	if req.Fiat == "" {
@@ -306,7 +300,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		"actual_amount":   order.Amount,
 		"token":           order.Address,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"payment_url":     model.CheckoutCounter(host, order.TradeId),
+		"payment_url":     model.CheckoutCounter(utils.GetRequestHost(ctx.Request), order.TradeId),
 	}))
 }
 
@@ -429,7 +423,6 @@ func (Epusdt) CheckStatus(ctx *gin.Context) {
 	})
 }
 
-// Methods API
 func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 	var req methodsReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {

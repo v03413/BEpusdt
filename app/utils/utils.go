@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -203,4 +204,35 @@ func StrSha256(str string) string {
 	hash := sha256.New()
 	hash.Write([]byte(str))
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// GetRequestHost 识别完整的请求主机地址
+func GetRequestHost(r *http.Request) string {
+	scheme := "http"
+
+	if r.TLS != nil {
+		scheme = "https"
+	} else {
+		// 检查各种代理转发的协议头
+		// Nginx、Apache、Caddy 通用
+		if proto := r.Header.Get("X-Forwarded-Proto"); proto == "https" {
+			scheme = "https"
+		} else if r.Header.Get("X-Forwarded-Ssl") == "on" {
+			scheme = "https"
+		} else if r.Header.Get("Front-End-Https") == "on" {
+			// Apache mod_proxy
+			scheme = "https"
+		} else if r.Header.Get("X-Url-Scheme") == "https" {
+			// Caddy
+			scheme = "https"
+		} else if r.Header.Get("CF-Visitor") != "" {
+			// Cloudflare
+			// CF-Visitor 格式: {"scheme":"https"}
+			if strings.Contains(r.Header.Get("CF-Visitor"), `"scheme":"https"`) {
+				scheme = "https"
+			}
+		}
+	}
+
+	return scheme + "://" + r.Host
 }

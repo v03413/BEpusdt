@@ -8,6 +8,7 @@ import (
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/task/notify"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 type Order struct {
@@ -33,12 +34,12 @@ type paidReq struct {
 }
 
 type createReq struct {
-	Amount      float64    `json:"amount" binding:"required"`
-	OrderID     string     `json:"order_id" binding:"required"`
-	Name        string     `json:"name"`
-	Fiat        model.Fiat `json:"fiat"`
-	Currencies  string     `json:"currencies"`
-	Timeout     int64      `json:"timeout"`
+	Amount     float64    `json:"amount" binding:"required"`
+	OrderID    string     `json:"order_id" binding:"required"`
+	Name       string     `json:"name"`
+	Fiat       model.Fiat `json:"fiat"`
+	Currencies string     `json:"currencies"`
+	Timeout    int64      `json:"timeout"`
 }
 
 func (Order) Create(ctx *gin.Context) {
@@ -49,14 +50,8 @@ func (Order) Create(ctx *gin.Context) {
 		return
 	}
 
-	// 解析请求地址
-	host := "http://" + ctx.Request.Host
-	if ctx.Request.TLS != nil {
-		host = "https://" + ctx.Request.Host
-	}
-
-	// NotifyURL RedirectURL 为 host + order.TradeId
-
+	host := utils.GetRequestHost(ctx.Request)
+	
 	// 创建待付款订单
 	order, err := model.BuildPendingOrder(model.OrderParams{
 		Money:         decimal.NewFromFloat(req.Amount),
@@ -77,7 +72,7 @@ func (Order) Create(ctx *gin.Context) {
 
 	// NotifyURL RedirectURL 同为付款链接
 	url := model.CheckoutCashier(host, order.TradeId)
-	
+
 	// Update order with generated URLs
 	hostUri := model.GetK(model.ApiAppUri)
 	if hostUri == "" {
