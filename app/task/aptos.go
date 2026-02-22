@@ -408,6 +408,15 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
+		if model.GetC(model.BlockOffsetConfirm) == "1" {
+			if a.lastVersion == 0 {
+				return
+			}
+			if a.lastVersion-o.RefBlockNum < a.versionConfirmedOffset {
+				return
+			}
+		}
+
 		req, _ := http.NewRequestWithContext(ctx, "GET", model.Endpoint(conf.Aptos)+"v1/transactions/by_hash/"+o.RefHash, nil)
 		resp, err := a.client.Do(req)
 		if err != nil {

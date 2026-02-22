@@ -361,6 +361,15 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
+		if model.GetC(model.BlockOffsetConfirm) == "1" {
+			if s.lastSlotNum == 0 {
+				return
+			}
+			if s.lastSlotNum-o.RefBlockNum < s.slotConfirmedOffset {
+				return
+			}
+		}
+
 		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getSignatureStatuses","params":[["%s"],{"searchTransactionHistory":true}]}`, o.RefHash))
 		req, _ := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
 		resp, err := s.client.Do(req)

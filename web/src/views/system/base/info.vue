@@ -12,6 +12,17 @@
           </a-form-item>
 
           <a-form-item
+            field="block_offset_confirm"
+            label="区块偏移确认"
+            extra="启用后可进一步提高交易的安全性，但会增加交易确认的等待时间"
+          >
+            <a-select v-model="form.block_offset_confirm" placeholder="请选择">
+              <a-option value="0">关闭</a-option>
+              <a-option value="1">开启</a-option>
+            </a-select>
+          </a-form-item>
+
+          <a-form-item
             field="notify_max_retry"
             label="回调最大重试"
             extra="支付回调失败时的最大重试次数，重试分钟间隔数：2 4 8 16 32 64 ..."
@@ -72,6 +83,7 @@ const data = defineModel() as any;
 const form = ref({
   payment_timeout: "",
   block_height_max_diff: "",
+  block_offset_confirm: "0",
   notify_max_retry: "",
   payment_max_amount: "",
   payment_min_amount: "",
@@ -84,6 +96,12 @@ const rules = {
       type: "number",
       positive: true,
       message: "区块高度最大差值不能为空"
+    }
+  ],
+  block_offset_confirm: [
+    {
+      required: true,
+      message: "区块偏移确认不能为空"
     }
   ],
   notify_max_retry: [
@@ -133,6 +151,7 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
 
   await setsConfAPI([
     { key: "block_height_max_diff", value: form.value.block_height_max_diff },
+    { key: "block_offset_confirm", value: form.value.block_offset_confirm },
     { key: "notify_max_retry", value: form.value.notify_max_retry },
     { key: "payment_max_amount", value: form.value.payment_max_amount },
     { key: "payment_min_amount", value: form.value.payment_min_amount },
@@ -149,6 +168,7 @@ watch(
   () => data.value,
   () => {
     form.value.block_height_max_diff = data.value.block_height_max_diff;
+    form.value.block_offset_confirm = data.value.block_offset_confirm || "0";
     form.value.notify_max_retry = data.value.notify_max_retry;
     form.value.payment_max_amount = data.value.payment_max_amount;
     form.value.payment_min_amount = data.value.payment_min_amount;

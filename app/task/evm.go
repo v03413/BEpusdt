@@ -399,6 +399,16 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
+		if model.GetC(model.BlockOffsetConfirm) == "1" {
+			last, ok := chainBlockNum.Load(e.Network)
+			if !ok {
+				return
+			}
+			if last.(int64)-o.RefBlockNum < e.Block.ConfirmedOffset {
+				return
+			}
+		}
+
 		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":1}`, o.RefHash))
 		req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
 		if err != nil {

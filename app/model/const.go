@@ -67,6 +67,7 @@ const (
 	RateSyncInterval        ConfKey = "rate_sync_interval"          // 汇率同步间隔，单位秒
 	NotifyMaxRetry          ConfKey = "notify_max_retry"            // 最大重试次数，订单回调失败
 	BlockHeightMaxDiff      ConfKey = "block_height_max_diff"       // 区块高度最大差值，超过此值则以当前区块高度为准，重新开始扫描
+	BlockOffsetConfirm      ConfKey = "block_offset_confirm"        // 区块偏移确认数，扫描时以当前区块高度减去此偏移量为准，避免重链导致的订单回调失败
 
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email

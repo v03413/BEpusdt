@@ -32,10 +32,11 @@ var usdtTrc20ContractAddress = []byte{0x41, 0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 
 var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 0xb2, 0xc8, 0x7f, 0xb7, 0xff, 0xa8, 0xbc, 0xfa, 0xde, 0x38, 0xea, 0xac, 0x1a, 0xbe}
 
 type tron struct {
-	lastBlockNum   int64
-	blockScanQueue *chanx.UnboundedChan[int64]
-	conn           map[string]*grpc.ClientConn
-	connMu         sync.RWMutex
+	lastBlockNum         int64
+	blockConfirmedOffset int64
+	blockScanQueue       *chanx.UnboundedChan[int64]
+	conn                 map[string]*grpc.ClientConn
+	connMu               sync.RWMutex
 }
 
 var tr tron
@@ -49,9 +50,10 @@ func init() {
 
 func newTron() tron {
 	return tron{
-		lastBlockNum:   0,
-		blockScanQueue: chanx.NewUnboundedChan[int64](context.Background(), 30),
-		conn:           make(map[string]*grpc.ClientConn),
+		lastBlockNum:         0,
+		blockConfirmedOffset: 30,
+		blockScanQueue:       chanx.NewUnboundedChan[int64](context.Background(), 30),
+		conn:                 make(map[string]*grpc.ClientConn),
 	}
 }
 
@@ -395,6 +397,12 @@ func (t *tron) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
+		if model.GetC(model.BlockOffsetConfirm) == "1" {
+			if t.lastBlockNum == 0 || t.lastBlockNum-o.RefBlockNum < t.blockConfirmedOffset {
+				return
+			}
+		}
+
 		conn, err := t.client()
 		if err != nil {
 			log.Task.Error("grpc.NewClient", err)

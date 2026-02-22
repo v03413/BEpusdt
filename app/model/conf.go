@@ -148,6 +148,7 @@ func ConfInit() {
 		RpcEndpointPlasma:       "https://rpc.plasma.to/",
 		NotifyMaxRetry:          "10",
 		BlockHeightMaxDiff:      "1000",
+		BlockOffsetConfirm:      "0",
 		PaymentTimeout:          "1200", // 20分钟
 		PaymentStaticPath:       "",
 		PaymentMatchMode:        string(Classic),
