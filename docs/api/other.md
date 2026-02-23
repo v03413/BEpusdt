@@ -18,6 +18,6 @@
 - [独角数卡](./dujiaoka/dujiaoka.md)
 - [彩虹易支付](https://github.com/v03413/Epay-BEpusdt)
 - [WHMCS](https://github.com/v03413/whmcs-gateway-epusdt)
-- [异次元发卡](./acg-faka/acg-faka.md)
+- [异次元发卡](acg-faka/README.md)
 - [萌次元商城](./mcy-faka/mcy-shop.md)
 
