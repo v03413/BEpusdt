@@ -62,7 +62,7 @@ type methodsReq struct {
 	Currency string `json:"currency"`
 }
 
-type methodItem struct {
+type PaymentItem struct {
 	Amount          string `json:"amount"`
 	ActualAmount    string `json:"actual_amount"`
 	Fiat            string `json:"fiat"`
@@ -186,6 +186,7 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"amount":          order.Money,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
 		"payment_url":     model.CheckoutCashier(host, order.TradeId),
+		"network":         GetPaymentItem("", order),
 	}))
 }
 
@@ -393,6 +394,7 @@ func (Epusdt) CheckoutCashier(ctx *gin.Context) {
 		"name":       order.Name,
 		"money":      order.Money,
 		"fiat":       order.Fiat,
+		"network":    GetPaymentItem("", order),
 	})
 }
 
@@ -441,10 +443,15 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 		return
 	}
 
-	// 强制使用订单的法币类型
+	ctx.JSON(200, respSuccJson(gin.H{
+		"methods": GetPaymentItem(model.Crypto(req.Currency), order),
+	}))
+}
+
+func GetPaymentItem(crypto model.Crypto, order model.Order) []PaymentItem {
 	fiat := order.Fiat
 
-	var methods []methodItem
+	var methods = make([]PaymentItem, 0)
 	allTrades := model.GetAllTradeConfig()
 
 	// 解析限定币种
@@ -463,7 +470,7 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 
 	for tradeTypeStr, conf := range allTrades {
 		// 如果指定了货币，则进行过滤
-		if req.Currency != "" && string(conf.Crypto) != req.Currency {
+		if crypto != "" && conf.Crypto != crypto {
 			continue
 		}
 
@@ -478,10 +485,7 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 		}
 
 		// 检查是否有可用钱包
-		var count int
-		tradeType := model.TradeType(tradeTypeStr)
-		count = len(model.GetAvailableAddress(tradeType))
-
+		count := len(model.GetAvailableAddress(model.TradeType(tradeTypeStr)))
 		if count == 0 {
 			continue
 		}
@@ -506,16 +510,15 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 		if actualAmount.LessThan(atom) {
 			actualAmount = atom
 		}
-		actualAmountStr := actualAmount.String()
 
-		methods = append(methods, methodItem{
+		methods = append(methods, PaymentItem{
 			Amount:          order.Money,
-			ActualAmount:    actualAmountStr,
+			ActualAmount:    actualAmount.String(),
 			Fiat:            string(fiat),
 			ExchangeRate:    rate.String(),
 			Currency:        string(conf.Crypto),
 			Network:         string(conf.Network),
-			TokenNetName:    string(conf.NetworkName),
+			TokenNetName:    conf.NetworkName,
 			TokenCustomName: "",    // 暂为空
 			IsPopular:       false, // 暂为 false
 		})
@@ -529,9 +532,7 @@ func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
 		return methods[i].Network < methods[j].Network
 	})
 
-	ctx.JSON(200, respSuccJson(gin.H{
-		"methods": methods,
-	}))
+	return methods
 }
 
 func respFailJson(message string) gin.H {

@@ -51,7 +51,9 @@
                 }
 
                 fetch('/payment/assets/locales/' + currentLang + '.json')
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) {
+                        return r.json();
+                    })
                     .then(function (translations) {
                         i18next.addResourceBundle(currentLang, 'translation', translations);
                         i18nInitialized = true;
@@ -79,7 +81,9 @@
 
         if (!hasLanguage) {
             fetch('/payment/assets/locales/' + lang + '.json')
-                .then(function (r) { return r.json(); })
+                .then(function (r) {
+                    return r.json();
+                })
                 .then(function (translations) {
                     i18next.addResourceBundle(lang, 'translation', translations);
                     return i18next.changeLanguage(lang);
@@ -111,8 +115,8 @@
         const config = getPaymentConfig();
 
         let token = (config.token || '--').toUpperCase();
-        let network = (config.network || '--').toUpperCase();
-        let networkName = (config.networkName || '--').toUpperCase();
+        let network = selectedMethod ? (selectedMethod.network || '--').toUpperCase() : '--';
+        let networkName = selectedMethod ? (selectedMethod.token_net_name || '--').toUpperCase() : '--';
 
         if (selectedMethod) {
             token = selectedMethod.currency.toUpperCase();
@@ -202,45 +206,17 @@
         // but the event listener for global click is needed once.
     }
 
-    function fetchPaymentMethods() {
-        fetch('/api/v1/pay/methods', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                trade_id: tradeId
-            })
-        })
-            .then(function (response) { return response.json(); })
-            .then(function (res) {
-                if (res.status_code === 200) {
-                    paymentMethods = res.data.methods;
-                    initSelection();
-                } else {
-                    // Suppress alert for expired orders
-                    if (res.status_code === 400 && (res.message && (res.message.includes('过期') || res.message.toLowerCase().includes('expired')))) {
-                        showTimeoutMessage();
-                        return;
-                    }
-                    showMessage(res.message || t('payment.loadMethodsFailed', 'Failed to load payment methods'));
-                }
-            })
-            .catch(function (err) {
-                console.error('API Error:', err);
-                showMessage(t('payment.networkError', 'Network error, please refresh'));
-            });
-    }
-
     function initSelection() {
         if (!paymentMethods || paymentMethods.length === 0) return;
 
         // Extract unique currencies
-        const currencies = [...new Set(paymentMethods.map(function (m) { return m.currency; }))];
+        const currencies = [...new Set(paymentMethods.map(function (m) {
+            return m.currency;
+        }))];
 
         // Render Currency Options
         renderOptions(currencySelectEl, currencies.map(function (c) {
-            return { value: c, label: c, badge: '' };
+            return {value: c, label: c, badge: ''};
         }), function (val) {
             selectedCurrency = val;
             updateNetworkOptions();
@@ -255,7 +231,9 @@
 
     function updateNetworkOptions() {
         const networks = paymentMethods
-            .filter(function (m) { return m.currency === selectedCurrency; })
+            .filter(function (m) {
+                return m.currency === selectedCurrency;
+            })
             .map(function (m) {
                 return {
                     value: m.token_net_name,
@@ -326,7 +304,9 @@
         if (!parent) return;
 
         const items = parent.querySelectorAll('.option-item');
-        items.forEach(function (item) { item.classList.remove('selected'); });
+        items.forEach(function (item) {
+            item.classList.remove('selected');
+        });
 
         let selected = null;
         items.forEach(function (item) {
@@ -417,7 +397,9 @@
                 network: selectedMethod.network
             })
         })
-            .then(function (response) { return response.json(); })
+            .then(function (response) {
+                return response.json();
+            })
             .then(function (res) {
                 if (res.status_code === 200 && res.data.payment_url) {
                     window.location.href = res.data.payment_url;
@@ -670,7 +652,9 @@
         if (!tradeId) return;
 
         fetch('/pay/check-status/' + tradeId)
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+                return r.json();
+            })
             .then(function (data) {
                 // status: 1=pending, 2=success, 3=expired, 5=waiting_confirmation
                 if (data.status === 1) {
@@ -703,7 +687,9 @@
         // Close dropdowns when clicking outside
         document.addEventListener('click', function () {
             const selects = document.querySelectorAll('.coin-select');
-            selects.forEach(function (el) { el.classList.remove('active'); });
+            selects.forEach(function (el) {
+                el.classList.remove('active');
+            });
         });
 
         setupDropdown(currencySelectEl);
@@ -714,7 +700,13 @@
         }
 
         initI18n().then(function () {
-            fetchPaymentMethods();
+            if (paymentConfig.network && Array.isArray(paymentConfig.network) && paymentConfig.network.length > 0) {
+                paymentMethods = paymentConfig.network;
+                initSelection();
+            } else {
+                showMessage(t('payment.loadPaymentNetworkFailed', 'Failed to load payment network, please check if the wallet has been added'));
+            }
+
             startCountdown();
             // Poll status every 5s
             statusCheckTimer = setInterval(checkPaymentStatus, 5000);

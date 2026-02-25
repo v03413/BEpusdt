@@ -40,6 +40,7 @@
     "estimatedTime": "预计确认时间：1-3分钟",
     "paymentSuccess": "支付成功！",
     "transactionHash": "您的支付已确认，交易哈希：",
-    "processing": "处理中..."
+    "processing": "处理中...",
+    "loadPaymentNetworkFailed": "无法加载付款网络，请检查是否已经完成钱包地址添加。"
   }
 }
