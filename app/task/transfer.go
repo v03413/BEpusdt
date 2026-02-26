@@ -23,7 +23,7 @@ type transfer struct {
 	RecvAddress string
 	Timestamp   time.Time
 	TradeType   model.TradeType
-	BlockNum    int64
+	BlockNum    int
 }
 
 type resource struct {
@@ -40,7 +40,7 @@ var resourceQueue = chanx.NewUnboundedChan[[]resource](context.Background(), 30)
 var notOrderQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30) // 非订单队列
 var transferQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30) // 交易转账队列
 
-const batchInterval = time.Second * 1 // 批处理缓解数据库读取压力
+const batchInterval = time.Second * 1       // 批处理缓解数据库读取压力
 const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
 
 func init() {

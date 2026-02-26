@@ -22,17 +22,17 @@ import (
 )
 
 type aptos struct {
-	versionChunkSize       int64
-	versionConfirmedOffset int64
-	lastVersion            int64
+	versionChunkSize       int
+	versionConfirmedOffset int
+	lastVersion            int
 	versionQueue           *chanx.UnboundedChan[version]
 	client                 *http.Client
 	earliestBlockTs        atomic.Int64
 }
 
 type version struct {
-	Start int64
-	Limit int64
+	Start int
+	Limit int
 }
 
 var apt aptos
@@ -96,7 +96,7 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 		return
 	}
 
-	now := gjson.GetBytes(body, "ledger_version").Int()
+	now := int(gjson.GetBytes(body, "ledger_version").Int())
 	if now <= 0 {
 		log.Task.Warn("syncVersionForward Error: invalid ledger_version:", now)
 
@@ -116,7 +116,7 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 		a.versionQueue.In <- version{Start: a.lastVersion, Limit: sub}
 	} else {
 		chunks := (sub + a.versionChunkSize - 1) / a.versionChunkSize
-		for i := int64(0); i < chunks; i++ {
+		for i := 0; i < chunks; i++ {
 			limit := a.versionChunkSize
 			start := a.lastVersion + a.versionChunkSize*i
 			if i == chunks-1 {
@@ -133,7 +133,7 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 	a.lastVersion = now
 }
 
-func (a *aptos) syncVersionBackward(ctx context.Context, now int64) {
+func (a *aptos) syncVersionBackward(ctx context.Context, now int) {
 	var o model.Order
 	trade := model.GetNetworkTrades(conf.Aptos)
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)",
@@ -247,7 +247,7 @@ func (a *aptos) versionParse(n any) {
 		timestamp := time.Unix(tsNano/1e9, tsNano%1e9)
 		a.recordEarliestBlockTs(timestamp.Unix())
 
-		ver := trans.Get("version").Int()
+		ver := int(trans.Get("version").Int())
 		hash := trans.Get("hash").String()
 		addrOwner := make(map[string]string)                                         // [address] => owner address
 		addrType := make(map[string]model.TradeType)                                 // [address] => tradeType

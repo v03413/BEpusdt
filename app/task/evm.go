@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,7 +32,7 @@ var chainBlockNum sync.Map
 
 type block struct {
 	RollDelayOffset int64 // 延迟偏移量，某些RPC节点如果不延迟，会报错 block is out of range，目前发现 https://rpc.xlayer.tech/ 存在此问题
-	ConfirmedOffset int64 // 确认偏移量，开启交易确认后，区块高度需要减去此值认为交易已确认
+	ConfirmedOffset int   // 确认偏移量，开启交易确认后，区块高度需要减去此值认为交易已确认
 }
 
 type evmNative struct {
@@ -256,7 +255,7 @@ func (e *evm) getBlockByNumber(a any) {
 		var array = itm.Get("result.transactions").Array()
 		if e.Native.Parse && len(array) != 0 {
 
-			nativeTransfers = append(nativeTransfers, e.parseNativeTransfer(array, utils.HexStr2Int(blockNumHex).Int64(), blockTime)...)
+			nativeTransfers = append(nativeTransfers, e.parseNativeTransfer(array, int(utils.HexStr2Int(blockNumHex).Int64()), blockTime)...)
 		}
 	}
 
@@ -279,7 +278,7 @@ func (e *evm) getBlockByNumber(a any) {
 	log.Task.Info(fmt.Sprintf("区块扫描完成(%s): %d → %d 成功率：%s", e.Network, b.From, b.To, conf.GetSuccessRate(e.Network)))
 }
 
-func (e *evm) parseNativeTransfer(array []gjson.Result, num int64, timestamp time.Time) []transfer {
+func (e *evm) parseNativeTransfer(array []gjson.Result, num int, timestamp time.Time) []transfer {
 	nativeTransfers := make([]transfer, 0)
 	for _, tx := range array {
 		if tx.Get("input").String() != "0x" {
@@ -372,20 +371,13 @@ func (e *evm) parseEventTransfer(b evmBlock, timestamp map[string]time.Time) ([]
 			continue
 		}
 
-		blockNum, err := strconv.ParseInt(itm.Get("blockNumber").String(), 0, 64)
-		if err != nil {
-			log.Task.Warn("evmBlockParse Error parsing block number:", err)
-
-			continue
-		}
-
 		transfers = append(transfers, transfer{
 			Network:     e.Network,
 			FromAddress: from,
 			RecvAddress: recv,
 			Amount:      decimal.NewFromBigInt(amount, model.GetContractDecimal(to)),
 			TxHash:      itm.Get("transactionHash").String(),
-			BlockNum:    blockNum,
+			BlockNum:    cast.ToInt(itm.Get("blockNumber").String()),
 			Timestamp:   timestamp[itm.Get("blockNumber").String()],
 			TradeType:   tradeType,
 		})
@@ -404,7 +396,7 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if last.(int64)-o.RefBlockNum < e.Block.ConfirmedOffset {
+			if last.(int)-o.RefBlockNum < e.Block.ConfirmedOffset {
 				return
 			}
 		}

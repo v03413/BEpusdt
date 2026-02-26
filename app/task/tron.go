@@ -32,9 +32,9 @@ var usdtTrc20ContractAddress = []byte{0x41, 0xa6, 0x14, 0xf8, 0x03, 0xb6, 0xfd, 
 var usdcTrc20ContractAddress = []byte{0x41, 0x34, 0x87, 0xb6, 0x3d, 0x30, 0xb5, 0xb2, 0xc8, 0x7f, 0xb7, 0xff, 0xa8, 0xbc, 0xfa, 0xde, 0x38, 0xea, 0xac, 0x1a, 0xbe}
 
 type tron struct {
-	lastBlockNum         int64
-	blockConfirmedOffset int64
-	blockScanQueue       *chanx.UnboundedChan[int64]
+	lastBlockNum         int
+	blockConfirmedOffset int
+	blockScanQueue       *chanx.UnboundedChan[int]
 	conn                 map[string]*grpc.ClientConn
 	connMu               sync.RWMutex
 }
@@ -52,7 +52,7 @@ func newTron() tron {
 	return tron{
 		lastBlockNum:         0,
 		blockConfirmedOffset: 30,
-		blockScanQueue:       chanx.NewUnboundedChan[int64](context.Background(), 30),
+		blockScanQueue:       chanx.NewUnboundedChan[int](context.Background(), 30),
 		conn:                 make(map[string]*grpc.ClientConn),
 	}
 }
@@ -81,10 +81,10 @@ func (t *tron) syncBlocksForward(context.Context) {
 		return
 	}
 
-	var now = block.BlockHeader.RawData.Number
+	var now = int(block.BlockHeader.RawData.Number)
 
 	// 区块高度变化过大，强制丢块重扫
-	if now-t.lastBlockNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
+	if now-t.lastBlockNum > cast.ToInt(model.GetC(model.BlockHeightMaxDiff)) {
 		t.syncBlocksBackward(now)
 		t.lastBlockNum = now - 1
 	}
@@ -105,7 +105,7 @@ func (t *tron) syncBlocksForward(context.Context) {
 }
 
 // syncBlocksBackward 反向同步区块，针对程序启动前就已经存在待支付订单时，补齐之前的区块数据，自适应偏移数量
-func (t *tron) syncBlocksBackward(now int64) {
+func (t *tron) syncBlocksBackward(now int) {
 	var o model.Order
 	trade := model.GetNetworkTrades(conf.Tron)
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
@@ -116,7 +116,7 @@ func (t *tron) syncBlocksBackward(now int64) {
 
 	// 波场出块速度大概3秒一个，同时再冗余5个区块
 	num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) / 3 // 计算需要反向扫描的区块数量
-	start := now - num - 5                                         // 计算反向扫描的起始区块高度
+	start := now - int(num) - 5                                    // 计算反向扫描的起始区块高度
 
 	go func() {
 		ticker := time.NewTicker(time.Second)
@@ -158,7 +158,7 @@ func (t *tron) blockDispatch(context.Context) {
 }
 
 func (t *tron) blockParse(n any) {
-	var num = n.(int64)
+	var num = n.(int)
 
 	var conn *grpc.ClientConn
 	var err error
@@ -171,11 +171,11 @@ func (t *tron) blockParse(n any) {
 	conf.RecordSuccess(conf.Tron)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
-	bok, err2 := api.NewWalletClient(conn).GetBlockByNum2(ctx, &api.NumberMessage{Num: num})
+	bok, err2 := api.NewWalletClient(conn).GetBlockByNum2(ctx, &api.NumberMessage{Num: int64(num)})
 	cancel()
 	if err2 != nil {
 		conf.RecordFailure(conf.Tron)
-		t.blockScanQueue.In <- num
+		t.blockScanQueue.In <- int(num)
 		log.Task.Warn("GetBlockByNum2 ", err2)
 
 		return
@@ -250,7 +250,7 @@ func (t *tron) blockParse(n any) {
 					RecvAddress: t.base58CheckEncode(foo.ToAddress),
 					Timestamp:   timestamp,
 					TradeType:   model.TronTrx,
-					BlockNum:    cast.ToInt64(num),
+					BlockNum:    cast.ToInt(num),
 				})
 			}
 
@@ -280,7 +280,7 @@ func (t *tron) blockParse(n any) {
 							RecvAddress: receiver,
 							Timestamp:   timestamp,
 							TradeType:   model.UsdtTrc20,
-							BlockNum:    cast.ToInt64(num),
+							BlockNum:    cast.ToInt(num),
 						})
 					}
 				}
@@ -306,7 +306,7 @@ func (t *tron) blockParse(n any) {
 							RecvAddress: receiver,
 							Timestamp:   timestamp,
 							TradeType:   tradeType,
-							BlockNum:    cast.ToInt64(num),
+							BlockNum:    cast.ToInt(num),
 						})
 					}
 				}
@@ -321,7 +321,7 @@ func (t *tron) blockParse(n any) {
 							RecvAddress: to,
 							Timestamp:   timestamp,
 							TradeType:   tradeType,
-							BlockNum:    cast.ToInt64(num),
+							BlockNum:    cast.ToInt(num),
 						})
 					}
 				}

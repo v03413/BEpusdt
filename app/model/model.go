@@ -8,6 +8,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -19,14 +20,16 @@ type Id struct {
 }
 
 type AutoTimeAt struct {
-	CreatedAt *Datetime `gorm:"column:created_at;type:Datetime;not null;comment:记录创建时间;index" json:"created_at"`
-	UpdatedAt *Datetime `gorm:"column:updated_at;type:Datetime;not null;comment:最后更新时间" json:"updated_at"`
+	CreatedAt *Datetime `gorm:"column:created_at;not null;comment:记录创建时间;index" json:"created_at"`
+	UpdatedAt *Datetime `gorm:"column:updated_at;not null;comment:最后更新时间" json:"updated_at"`
 }
 
-func Init(path, dsn string) error {
-	if dsn != "" {
-
-		return initMySQL(dsn)
+func Init(path, mysql, postgres string) error {
+	if postgres != "" {
+		return initPostgres(postgres)
+	}
+	if mysql != "" {
+		return initMySQL(mysql)
 	}
 
 	return initSqlite(path)
@@ -107,6 +110,45 @@ func initMySQL(dsn string) error {
 	if err = AutoMigrate(); err != nil {
 
 		return fmt.Errorf("数据库结构迁移失败：%w", err)
+	}
+
+	var count int64
+	Db.Model(&Conf{}).Count(&count)
+	if count == 0 {
+		ConfInit()
+	}
+
+	RefreshC()
+
+	return nil
+}
+
+func initPostgres(dsn string) error {
+	// 首次启动可能出现 SLOW SQL 告警，这是由于连接池首次连接预热引起的，后续连接将正常
+
+	var err error
+	Db, err = gorm.Open(postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true}), &gorm.Config{})
+	if err != nil {
+
+		return err
+	}
+
+	{
+		sqlDB, err := Db.DB()
+		if err != nil {
+
+			return err
+		}
+
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+		sqlDB.SetConnMaxIdleTime(10 * time.Minute)
+	}
+
+	if err = AutoMigrate(); err != nil {
+
+		return err
 	}
 
 	var count int64

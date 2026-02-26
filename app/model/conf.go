@@ -28,7 +28,7 @@ func (c Conf) TableName() string {
 
 func SetK(k ConfKey, v string) {
 	if err = Db.Transaction(func(db *gorm.DB) error {
-		if err2 := db.Where("`k` = ?", k).Delete(&Conf{}).Error; err2 != nil {
+		if err2 := db.Where("k = ?", k).Delete(&Conf{}).Error; err2 != nil {
 
 			return err2
 		}

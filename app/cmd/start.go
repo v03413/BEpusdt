@@ -27,11 +27,12 @@ import (
 var Start = &cli.Command{
 	Name:  "start",
 	Usage: "启动收款网关",
-	Flags: []cli.Flag{SQLiteFlag, MySQLDSNFlag, LogFlag, ListenFlag},
+	Flags: []cli.Flag{SQLiteFlag, MySQLDSNFlag, PostgresDSNFlag, LogFlag, ListenFlag},
 	Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-		dsn := c.String("mysql")
+		mysql := c.String("mysql")
+		postgres := c.String("postgres")
 		sqlite := c.String("sqlite")
-		if err := model.Init(sqlite, dsn); err != nil {
+		if err := model.Init(sqlite, mysql, postgres); err != nil {
 			return ctx, fmt.Errorf("数据库初始化失败 %w", err)
 		}
 

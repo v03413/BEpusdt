@@ -16,6 +16,13 @@ var MySQLDSNFlag = &cli.StringFlag{
 	Sources: cli.EnvVars("MYSQL_DSN"),
 }
 
+var PostgresDSNFlag = &cli.StringFlag{
+	Name:    "postgres",
+	Value:   "",
+	Usage:   "PostgreSQL 数据库连接字符串 (DSN)，例如: postgres://user:password@localhost:5432/bepusdt?sslmode=disable&connect_timeout=3",
+	Sources: cli.EnvVars("POSTGRESQL_DSN"),
+}
+
 var LogFlag = &cli.StringFlag{
 	Name:    "log",
 	Value:   "/var/log/bepusdt/",

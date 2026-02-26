@@ -28,9 +28,9 @@ import (
 //  - https://github.com/solana-program/token/blob/6d18ff73b1dd30703a30b1ca941cb0f1d18c2b2a/program/src/instruction.rs
 
 type solana struct {
-	slotConfirmedOffset int64
-	lastSlotNum         int64
-	slotQueue           *chanx.UnboundedChan[int64]
+	slotConfirmedOffset int
+	lastSlotNum         int
+	slotQueue           *chanx.UnboundedChan[int]
 	client              *http.Client
 }
 
@@ -52,7 +52,7 @@ func newSolana() solana {
 	return solana{
 		slotConfirmedOffset: 60,
 		lastSlotNum:         0,
-		slotQueue:           chanx.NewUnboundedChan[int64](context.Background(), 30),
+		slotQueue:           chanx.NewUnboundedChan[int](context.Background(), 30),
 		client:              utils.NewHttpClient(),
 	}
 }
@@ -88,7 +88,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 		return
 	}
 
-	now := gjson.GetBytes(body, "result").Int()
+	now := int(gjson.GetBytes(body, "result").Int())
 	if now <= 0 {
 		log.Task.Warn("syncSlotForward Error: invalid slot number:", now)
 
@@ -99,7 +99,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 		s.syncSlotBackward(now)
 	}
 
-	if now-s.lastSlotNum > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) { // 区块高度变化过大，强制丢块重扫
+	if now-s.lastSlotNum > cast.ToInt(model.GetC(model.BlockHeightMaxDiff)) { // 区块高度变化过大，强制丢块重扫
 		s.lastSlotNum = now
 	}
 
@@ -117,7 +117,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 	s.lastSlotNum = now
 }
 
-func (s *solana) syncSlotBackward(now int64) {
+func (s *solana) syncSlotBackward(now int) {
 	if now == 0 || s.lastSlotNum != 0 {
 
 		return
@@ -132,13 +132,13 @@ func (s *solana) syncSlotBackward(now int64) {
 	}
 
 	// Solana 大概1秒3个区块（大概值，实际存在波动）
-	num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) * 3 // 计算需要反向扫描的区块数量
+	num := int((time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) * 3) // 计算需要反向扫描的区块数量
 
 	go func() {
 		ticker := time.NewTicker(time.Millisecond * 125)
 		defer ticker.Stop()
 
-		for i := int64(0); i < num; i++ {
+		for i := 0; i < num; i++ {
 			if syncBreak(conf.Solana, s.slotQueue.Len()) {
 
 				return
@@ -179,7 +179,7 @@ func (s *solana) slotDispatch(ctx context.Context) {
 }
 
 func (s *solana) slotParse(n any) {
-	slot := n.(int64)
+	slot := n.(int)
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getBlock","params":[%d,{"encoding":"json","maxSupportedTransactionVersion":0,"transactionDetails":"full","rewards":false}]}`, slot))
 	network := conf.Solana
 
