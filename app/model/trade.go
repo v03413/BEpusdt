@@ -34,6 +34,8 @@ type Trade struct {
 	Amount  string
 }
 
+var buildMutex sync.Mutex
+
 func BuildOrder(p OrderParams) (Order, error) {
 	var order Order
 
@@ -71,9 +73,15 @@ func BuildOrder(p OrderParams) (Order, error) {
 		return RebuildOrder(order, p)
 	}
 
-	var lock sync.Mutex
-	lock.Lock()
-	defer lock.Unlock()
+	buildMutex.Lock()
+	defer buildMutex.Unlock()
+	Db.Where("order_id = ?", p.OrderId).Order("id desc").Limit(1).Find(&order)
+	if order.Status == OrderStatusSuccess || order.Status == OrderStatusConfirming {
+		return order, nil
+	}
+	if order.Status == OrderStatusWaiting {
+		return RebuildOrder(order, p)
+	}
 
 	data, err := BuildTrade(p)
 	if err != nil {
