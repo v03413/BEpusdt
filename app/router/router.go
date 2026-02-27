@@ -23,8 +23,7 @@ func Handler() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 
 	engine = gin.New()
-
-	session := memstore.NewStore([]byte(conf.Secret))
+	session := memstore.NewStore([]byte(model.GetK(model.AdminSecret)))
 	session.Options(sessions.Options{
 		MaxAge:   86400,
 		HttpOnly: true,

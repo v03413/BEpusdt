@@ -31,6 +31,7 @@ const (
 	AdminUsername ConfKey = "admin_username"
 	AdminPassword ConfKey = "admin_password"
 	AdminSecure   ConfKey = "admin_secure"
+	AdminSecret   ConfKey = "admin_secret"
 	AdminLoginIP  ConfKey = "admin_login_ip"
 	AdminLoginAt  ConfKey = "admin_login_at"
 

@@ -124,6 +124,7 @@ func ConfInit() {
 	var data = map[ConfKey]string{
 		ApiAppUri:               "",
 		ApiAuthToken:            token,
+		AdminSecret:             utils.StrSha256(hash),
 		AdminSecure:             secure,
 		AdminUsername:           username,
 		AdminPassword:           string(encrypt),
