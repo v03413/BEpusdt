@@ -27,7 +27,7 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
     - `v03413/bepusdt:latest` - 稳定发行版（推荐生产环境使用）
     - `v03413/bepusdt:nightly` - 每日构建开发版（包含最新特性，适合测试环境）
 
-## 数据持久化配置
+## 数据持久化
 
 ### SQLite 数据库（默认）
 
@@ -47,15 +47,42 @@ docker run -d --restart=unless-stopped -p 8080:8080 -v [挂载路径]:/var/lib/b
 docker run -d --restart=unless-stopped -p 8080:8080 -v /opt/bepusdt:/var/lib/bepusdt v03413/bepusdt:latest
 ```
 
-### MySQL 数据库（可选）
+<details>
+<summary><strong>PostgreSQL 数据库（推荐）</strong></summary>
 
-系统支持使用 MySQL 作为数据存储方案，适用于需要更强大数据库功能的场景。
+系统支持使用 PostgreSQL 作为数据存储方案，适用于生产环境。这是目前推荐的数据库方案。
 
 **前置准备：**
 
-- MySQL 版本：5.7 或更高版本
-- 需提前完成 MySQL 安装及安全配置
+- PostgreSQL 版本：18 或更高版本
+- 需提前完成 PostgreSQL 安装及安全配置
 - 已创建专用数据库（如 `bepusdt`）
+
+**部署命令：**
+
+```bash
+docker run -d \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e POSTGRESQL_DSN=postgres://user:password@localhost:5432/bepusdt?sslmode=disable&connect_timeout=3 \
+  v03413/bepusdt:latest
+```
+
+**配置说明：**
+
+- 将 `user` 替换为 PostgreSQL 用户名
+- 将 `password` 替换为 PostgreSQL 密码
+- 将 `localhost:5432` 替换为 PostgreSQL 服务器地址和端口
+- 将 `bepusdt` 替换为实际数据库名称
+
+</details>
+
+<details>
+<summary><strong>MySQL 数据库（已弃用）</strong></summary>
+
+> **注意：** MySQL 支持将逐步弃用，建议使用 PostgreSQL 替代。
+
+系统仍支持使用 MySQL 作为数据存储方案，但不再推荐用于新部署。
 
 **部署命令：**
 
@@ -73,6 +100,8 @@ docker run -d \
 - 将 `password` 替换为 MySQL 密码
 - 将 `127.0.0.1:3306` 替换为 MySQL 服务器地址和端口
 - 将 `bepusdt` 替换为实际数据库名称（如需要）
+
+</details>
 
 ## 部署验证
 
