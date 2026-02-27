@@ -65,7 +65,7 @@ func (Conf) Del(ctx *gin.Context) {
 		return
 	}
 
-	model.Db.Where("`k` = ?", req.Key).Delete(&model.Conf{})
+	model.Db.Where("k = ?", req.Key).Delete(&model.Conf{})
 
 	base.Ok(ctx, "删除成功")
 }
@@ -79,7 +79,7 @@ func (Conf) Gets(ctx *gin.Context) {
 	}
 
 	var items = make([]model.Conf, 0)
-	model.Db.Where("`k` IN ?", req.Keys).Find(&items)
+	model.Db.Where("k IN ?", req.Keys).Find(&items)
 
 	var data = gin.H{}
 	for _, item := range items {
@@ -119,7 +119,7 @@ func (Conf) Sets(ctx *gin.Context) {
 		}
 	}
 
-	model.Db.Where("`k` IN ?", keys).Delete(&model.Conf{})
+	model.Db.Where("k IN ?", keys).Delete(&model.Conf{})
 	model.Db.Create(&data)
 
 	defer model.RefreshC()
@@ -136,7 +136,7 @@ func (Conf) Notifier(ctx *gin.Context) {
 	}
 
 	var keys = []string{string(model.NotifierChannel), string(model.NotifierParams)}
-	model.Db.Where("`k` IN ?", keys).Delete(&model.Conf{})
+	model.Db.Where("k IN ?", keys).Delete(&model.Conf{})
 	model.Db.Create(&[]model.Conf{
 		{K: model.NotifierChannel, V: req.Channel},
 		{K: model.NotifierParams, V: string(req.Params)},
