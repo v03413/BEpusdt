@@ -15,7 +15,8 @@
 
 以下是常见程序的对接文档，请根据您的实际需求选择相应教程进行配置。如遇问题，请仔细核对操作步骤，或在相关技术社区寻求协助。
 
-- [独角数卡](./dujiaoka/dujiaoka.md)
+- [独角Dujiao-Next](https://dujiao-next.com/payment/guide#_3-7-bepusdt)
+- [独角数卡(旧版)](./dujiaoka/dujiaoka.md)
 - [彩虹易支付](https://github.com/v03413/Epay-BEpusdt)
 - [WHMCS](https://github.com/v03413/whmcs-gateway-epusdt)
 - [异次元发卡](acg-faka/README.md)
