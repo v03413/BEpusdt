@@ -14,7 +14,7 @@ import (
 )
 
 // NewTronGrpcClient 目前很多 TRON API 基本都有QPS限制，过于激进或者过于保守的重试策略都不合适
-func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
+func NewTronGrpcClient(apiNode string, apiKey []string) (*grpc.ClientConn, error) {
 	apiNode = strings.TrimSpace(apiNode)
 	if apiNode == "" {
 		return nil, errors.New("tron api node address is empty")
@@ -41,7 +41,7 @@ func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
 		}),
 	}
 
-	if apiKey != "" {
+	if len(apiKey) > 0 {
 		opts = append(opts,
 			grpc.WithUnaryInterceptor(tronGridApiKeyUnaryInterceptor(apiKey)),
 			grpc.WithStreamInterceptor(tronGridApiKeyStreamInterceptor(apiKey)),
@@ -51,18 +51,20 @@ func NewTronGrpcClient(apiNode, apiKey string) (*grpc.ClientConn, error) {
 	return grpc.NewClient(apiNode, opts...)
 }
 
-func tronGridApiKeyUnaryInterceptor(apiKey string) grpc.UnaryClientInterceptor {
+func tronGridApiKeyUnaryInterceptor(apiKeys []string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{},
 		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = addTronGridApiKeyToContext(ctx, apiKey)
+		i := time.Now().UnixMicro() % int64(len(apiKeys))
+		ctx = addTronGridApiKeyToContext(ctx, apiKeys[i])
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
 
-func tronGridApiKeyStreamInterceptor(apiKey string) grpc.StreamClientInterceptor {
+func tronGridApiKeyStreamInterceptor(apiKeys []string) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn,
 		method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		ctx = addTronGridApiKeyToContext(ctx, apiKey)
+		i := time.Now().UnixMicro() % int64(len(apiKeys))
+		ctx = addTronGridApiKeyToContext(ctx, apiKeys[i])
 		return streamer(ctx, desc, cc, method, opts...)
 	}
 }

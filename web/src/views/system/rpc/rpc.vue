@@ -79,7 +79,7 @@
                     <template #label>
                       <div class="label-with-tip">
                         <span>Tron Grid Api Key</span>
-                        <a-tooltip content="使用个人独立的Api Key，可以提高扫块成功率" position="top">
+                        <a-tooltip content="配置独立 Api Key 可提高扫块稳定性，多个可用半角符逗号隔开。" position="top">
                           <icon-question-circle class="tip-icon" />
                         </a-tooltip>
                         <span class="optional-tag">(可选)</span>
@@ -87,7 +87,7 @@
                     </template>
                     <a-input
                       v-model="formData.rpc_endpoint_tron_grid_api_key"
-                      placeholder="请输入 Tron Grid Api Key (可选)"
+                      placeholder="请输入 Tron Grid Api Key (可选)，多个可用半角符逗号隔开"
                       allow-clear
                       size="small"
                       class="network-input tron-input"

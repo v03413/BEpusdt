@@ -521,7 +521,7 @@ func (t *tron) client() (*grpc.ClientConn, error) {
 		c.Close()
 	}
 
-	conn, err := utils.NewTronGrpcClient(endpoint, model.GetK(model.RpcEndpointTronGridApiKey))
+	conn, err := utils.NewTronGrpcClient(endpoint, model.GetTronGridApiKeys())
 	if err != nil {
 
 		return nil, fmt.Errorf("连接失败: %w", err)
