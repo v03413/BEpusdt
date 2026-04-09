@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/stale@v9
         with:
-          days-before-issue-stale: 30
+          days-before-issue-stale: 3
           days-before-issue-close: 7
           stale-issue-label: "stale"
           stale-issue-message: "此议题由于30天内没有任何活动，现在标记为过时。"
