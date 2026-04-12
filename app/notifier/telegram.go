@@ -62,7 +62,7 @@ func (t *Telegram) Success(o model.Order) {
 \-\-\-
 ` + "```" + `
 🚦商户订单：%v
-💰请求金额：%v CNY(%v)
+💰请求金额：%v ` + string(o.Fiat) + `(%v)
 💲支付数额：%v ` + tradeType + `
 💎交易哈希：%s
 ✅收款地址：%s
@@ -111,7 +111,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 `+"```"+`
 🚦商户订单：%v
 💲支付数额：%v
-💰请求金额：%v CNY(%v)
+💰请求金额：%v `+string(o.Fiat)+`(%v)
 💍交易类别：%s
 ⚖️️确认时间：%s
 ⏰下次回调：%s
