@@ -19,6 +19,7 @@ import (
 	"github.com/v03413/bepusdt/app/utils"
 
 	"github.com/v03413/go-cache"
+	"gorm.io/gorm"
 )
 
 type EpNotify struct {
@@ -166,88 +167,79 @@ func Bepusdt(o model.Order) {
 		return
 	}
 
-	var todo = func() error {
-		var db = model.Db.Begin()
-		if err := db.Where("trade_id = ? and status = ?", o.TradeId, o.Status).Limit(1).Find(&o).Error; err != nil {
-			db.Rollback()
-
-			return err
-		}
-
-		var key = fmt.Sprintf("bepusdt_notify_%d_%s", o.Status, o.TradeId)
-		if _, ok := cache.Get(key); ok {
-			db.Rollback()
-
-			return nil
-		}
-
-		cache.Set(key, true, time.Minute)
-
-		var data = make(map[string]interface{})
-		var body = EpNotify{
-			TradeId:            o.TradeId,
-			OrderId:            o.OrderId,
-			Amount:             cast.ToFloat64(o.Money),
-			ActualAmount:       o.Amount,
-			Token:              o.Address,
-			BlockTransactionId: o.RefHash,
-			Status:             o.Status,
-		}
-		var jsonBody, err = json.Marshal(body)
-		if err != nil {
-			db.Rollback()
-
-			return err
-		}
-
-		if err = json.Unmarshal(jsonBody, &data); err != nil {
-			db.Rollback()
-
-			return err
-		}
-
-		// 签名
-		body.Signature = utils.EpusdtSign(data, model.AuthToken())
-
-		// 再次序列化
-		jsonBody, _ = json.Marshal(body)
-		var client = http.Client{Timeout: time.Second * 5}
-		var req, err2 = http.NewRequest("POST", o.NotifyUrl, strings.NewReader(string(jsonBody)))
-		if err2 != nil {
-			db.Rollback()
-
-			return err2
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Powered-By", "https://github.com/v03413/BEpusdt")
-		resp, err := client.Do(req)
-		if err != nil {
-			db.Rollback()
-
-			return err
-		}
-
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			db.Rollback()
-
-			return fmt.Errorf("resp.StatusCode != 200")
-		}
-
-		all, _ := io.ReadAll(resp.Body)
-
-		log.Info(fmt.Sprintf("订单回调成功[%d]：%s %s", o.Status, o.TradeId, string(all)))
-
-		db.Commit()
-
-		return nil
-	}
+	var authToken = model.AuthToken()
+	var client = &http.Client{Timeout: time.Second * 5}
 	go func() {
-		if err := todo(); err != nil {
+		if err := deliverBepusdtStatusUpdate(model.Db, client, authToken, o); err != nil {
 			log.Warn("notify BEpusdt Error:", err.Error())
 		}
 	}()
+}
+
+func deliverBepusdtStatusUpdate(db *gorm.DB, client *http.Client, authToken string, o model.Order) error {
+	if client == nil {
+		client = &http.Client{Timeout: time.Second * 5}
+	}
+
+	var current model.Order
+	tx := db.Where("trade_id = ? and status = ?", o.TradeId, o.Status).Limit(1).Find(&current)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil
+	}
+
+	var key = fmt.Sprintf("bepusdt_notify_%d_%s", current.Status, current.TradeId)
+	if _, ok := cache.Get(key); ok {
+		return nil
+	}
+
+	cache.Set(key, true, time.Minute)
+
+	var data = make(map[string]interface{})
+	var body = EpNotify{
+		TradeId:            current.TradeId,
+		OrderId:            current.OrderId,
+		Amount:             cast.ToFloat64(current.Money),
+		ActualAmount:       current.Amount,
+		Token:              current.Address,
+		BlockTransactionId: current.RefHash,
+		Status:             current.Status,
+	}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	if err = json.Unmarshal(jsonBody, &data); err != nil {
+		return err
+	}
+
+	body.Signature = utils.EpusdtSign(data, authToken)
+
+	jsonBody, _ = json.Marshal(body)
+	req, err := http.NewRequest("POST", current.NotifyUrl, strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Powered-By", "https://github.com/v03413/BEpusdt")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("resp.StatusCode != 200")
+	}
+
+	all, _ := io.ReadAll(resp.Body)
+	log.Info(fmt.Sprintf("订单回调成功[%d]：%s %s", current.Status, current.TradeId, string(all)))
+
+	return nil
 }
 
 func markNotifyFail(o model.Order, reason string) {
