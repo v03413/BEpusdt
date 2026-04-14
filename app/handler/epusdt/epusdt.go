@@ -21,11 +21,11 @@ import (
 type Epusdt struct{}
 
 type createReq struct {
-	Amount      float64    `json:"amount" binding:"required"`
 	OrderID     string     `json:"order_id" binding:"required"`
 	NotifyURL   string     `json:"notify_url" binding:"required"`
 	RedirectURL string     `json:"redirect_url" binding:"required"`
 	Signature   string     `json:"signature" binding:"required"`
+	Amount      float64    `json:"amount"`
 	Name        string     `json:"name"`
 	Fiat        model.Fiat `json:"fiat"`
 	TradeType   string     `json:"trade_type"`
@@ -35,11 +35,11 @@ type createReq struct {
 }
 
 type createOrderReq struct {
-	Amount      float64    `json:"amount" binding:"required"`
 	OrderID     string     `json:"order_id" binding:"required"`
 	NotifyURL   string     `json:"notify_url" binding:"required"`
 	RedirectURL string     `json:"redirect_url" binding:"required"`
 	Signature   string     `json:"signature" binding:"required"`
+	Amount      float64    `json:"amount"`
 	Name        string     `json:"name"`
 	Fiat        model.Fiat `json:"fiat"`
 	Currencies  string     `json:"currencies"`
@@ -146,6 +146,17 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		return
 	}
 
+	if !utils.IsAllowedCallbackURL(req.NotifyURL) {
+		ctx.JSON(200, respFailJson("notify_url 地址不合法"))
+
+		return
+	}
+	if !utils.IsAllowedCallbackURL(req.RedirectURL) {
+		ctx.JSON(200, respFailJson("redirect_url 地址不合法"))
+
+		return
+	}
+
 	// 解析请求地址
 	host := "http://" + ctx.Request.Host
 	if ctx.Request.TLS != nil {
@@ -170,7 +181,6 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 	})
 	if err != nil {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: order create failed: %s", err.Error())))
-
 		return
 	}
 
@@ -262,6 +272,17 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		return
 	}
 
+	if !utils.IsAllowedCallbackURL(req.NotifyURL) {
+		ctx.JSON(200, respFailJson("notify_url 地址不合法"))
+
+		return
+	}
+	if !utils.IsAllowedCallbackURL(req.RedirectURL) {
+		ctx.JSON(200, respFailJson("redirect_url 地址不合法"))
+
+		return
+	}
+
 	if req.Fiat == "" {
 		req.Fiat = model.CNY
 	}
@@ -269,18 +290,19 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		req.TradeType = string(model.UsdtTrc20)
 	}
 
-	order, err := model.BuildOrder(model.OrderParams{
-		Money:       decimal.NewFromFloat(req.Amount),
-		ApiType:     model.OrderApiTypeEpusdt,
-		Address:     req.Address,
-		OrderId:     req.OrderID,
-		TradeType:   model.TradeType(req.TradeType),
-		RedirectUrl: req.RedirectURL,
-		NotifyUrl:   req.NotifyURL,
-		Name:        req.Name,
-		Timeout:     req.Timeout,
-		Rate:        req.Rate,
-		Fiat:        req.Fiat,
+	order, err := model.StartBuildOrder(model.OrderParams{
+		Money:         decimal.NewFromFloat(req.Amount),
+		ApiType:       model.OrderApiTypeEpusdt,
+		Address:       req.Address,
+		AddressLocked: req.Amount == 0,
+		OrderId:       req.OrderID,
+		TradeType:     model.TradeType(req.TradeType),
+		RedirectUrl:   req.RedirectURL,
+		NotifyUrl:     req.NotifyURL,
+		Name:          req.Name,
+		Timeout:       req.Timeout,
+		Rate:          req.Rate,
+		Fiat:          req.Fiat,
 	})
 	if err != nil {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("订单创建失败：%s", err.Error())))

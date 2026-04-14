@@ -69,6 +69,17 @@ func (e Epay) Submit(ctx *gin.Context) {
 		return
 	}
 
+	if !utils.IsAllowedCallbackURL(data.NotifyURL) {
+		ctx.String(200, "notify_url 地址不合法")
+
+		return
+	}
+	if !utils.IsAllowedCallbackURL(data.ReturnURL) {
+		ctx.String(200, "return_url 地址不合法")
+
+		return
+	}
+
 	money, err := decimal.NewFromString(data.Money)
 	if err != nil {
 		ctx.String(200, "参数 money 解析错误，"+err.Error())
@@ -76,7 +87,7 @@ func (e Epay) Submit(ctx *gin.Context) {
 		return
 	}
 
-	var order, err2 = model.BuildOrder(model.OrderParams{
+	var order, err2 = model.StartBuildOrder(model.OrderParams{
 		Money:       money,
 		ApiType:     model.OrderApiTypeEpay,
 		Address:     data.Address,

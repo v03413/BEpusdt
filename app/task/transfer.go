@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/notifier"
 	"github.com/v03413/bepusdt/app/task/notify"
@@ -76,8 +77,7 @@ func orderTransferHandle(ctx context.Context) {
 			}
 
 			var other = make([]transfer, 0)
-			// getAllWaitingOrders 内部包含过期检查逻辑
-			var orders = getAllWaitingOrders()
+			var orders = getAllWaitingOrders() // 内部包含过期检查逻辑
 			if len(batch) == 0 {
 				continue
 			}
@@ -95,21 +95,22 @@ func orderTransferHandle(ctx context.Context) {
 				}
 
 				var matched bool
-				for _, o := range orderList {
-					// 金额前缀匹配
-					if !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
-
+				for i, o := range orderList {
+					// 金额匹配
+					if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
 						continue
 					}
 
 					// 有效期检测
 					if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
-
 						continue
 					}
 
-					// 找到匹配的订单
-					o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp)
+					// 从内存 map 中移除已匹配订单，防止同批次其他 transfer 重复匹配
+					orders[key] = append(orderList[:i], orderList[i+1:]...)
+
+					// 订单匹配 进入确认流程
+					o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount)
 					matched = true
 					break
 				}
@@ -277,10 +278,20 @@ func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
 	case model.Classic:
 		return amount.String() == target
 	case model.HasPrefix:
-		return strings.HasPrefix(amount.String(), target)
+		s := amount.String()
+		if !strings.HasPrefix(s, target) {
+			return false
+		}
+		rest := s[len(target):]
+		if rest == "" {
+			return true
+		}
+
+		return strings.Contains(target, ".") || strings.HasPrefix(rest, ".")
 	case model.RoundOff:
 		t, err := decimal.NewFromString(target)
 		if err != nil {
+			log.Warn(err.Error())
 
 			return false
 		}
@@ -288,7 +299,6 @@ func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
 		_, precision := model.GetAtomicity(model.TradeType(tradeType)) // 标准精度
 		precision2 := abs(t.Exponent())                                // 实际精度
 		if precision2 != precision {
-
 			precision = precision2
 		}
 

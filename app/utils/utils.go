@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -204,6 +205,22 @@ func StrSha256(str string) string {
 	hash := sha256.New()
 	hash.Write([]byte(str))
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func IsAllowedCallbackURL(raw string) bool {
+	// IsAllowedCallbackURL 校验回调/跳转地址格式是否合法
+	// 规则：必须是合法 URL，且 scheme 只允许 http 或 https
+	if raw == "" {
+		return false
+	}
+	u, err := url.ParseRequestURI(raw)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	return u.Host != ""
 }
 
 // GetRequestHost 识别完整的请求主机地址

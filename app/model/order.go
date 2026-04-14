@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -52,8 +51,6 @@ const (
 	OrderApiTypeAdmin  = "admin"  // 管理后台
 )
 
-var calcMutex sync.Mutex
-
 type Order struct {
 	Id
 	OrderId       string     `gorm:"column:order_id;type:varchar(128);not null;index;comment:商户ID" json:"order_id"`
@@ -67,6 +64,7 @@ type Order struct {
 	Money         string     `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:交易金额" json:"money"`
 	Address       string     `gorm:"column:address;type:varchar(128);index;not null;comment:收款地址" json:"address"`
 	FromAddress   string     `gorm:"column:from_address;type:varchar(128);not null;default:'';comment:支付地址" json:"from_address"`
+	AddressLocked bool       `gorm:"column:address_locked;not null;default:false;comment:地址锁定 1:独占 0:共享" json:"address_locked"`
 	Status        int        `gorm:"column:status;not null;default:1;index;comment:交易状态" json:"status"`
 	Name          string     `gorm:"column:name;type:varchar(64);not null;default:'';comment:商品名称" json:"name"`
 	ApiType       string     `gorm:"column:api_type;type:varchar(20);not null;default:'epusdt';comment:API类型" json:"api_type"`
@@ -105,12 +103,17 @@ func (o *Order) SetFailed() {
 	Db.Save(o)
 }
 
-func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time) {
+func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time, amount decimal.Decimal) {
 	o.FromAddress = from
 	o.ConfirmedAt = &at
 	o.RefHash = hash
-	o.RefBlockNum = int(blockNum)
+	o.RefBlockNum = blockNum
 	o.Status = OrderStatusConfirming
+	if o.AddressLocked {
+		rate, _ := decimal.NewFromString(o.Rate)
+		o.Amount = amount.String()
+		o.Money = rate.Mul(amount).String()
+	}
 
 	Db.Save(o)
 }
@@ -185,28 +188,31 @@ func GetNotifyFailedTradeOrders() ([]Order, error) {
 }
 
 // CalcTradeAmount 计算当前实际可用的交易金额
-func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType) (string, string, error) {
-	calcMutex.Lock()
-	defer calcMutex.Unlock()
+func CalcTradeAmount(address []string, rate decimal.Decimal, p OrderParams) (string, string, error) {
+	if p.AddressLocked {
+		return LockTradeAddress(address, p.TradeType)
+	}
 
 	var orders []Order
 	lock := make(map[string]bool)
 	status := []int{OrderStatusConfirming, OrderStatusWaiting}
-	Db.Where("status in (?) and trade_type = ?", status, t).Find(&orders)
+	Db.Where("status in (?) and trade_type = ?", status, p.TradeType).Find(&orders)
 	for _, order := range orders {
 		lock[order.Address+order.Amount] = true
 	}
 
-	atom, precision := GetAtomicity(t)
+	atom, precision := GetAtomicity(p.TradeType)
 	if rate.LessThanOrEqual(decimal.Zero) || precision <= 0 {
 		return "", "", errors.New(fmt.Sprintf("[%v - %v]原子颗粒度计算异常，联系管理员处理！", atom, precision))
 	}
 
-	amount := money.DivRound(rate, precision)
+	amount := p.Money.DivRound(rate, precision)
 	if amount.LessThan(atom) { // 低于最小原子精度，从最小原子精度开始计算
 		amount = atom
 	}
 
+	var i = 0
+	var m = 100
 	for {
 		for _, addr := range address {
 			k := addr + amount.String()
@@ -219,7 +225,25 @@ func CalcTradeAmount(address []string, rate, money decimal.Decimal, t TradeType)
 
 		// 已经被占用，每次递增一个原子精度
 		amount = amount.Add(atom)
+		if i++; i > m {
+			return "", "", errors.New("计算交易金额异常，联系管理员处理！")
+		}
 	}
+}
+
+// LockTradeAddress 检测交易地址，独占使用
+func LockTradeAddress(address []string, t TradeType) (string, string, error) {
+	zero := decimal.Zero.String()
+	status := []int{OrderStatusConfirming, OrderStatusWaiting}
+	for _, addr := range address {
+		var o Order
+		Db.Where("address = ? and status in (?) and trade_type = ? and address_locked = ?", addr, status, t, true).Order("id desc").Limit(1).Find(&o)
+		if o.ID == 0 {
+			return addr, zero, nil
+		}
+	}
+
+	return "", zero, errors.New("暂无可用钱包地址")
 }
 
 // CalcTradeExpiredAt 计算订单过期时间 最小180，最大3600，默认1200
