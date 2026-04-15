@@ -1,5 +1,8 @@
 ## 📚 API 对接文档
 
+> 📡 **MQTT 实时推送**：系统支持将扫描到的链上交易广播到 MQTT 服务器，其它系统通过订阅即可实时获取数据，无需轮询
+> API。详见 [《MQTT 对接开发文档》](./mqtt.md)。
+
 > 💡 **推荐阅读**：在开始对接前，建议先阅读 [《BEpusdt 执行原理说明》](./how-it-works.md)
 > ，了解订单匹配机制、金额匹配模式与汇率浮动等核心原理，有助于更准确地理解本文档中的参数设计。
 
@@ -46,7 +49,7 @@ POST /api/v1/order/create-transaction
 | notify_url   | string | ✅  | 支付结果异步回调地址                                                                                                                                                  |
 | redirect_url | string | ✅  | 支付成功后商户跳转地址                                                                                                                                                 |
 | signature    | string | ✅  | 签名字符串（详见[签名算法](#签名算法)）                                                                                                                                      |
-| amount       | number | ❌  | 支付金额（法币金额）；留空或传 `0` 则进入**地址独占模式**，收到任意金额均触发回调（详见[执行原理 §3](../faq/how-it-works.md#3-地址独占模式)）                                                                 |
+| amount       | number | ❌  | 支付金额（法币金额）；留空或传 `0` 则进入**地址独占模式**，收到任意金额均触发回调（详见[执行原理](./how-it-works.md)）                                                                                  |
 | trade_type   | string | ❌  | 交易类型，默认 `usdt.trc20`<br/>完整列表：[trade-type.md](../trade-type.md)                                                                                             |
 | fiat         | string | ❌  | 法币类型，默认 `CNY`<br/>可选：`CNY`、`USD`、`EUR`、`GBP`、`JPY`                                                                                                          |
 | address      | string | ❌  | 指定收款地址（留空则自动分配）                                                                                                                                             |
@@ -174,7 +177,7 @@ POST /api/v1/order/create-order
 | notify_url   | string | ✅  | 支付结果异步回调地址                                                                                                                               |
 | redirect_url | string | ✅  | 支付成功后商户跳转地址                                                                                                                              |
 | signature    | string | ✅  | 签名字符串（详见[签名算法](#签名算法)）                                                                                                                   |
-| amount       | number | ❌  | 支付金额（法币金额）；留空或传 `0` 则进入**地址独占模式**，收到任意金额均触发回调（详见[执行原理 §3](../faq/how-it-works.md#3-地址独占模式)）                                              |
+| amount       | number | ❌  | 支付金额（法币金额）；留空或传 `0` 则进入**地址独占模式**，收到任意金额均触发回调（详见[执行原理](./how-it-works.md)）                                                               |
 | currencies   | string | ❌  | 限定交易币种，留空则不限制付款币种。<br/>多个币种请使用半角逗号分隔，黑名单模式以短横线开头。<br/>例如：<br/>`USDT`（仅限 USDT）<br/>`USDT,USDC` （限 USDT/USDC）<br/>`-ETH,-BNB` （排除 ETH/BNB） |
 | fiat         | string | ❌  | 法币类型，默认 `CNY`<br/>可选：`CNY`、`USD`、`EUR`、`GBP`、`JPY`                                                                                       |
 | name         | string | ❌  | 商品名称                                                                                                                                     |
