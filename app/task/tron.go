@@ -474,6 +474,10 @@ func (t *tron) syncBreak() bool {
 		return true
 	}
 
+	if mqttScanAlways(conf.Tron) {
+		return false
+	}
+
 	var count int64 = 0
 	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
