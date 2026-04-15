@@ -474,7 +474,7 @@ func (t *tron) syncBreak() bool {
 		return true
 	}
 
-	if mqttScanAlways(conf.Tron) {
+	if mqttSubscribed(conf.Tron) {
 		return false
 	}
 

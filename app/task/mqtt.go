@@ -42,6 +42,10 @@ func mqttWatcher(_ context.Context) {
 }
 
 func mqttPublish(t transfer) {
+	if !mqttSubscribed(t.Network) {
+		return
+	}
+
 	var qos = cast.ToUint8(model.GetC(model.MqttPublishQos))
 	var topic = fmt.Sprintf("bepusdt/transfer/%s", t.Network)
 	var data = mqttTransfer{
@@ -61,7 +65,7 @@ func mqttPublish(t transfer) {
 	}()
 }
 
-func mqttScanAlways(n string) bool {
+func mqttSubscribed(n string) bool {
 	_, found := cache.Get("mqtt_subscribed_" + n)
 	return found
 }
