@@ -29,6 +29,14 @@
               <a-input-password v-model="form.mqtt_pass" placeholder="请输入密码" allow-clear />
             </a-form-item>
 
+            <a-form-item
+              field="mqtt_topic_prefix"
+              label="消息路径前缀"
+              extra="消息发布的 Topic 路径前缀，只允许字母、数字、下划线和斜杠，默认为 bepusdt"
+            >
+              <a-input v-model="form.mqtt_topic_prefix" placeholder="例如：bepusdt" allow-clear />
+            </a-form-item>
+
             <a-form-item field="mqtt_publish_qos" label="Publish QoS" extra="消息发布服务质量等级">
               <a-radio-group v-model="form.mqtt_publish_qos">
                 <a-radio value="0">0 - 最多一次</a-radio>
@@ -68,7 +76,25 @@ import { setsConfAPI } from "@/api/modules/conf/index";
 
 const emit = defineEmits(["refresh"]);
 const data = defineModel() as any;
-const rules = {};
+const rules = {
+  mqtt_topic_prefix: [
+    {
+      validator: (value: string, callback: (error?: string) => void) => {
+        if (!value) return callback();
+        if (!/^[a-zA-Z0-9_/]+$/.test(value)) {
+          return callback("Topic 前缀只允许包含字母、数字、下划线和斜杠");
+        }
+        if (value.startsWith("/") || value.endsWith("/")) {
+          return callback("Topic 前缀不能以斜杠开头或结尾");
+        }
+        if (value.includes("//")) {
+          return callback("Topic 前缀不能包含连续斜杠");
+        }
+        callback();
+      }
+    }
+  ]
+};
 
 const form = ref({
   mqtt_host: "",
@@ -76,7 +102,8 @@ const form = ref({
   mqtt_user: "",
   mqtt_pass: "",
   mqtt_publish_qos: "0",
-  mqtt_networks: ""
+  mqtt_networks: "",
+  mqtt_topic_prefix: "bepusdt"
 });
 
 const networksSelected = computed({
@@ -97,7 +124,8 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
     { key: "mqtt_user", value: form.value.mqtt_user },
     { key: "mqtt_pass", value: form.value.mqtt_pass },
     { key: "mqtt_publish_qos", value: form.value.mqtt_publish_qos },
-    { key: "mqtt_networks", value: form.value.mqtt_networks }
+    { key: "mqtt_networks", value: form.value.mqtt_networks },
+    { key: "mqtt_topic_prefix", value: form.value.mqtt_topic_prefix || "bepusdt" }
   ]);
 
   Message.success("保存成功");
@@ -113,6 +141,7 @@ watch(
     form.value.mqtt_pass = data.value.mqtt_pass ?? "";
     form.value.mqtt_publish_qos = data.value.mqtt_publish_qos ?? "0";
     form.value.mqtt_networks = data.value.mqtt_networks ?? "";
+    form.value.mqtt_topic_prefix = data.value.mqtt_topic_prefix ?? "bepusdt";
   }
 );
 </script>

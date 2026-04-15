@@ -156,6 +156,7 @@ func ConfInit() {
 		SystemInstallLock:       "0",
 		RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 		RateSyncCoingeckoApiKey: "",
+		MqttTopicPrefix:         "bepusdt",
 	}
 
 	var rows = make([]Conf, 0)

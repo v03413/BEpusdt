@@ -107,7 +107,8 @@ const getConf = async () => {
         "mqtt_user",
         "mqtt_pass",
         "mqtt_publish_qos",
-        "mqtt_networks"
+        "mqtt_networks",
+        "mqtt_topic_prefix"
       ]
     });
     Conf.value = data.data;

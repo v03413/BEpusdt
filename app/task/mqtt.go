@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -37,7 +36,7 @@ func mqttWatcher(_ context.Context) {
 
 	networks := strings.Split(model.GetC(model.MqttNetworks), ",")
 	for _, n := range networks {
-		cache.Set("mqtt_subscribed_"+n, true, time.Minute)
+		cache.Set("mqtt_subscribed_"+n, true, time.Second*8)
 	}
 }
 
@@ -47,7 +46,7 @@ func mqttPublish(t transfer) {
 	}
 
 	var qos = cast.ToUint8(model.GetC(model.MqttPublishQos))
-	var topic = fmt.Sprintf("bepusdt/transfer/%s", t.Network)
+	var topic = model.GetC(model.MqttTopicPrefix) + "/transfer/" + t.Network
 	var data = mqttTransfer{
 		Network:     t.Network,
 		TxHash:      t.TxHash,
