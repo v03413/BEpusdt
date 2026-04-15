@@ -17,14 +17,14 @@ import (
 )
 
 type transfer struct {
-	Network     string
-	TxHash      string
-	Amount      decimal.Decimal
-	FromAddress string
-	RecvAddress string
-	Timestamp   time.Time
-	TradeType   model.TradeType
-	BlockNum    int
+	Network     string          `json:"network"`
+	TxHash      string          `json:"tx_hash"`
+	Amount      decimal.Decimal `json:"amount"`
+	FromAddress string          `json:"from_address"`
+	RecvAddress string          `json:"recv_address"`
+	Timestamp   time.Time       `json:"timestamp"`
+	TradeType   model.TradeType `json:"trade_type"`
+	BlockNum    int             `json:"block_num"`
 }
 
 type resource struct {
@@ -86,6 +86,8 @@ func orderTransferHandle(ctx context.Context) {
 				if !model.IsAmountValid(t.TradeType, t.Amount) {
 					continue
 				}
+
+				mqttPublish(t)
 
 				key := fmt.Sprintf("%s%s", t.RecvAddress, t.TradeType)
 				orderList, ok := orders[key]

@@ -70,6 +70,13 @@ const (
 	BlockHeightMaxDiff      ConfKey = "block_height_max_diff"       // 区块高度最大差值，超过此值则以当前区块高度为准，重新开始扫描
 	BlockOffsetConfirm      ConfKey = "block_offset_confirm"        // 区块偏移确认数，扫描时以当前区块高度减去此偏移量为准，避免重链导致的订单回调失败
 
+	MqttHost       ConfKey = "mqtt_host"
+	MqttPort       ConfKey = "mqtt_port"
+	MqttUser       ConfKey = "mqtt_user"
+	MqttPass       ConfKey = "mqtt_pass"
+	MqttPublishQos ConfKey = "mqtt_publish_qos"
+	MqttNetworks   ConfKey = "mqtt_networks" // 需要持续监控的区块网络
+
 	NotifierParams  ConfKey = "notifier_params"  // 通知参数 (token, chat_id, email
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email
 

@@ -43,6 +43,9 @@
               <a-tab-pane key="4" title="API设置">
                 <Api v-model="Conf" @refresh="refresh" />
               </a-tab-pane>
+              <a-tab-pane key="5" title="MQTT设置">
+                <Mqtt v-model="Conf" @refresh="refresh" />
+              </a-tab-pane>
               <a-tab-pane key="3" title="安全设置">
                 <Security v-model="Conf" @refresh="refresh" />
               </a-tab-pane>
@@ -60,6 +63,7 @@ import Security from "@/views/system/base/security.vue";
 import Api from "@/views/system/base/api.vue";
 import { getsConfAPI } from "@/api/modules/conf/index";
 import Notifier from "./notifier.vue";
+import Mqtt from "./mqtt.vue";
 
 const route = useRoute();
 const type = ref("rounded");
@@ -97,7 +101,13 @@ const getConf = async () => {
         "payment_static_path",
         "payment_timeout",
         "notifier_params",
-        "notifier_channel"
+        "notifier_channel",
+        "mqtt_host",
+        "mqtt_port",
+        "mqtt_user",
+        "mqtt_pass",
+        "mqtt_publish_qos",
+        "mqtt_networks"
       ]
     });
     Conf.value = data.data;

@@ -461,6 +461,10 @@ func syncBreak(network string, num int) bool {
 		return true
 	}
 
+	if mqttScanAlways(network) {
+		return false
+	}
+
 	trades := model.GetNetworkTrades(model.Network(network))
 	if len(trades) == 0 {
 
