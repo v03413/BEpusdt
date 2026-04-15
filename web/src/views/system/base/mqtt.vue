@@ -2,9 +2,10 @@
   <div>
     <a-row align="center" :gutter="[0, 16]">
       <a-col :span="24">
-        <a-card title="MQTT 广播设置">
+        <a-card title="MQTT 发布设置">
           <a-alert type="info" style="margin-bottom: 16px">
-            系统可将扫描到的交易信息广播到 MQTT 服务器，其它系统通过订阅 MQTT 即可实时获取数据
+            系统可将扫描到的交易信息发布到 MQTT 服务器，其它系统通过订阅实时获取数据，
+            <a href="https://github.com/v03413/BEpusdt/blob/main/docs/api/mqtt.md" target="_blank">查看文档</a>
           </a-alert>
           <a-alert type="warning" style="margin-bottom: 16px">
             <template #icon><icon-exclamation-circle-fill /></template>

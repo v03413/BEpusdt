@@ -3,6 +3,10 @@
     <a-row align="center" :gutter="[0, 16]">
       <a-col :span="24">
         <a-card title="API设置">
+          <a-alert type="info" style="margin-bottom: 16px">
+            系统兼容彩虹易支付 <strong>submit.php</strong> 接口收单，对接时 PID 固定为 <strong>1000</strong>，KEY
+            则是和对接令牌保持一致。
+          </a-alert>
           <a-form :model="form" :rules="rules" :style="{ width: '600px' }" @submit="onSubmit">
             <a-form-item field="api_auth_token" label="对接令牌" extra="API对接的身份验证令牌，请妥善保管">
               <a-input-group class="token-input-group">
