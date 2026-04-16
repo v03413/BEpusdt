@@ -13,6 +13,7 @@ import (
 func init() {
 	var rate = Rate{}
 
+	Register(Task{Duration: time.Hour, Callback: rate.Clear})
 	Register(Task{Duration: time.Second * 5, Callback: rate.Sync})
 }
 
@@ -33,4 +34,14 @@ func (Rate) Sync(ctx context.Context) {
 
 		log.Warn(fmt.Sprintf("同步汇率失败: %s", err.Error()))
 	}
+}
+
+func (Rate) Clear(ctx context.Context) {
+	days := cast.ToInt(model.GetC(model.RateSyncHistoryDays))
+	if days <= 0 {
+		days = 1
+	}
+
+	createdAt := time.Now().AddDate(0, 0, -days)
+	model.Db.Where("created_at < ?", createdAt).Delete(&model.Rate{})
 }

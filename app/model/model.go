@@ -76,6 +76,7 @@ func initSqlite(path string) error {
 		ConfInit()
 	}
 
+	FillDefaultConf()
 	RefreshC()
 
 	return nil
@@ -118,6 +119,7 @@ func initMySQL(dsn string) error {
 		ConfInit()
 	}
 
+	FillDefaultConf()
 	RefreshC()
 
 	return nil
@@ -157,6 +159,7 @@ func initPostgres(dsn string) error {
 		ConfInit()
 	}
 
+	FillDefaultConf()
 	RefreshC()
 
 	return nil

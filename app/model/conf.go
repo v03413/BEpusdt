@@ -15,6 +15,37 @@ import (
 )
 
 var confCache sync.Map
+var defaultConf = map[ConfKey]string{
+	ApiAppUri:               "",
+	RateSyncInterval:        "3600",
+	AtomUSDT:                "0.01",
+	AtomUSDC:                "0.01",
+	AtomTRX:                 "0.01",
+	AtomBNB:                 "0.00001",
+	AtomETH:                 "0.000001",
+	MonitorMinAmount:        "0.01",
+	PaymentMinAmount:        "0.01",
+	PaymentMaxAmount:        "99999",
+	RpcEndpointTron:         "grpc.trongrid.io:50051",
+	RpcEndpointBsc:          "https://binance-smart-chain-public.nodies.app/",
+	RpcEndpointSolana:       "https://solana-rpc.publicnode.com/",
+	RpcEndpointXlayer:       "https://xlayerrpc.okx.com/",
+	RpcEndpointPolygon:      "https://polygon-public.nodies.app/",
+	RpcEndpointArbitrum:     "https://arb1.arbitrum.io/rpc",
+	RpcEndpointEthereum:     "https://ethereum-public.nodies.app/",
+	RpcEndpointBase:         "https://base-public.nodies.app/",
+	RpcEndpointAptos:        "https://aptos-rest.publicnode.com/",
+	RpcEndpointPlasma:       "https://rpc.plasma.to/",
+	NotifyMaxRetry:          "10",
+	BlockHeightMaxDiff:      "1000",
+	BlockOffsetConfirm:      "0",
+	PaymentTimeout:          "1200", // 20分钟
+	PaymentMatchMode:        string(Classic),
+	SystemInstallLock:       "0",
+	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
+	RateSyncHistoryDays:     "30",
+	MqttTopicPrefix:         "bepusdt",
+}
 
 type Conf struct {
 	K ConfKey `gorm:"column:k;type:varchar(32);not null;primaryKey" json:"key"`
@@ -122,45 +153,17 @@ func ConfInit() {
 	var password = hash[20:30]
 	var encrypt, _ = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	var data = map[ConfKey]string{
-		ApiAppUri:               "",
-		ApiAuthToken:            token,
-		AdminSecret:             utils.StrSha256(hash),
-		AdminSecure:             secure,
-		AdminUsername:           username,
-		AdminPassword:           string(encrypt),
-		RateSyncInterval:        "3600",
-		AtomUSDT:                "0.01",
-		AtomUSDC:                "0.01",
-		AtomTRX:                 "0.01",
-		AtomBNB:                 "0.00001",
-		AtomETH:                 "0.000001",
-		MonitorMinAmount:        "0.01",
-		PaymentMinAmount:        "0.01",
-		PaymentMaxAmount:        "99999",
-		RpcEndpointTron:         "grpc.trongrid.io:50051",
-		RpcEndpointBsc:          "https://binance-smart-chain-public.nodies.app/",
-		RpcEndpointSolana:       "https://solana-rpc.publicnode.com/",
-		RpcEndpointXlayer:       "https://xlayerrpc.okx.com/",
-		RpcEndpointPolygon:      "https://polygon-public.nodies.app/",
-		RpcEndpointArbitrum:     "https://arb1.arbitrum.io/rpc",
-		RpcEndpointEthereum:     "https://ethereum-public.nodies.app/",
-		RpcEndpointBase:         "https://base-public.nodies.app/",
-		RpcEndpointAptos:        "https://aptos-rest.publicnode.com/",
-		RpcEndpointPlasma:       "https://rpc.plasma.to/",
-		NotifyMaxRetry:          "10",
-		BlockHeightMaxDiff:      "1000",
-		BlockOffsetConfirm:      "0",
-		PaymentTimeout:          "1200", // 20分钟
-		PaymentStaticPath:       "",
-		PaymentMatchMode:        string(Classic),
-		SystemInstallLock:       "0",
-		RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
-		RateSyncCoingeckoApiKey: "",
-		MqttTopicPrefix:         "bepusdt",
+		ApiAuthToken:  token,
+		AdminSecret:   utils.StrSha256(hash),
+		AdminSecure:   secure,
+		AdminUsername: username,
+		AdminPassword: string(encrypt),
 	}
-
 	var rows = make([]Conf, 0)
 	for k, v := range data {
+		rows = append(rows, Conf{K: k, V: v})
+	}
+	for k, v := range defaultConf {
 		rows = append(rows, Conf{K: k, V: v})
 	}
 
@@ -225,4 +228,24 @@ func GetInstallInfo() gin.H {
 
 func GetTronGridApiKeys() []string {
 	return strings.Split(GetK(RpcEndpointTronGridApiKey), ",")
+}
+
+func FillDefaultConf() {
+	var existKeys []string
+	Db.Model(&Conf{}).Pluck("k", &existKeys)
+
+	existSet := make(map[ConfKey]struct{}, len(existKeys))
+	for _, k := range existKeys {
+		existSet[ConfKey(k)] = struct{}{}
+	}
+
+	var rows []Conf
+	for k, v := range defaultConf {
+		if _, ok := existSet[k]; !ok {
+			rows = append(rows, Conf{K: k, V: v})
+		}
+	}
+	if len(rows) > 0 {
+		Db.Create(&rows)
+	}
 }
