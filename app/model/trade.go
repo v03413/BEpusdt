@@ -119,10 +119,6 @@ func BuildOrder(p OrderParams, data Trade) (Order, error) {
 	if tradeOrder.Name == "" {
 		tradeOrder.Name = tradeOrder.OrderId
 	}
-	if tradeOrder.CurrencyLimit == "" {
-		tradeOrder.CurrencyLimit = string(data.Crypto)
-	}
-
 	if err = Db.Create(&tradeOrder).Error; err != nil {
 		log.Error("订单创建失败：", err.Error())
 		return Order{}, err
