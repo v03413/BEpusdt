@@ -37,6 +37,9 @@ type tron struct {
 	blockScanQueue       *chanx.UnboundedChan[int]
 	conn                 map[string]*grpc.ClientConn
 	connMu               sync.RWMutex
+	retryMu              sync.Mutex
+	retryAttempts        map[int]int
+	retryScheduled       map[int]*time.Timer
 }
 
 var tr tron
@@ -54,6 +57,8 @@ func newTron() tron {
 		blockConfirmedOffset: 30,
 		blockScanQueue:       chanx.NewUnboundedChan[int](context.Background(), 30),
 		conn:                 make(map[string]*grpc.ClientConn),
+		retryAttempts:        make(map[int]int),
+		retryScheduled:       make(map[int]*time.Timer),
 	}
 }
 
@@ -138,7 +143,7 @@ func (t *tron) syncBlocksBackward(now int) {
 	}()
 }
 
-func (t *tron) blockDispatch(context.Context) {
+func (t *tron) blockDispatch(ctx context.Context) {
 	p, err := ants.NewPoolWithFunc(2, t.blockParse)
 	if err != nil {
 		log.Task.Warn("Error creating pool:", err)
@@ -148,11 +153,19 @@ func (t *tron) blockDispatch(context.Context) {
 
 	defer p.Release()
 
-	for n := range t.blockScanQueue.Out {
-		if err := p.Invoke(n); err != nil {
-			t.blockScanQueue.In <- n
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case n, ok := <-t.blockScanQueue.Out:
+			if !ok {
+				return
+			}
+			if err := p.Invoke(n); err != nil {
+				t.scheduleBlockRetry(n, 0)
 
-			log.Task.Warn("Tron Error invoking process block:", err)
+				log.Task.Warn("Tron Error invoking process block:", err)
+			}
 		}
 	}
 }
@@ -168,18 +181,19 @@ func (t *tron) blockParse(n any) {
 		return
 	}
 
-	conf.RecordSuccess(conf.Tron)
-
 	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 	bok, err2 := api.NewWalletClient(conn).GetBlockByNum2(ctx, &api.NumberMessage{Num: int64(num)})
 	cancel()
 	if err2 != nil {
 		conf.RecordFailure(conf.Tron)
-		t.blockScanQueue.In <- int(num)
+		t.scheduleBlockRetry(num, 0)
 		log.Task.Warn("GetBlockByNum2 ", err2)
 
 		return
 	}
+
+	conf.RecordSuccess(conf.Tron)
+	t.resetBlockRetry(num)
 
 	var resources = make([]resource, 0)
 	var transfers = make([]transfer, 0)
@@ -493,6 +507,67 @@ func (t *tron) syncBreak() bool {
 	}
 
 	return true
+}
+
+func (t *tron) scheduleBlockRetry(num int, delay time.Duration) {
+	t.retryMu.Lock()
+	if _, ok := t.retryScheduled[num]; ok {
+		t.retryMu.Unlock()
+
+		return
+	}
+
+	attempt := t.retryAttempts[num] + 1
+	t.retryAttempts[num] = attempt
+
+	if delay <= 0 {
+		delay = tronRetryDelay(attempt)
+	}
+
+	var timer *time.Timer
+	timer = time.AfterFunc(delay, func() {
+		t.retryMu.Lock()
+		if t.retryScheduled[num] != timer {
+			t.retryMu.Unlock()
+
+			return
+		}
+		delete(t.retryScheduled, num)
+		t.retryMu.Unlock()
+
+		if t.blockScanQueue.Len() >= blockQueueLimit {
+			log.Task.Warn("Tron 重试延后，当前区块消费堆积数量：", t.blockScanQueue.Len())
+			t.scheduleBlockRetry(num, delay)
+
+			return
+		}
+
+		t.blockScanQueue.In <- num
+	})
+	t.retryScheduled[num] = timer
+	t.retryMu.Unlock()
+}
+
+func (t *tron) resetBlockRetry(num int) {
+	t.retryMu.Lock()
+	defer t.retryMu.Unlock()
+
+	delete(t.retryAttempts, num)
+	if timer, ok := t.retryScheduled[num]; ok {
+		timer.Stop()
+		delete(t.retryScheduled, num)
+	}
+}
+
+func tronRetryDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	if attempt > 5 {
+		attempt = 5
+	}
+
+	return time.Duration(1<<uint(attempt-1)) * 5 * time.Second
 }
 
 func (t *tron) client() (*grpc.ClientConn, error) {
