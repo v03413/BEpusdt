@@ -227,9 +227,7 @@ func tronResourceHandle(ctx context.Context) {
 
 func markFinalConfirmed(o model.Order) {
 	o.SetSuccess()
-
-	go notify.Handle(o)    // 订单回调
-	go notifier.Success(o) // 消息通知
+	notifyOrderSuccess(o)
 }
 
 func getAllWaitingOrders() map[string][]model.Order {
