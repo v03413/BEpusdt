@@ -6,6 +6,7 @@ import (
 
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
+	"github.com/v03413/bepusdt/app/notifier"
 	"github.com/v03413/bepusdt/app/task/notify"
 	"github.com/v03413/bepusdt/app/utils"
 )
@@ -36,4 +37,10 @@ func notifyRoll(context.Context) {
 	for _, o := range model.GetOrderByStatus(model.OrderStatusWaiting) {
 		notify.Bepusdt(o)
 	}
+}
+
+// notifyOrderSuccess 统一触发订单成功后的回调与订单通知。
+func notifyOrderSuccess(order model.Order) {
+	go notify.Handle(order)
+	go notifier.Success(order)
 }

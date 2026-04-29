@@ -201,10 +201,11 @@ func (Order) Paid(ctx *gin.Context) {
 		return
 	}
 
+	confirmedAt := time.Now()
 	var update = map[string]interface{}{
 		"ref_hash":     req.RefHash,
 		"status":       model.OrderStatusSuccess,
-		"confirmed_at": model.Datetime(time.Now()),
+		"confirmed_at": model.Datetime(confirmedAt),
 	}
 
 	err := model.Db.Model(&order).Updates(update).Error
@@ -213,6 +214,10 @@ func (Order) Paid(ctx *gin.Context) {
 
 		return
 	}
+
+	order.RefHash = req.RefHash
+	order.Status = model.OrderStatusSuccess
+	order.ConfirmedAt = &confirmedAt
 
 	go notify.Handle(order)
 
