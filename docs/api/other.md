@@ -21,4 +21,5 @@
 - [WHMCS](https://github.com/v03413/whmcs-gateway-epusdt)
 - [异次元发卡](acg-faka/README.md)
 - [萌次元商城](./mcy-faka/mcy-shop.md)
+- [EdgeKey](./edge-key/edge-key.md)
 
