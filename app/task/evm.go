@@ -396,7 +396,7 @@ func (e *evm) tradeConfirmHandle(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if last.(int)-o.RefBlockNum < e.Block.ConfirmedOffset {
+			if cast.ToInt(last)-o.RefBlockNum < e.Block.ConfirmedOffset {
 				return
 			}
 		}
