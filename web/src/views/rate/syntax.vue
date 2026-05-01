@@ -103,7 +103,7 @@
             style="width: 100%"
           >
             <template #prefix v-if="syntaxType">
-              <span style="color: #1890ff; font-weight: bold">{{ syntaxType }}</span>
+              <span class="syntax-prefix">{{ syntaxType }}</span>
             </template>
           </a-input-number>
         </a-form-item>
@@ -166,9 +166,11 @@
           <a-typography-text type="secondary">
             <icon-info-circle style="margin-right: 4px" />
             同步频率：10-1440分钟，推荐60分钟<br />
-            官方接口：免费但有速率限制，配置 <a href="https://www.coingecko.com/" target="_blank">API Key</a> 可解除限制<br />
+            官方接口：免费但有速率限制，配置
+            <a-link href="https://www.coingecko.com/" target="_blank" :hoverable="false">API Key</a-link>
+            可解除限制<br />
             开源接口：作者提供的免费缓存接口（落后官方接口3分钟），无速率限制<br />
-            <b style="color: red">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
+            <b class="sync-warning">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
             <hr />
           </a-typography-text>
         </div>
@@ -688,7 +690,7 @@ getCommonTableList();
 
   .syntax-value {
     font-weight: 500;
-    color: #262626;
+    color: $color-text-1;
     min-width: 80px;
     text-align: left;
     flex-shrink: 0;
@@ -696,10 +698,15 @@ getCommonTableList();
 
   .syntax-description {
     font-size: 12px;
-    color: #8c8c8c;
+    color: $color-text-3;
     font-style: italic;
     flex-shrink: 0;
   }
+}
+
+.syntax-prefix {
+  color: $color-primary;
+  font-weight: bold;
 }
 
 .edit-modal {
@@ -709,8 +716,8 @@ getCommonTableList();
 
   .syntax-tip {
     padding: 8px 12px;
-    background: #f6f8fa;
-    border: 1px solid #e1e4e8;
+    background: $color-fill-1;
+    border: 1px solid $color-border-2;
     border-radius: 4px;
     font-size: 12px;
     margin-top: 8px;
@@ -730,17 +737,21 @@ getCommonTableList();
 
   .sync-tip {
     padding: 6px 10px;
-    background: #f6f8fa;
-    border: 1px solid #e1e4e8;
+    background: $color-fill-1;
+    border: 1px solid $color-border-2;
     border-radius: 4px;
     font-size: 11px;
     line-height: 1.4;
     margin-top: 8px;
 
+    .sync-warning {
+      color: $color-danger;
+    }
+
     hr {
       margin: 6px 0 0 0;
       border: none;
-      border-top: 1px solid #e1e4e8;
+      border-top: 1px solid $color-border-2;
     }
   }
 }
@@ -752,8 +763,8 @@ getCommonTableList();
 
   .atom-tip {
     padding: 8px 12px;
-    background: #f6f8fa;
-    border: 1px solid #e1e4e8;
+    background: $color-fill-1;
+    border: 1px solid $color-border-2;
     border-radius: 4px;
     font-size: 12px;
     margin-top: 8px;

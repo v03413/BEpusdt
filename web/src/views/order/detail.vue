@@ -417,12 +417,12 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 }
 
 .detail-value :deep(.arco-typography-operation-copy) {
-  color: #165dff;
+  color: $color-link;
   margin-left: 4px;
 }
 
 .detail-value :deep(.arco-typography-operation-copy:hover) {
-  color: #0e42d2;
+  color: rgb(var(--link-5));
 }
 
 .address-value {
@@ -432,12 +432,12 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 }
 
 .address-value :deep(.arco-typography-operation-copy) {
-  color: #165dff;
+  color: var(--color-link);
   margin-left: 4px;
 }
 
 .address-value :deep(.arco-typography-operation-copy:hover) {
-  color: #0e42d2;
+  color: rgb(var(--link-5));
 }
 
 .hash-value {

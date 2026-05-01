@@ -1,8 +1,8 @@
 <template>
   <div class="snow-page">
     <div class="home-page">
-      <!-- 法币选择器 -->
-      <div class="fiat-selector-wrapper">
+      <div class="dashboard-toolbar">
+        <!-- 法币选择器 -->
         <div class="fiat-selector">
           <span class="label">交易法币：</span>
           <div class="fiat-options">
@@ -66,10 +66,13 @@ onMounted(() => {
   background: $color-bg-1;
 }
 
-.fiat-selector-wrapper {
+.dashboard-toolbar {
   margin-bottom: 16px;
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .fiat-selector {
@@ -77,15 +80,15 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: #fff;
+  background: $color-bg-2;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f0f0f0;
+  border: 1px solid $color-border-2;
 
   .label {
     font-size: 13px;
     font-weight: 500;
-    color: #666;
+    color: $color-text-2;
     white-space: nowrap;
   }
 
@@ -102,21 +105,21 @@ onMounted(() => {
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 1px solid #e6e6e6;
-    background: #fafafa;
+    border: 1px solid $color-border-2;
+    background: $color-fill-1;
     min-width: 60px;
     justify-content: center;
 
     &:hover {
-      border-color: #409eff;
-      background: #f0f8ff;
+      border-color: $color-primary;
+      background: rgb(var(--primary-1));
     }
 
     &.active {
-      background: linear-gradient(135deg, #409eff, #36a3f7);
-      border-color: #409eff;
+      background: $color-primary;
+      border-color: $color-primary;
       color: #fff;
-      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
+      box-shadow: 0 2px 8px rgb(var(--primary-6) / 25%);
 
       .currency-symbol,
       .currency-name {
@@ -127,12 +130,12 @@ onMounted(() => {
     .currency-symbol {
       font-size: 14px;
       font-weight: bold;
-      color: #409eff;
+      color: $color-primary;
     }
 
     .currency-name {
       font-size: 11px;
-      color: #666;
+      color: $color-text-2;
       font-weight: 500;
     }
   }
@@ -140,6 +143,10 @@ onMounted(() => {
 
 // 响应式设计
 @media (max-width: 768px) {
+  .dashboard-toolbar {
+    align-items: stretch;
+  }
+
   .fiat-selector {
     flex-direction: column;
     align-items: flex-start;

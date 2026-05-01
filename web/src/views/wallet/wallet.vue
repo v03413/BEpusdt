@@ -480,11 +480,11 @@ getCommonTableList();
     line-height: 1.4;
 
     :deep(.arco-typography-operation-copy) {
-      color: #165dff;
+      color: $color-link;
       margin-left: 4px;
 
       &:hover {
-        color: #0e42d2;
+        color: rgb(var(--link-5));
       }
     }
   }
@@ -556,6 +556,15 @@ getCommonTableList();
       min-height: 22px;
       display: flex;
       align-items: center;
+
+      :deep(.arco-typography-operation-copy) {
+        color: $color-link;
+        margin-left: 4px;
+
+        &:hover {
+          color: rgb(var(--link-5));
+        }
+      }
 
       &.address-value {
         word-break: break-all;

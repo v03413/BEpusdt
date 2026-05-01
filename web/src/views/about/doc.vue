@@ -17,43 +17,43 @@
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .doc-container {
   padding: 20px;
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: $color-bg-2;
+  border: 1px solid $color-border-2;
   border-radius: 4px;
   padding: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: $shadow2-center;
 }
 
 h2 {
   margin: 0 0 10px 0;
   font-size: 18px;
-  color: #303133;
+  color: $color-text-1;
 }
 
 .divider {
   height: 1px;
-  background-color: #dcdfe6;
+  background-color: $color-border-2;
   margin: 16px 0;
 }
 
 p {
   margin: 0;
-  color: #606266;
+  color: $color-text-2;
   font-size: 14px;
 }
 
 .link {
-  color: #409eff;
+  color: $color-link;
   text-decoration: none;
 }
 
 .link:hover {
-  color: #66b1ff;
+  color: rgb(var(--link-5));
 }
 </style>

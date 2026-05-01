@@ -57,7 +57,13 @@
           <a-form-item field="payment_match_mode" label="金额匹配模式">
             <template #extra>
               订单交易在金额确认时，使用不同算法的算法进行比对；详细区别请看
-              <a href="https://github.com/v03413/BEpusdt/blob/main/docs/payment-match-mode/README.md" target="_blank">文档说明</a>
+              <a-link
+                href="https://github.com/v03413/BEpusdt/blob/main/docs/payment-match-mode/README.md"
+                target="_blank"
+                :hoverable="false"
+              >
+                文档说明
+              </a-link>
             </template>
             <a-select v-model="form.payment_match_mode" placeholder="请选择金额匹配模式">
               <a-option value="classic">传统模式</a-option>
