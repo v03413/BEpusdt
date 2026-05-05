@@ -4,20 +4,26 @@
       <a-form ref="formRef" auto-label-width :model="formData.form">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-            <a-input v-model="formData.form.name" placeholder="请输入名称" allow-clear />
+            <a-form-item field="name" label="钱包名称">
+              <a-input v-model="formData.form.name" placeholder="请输入名称" allow-clear />
+            </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-            <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
+            <a-form-item field="qrcode" label="钱包地址">
+              <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
+            </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-            <a-select v-model="formData.form.trade_type" placeholder="请选择交易类型" allow-clear allow-search>
-              <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </a-option>
-            </a-select>
+            <a-form-item field="trade_type" label="交易类型">
+              <a-select v-model="formData.form.trade_type" placeholder="请选择交易类型" allow-clear allow-search>
+                <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </a-option>
+              </a-select>
+            </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
-            <a-space class="search-btn">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-space class="search-btn" wrap>
               <a-button type="primary" @click="getCommonTableList">
                 <template #icon><icon-search /></template>
                 查询
@@ -26,13 +32,11 @@
                 <template #icon><icon-refresh /></template>
                 重置
               </a-button>
+              <a-button type="primary" status="success" @click="onAdd">
+                <template #icon><icon-plus /></template>
+                新增钱包
+              </a-button>
             </a-space>
-          </a-col>
-          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="3">
-            <a-button type="primary" status="success" @click="onAdd">
-              <template #icon><icon-plus /></template>
-              新增钱包
-            </a-button>
           </a-col>
         </a-row>
       </a-form>
@@ -71,7 +75,7 @@
         </template>
 
         <template #optional="{ record }">
-          <a-space>
+          <a-space wrap>
             <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
             <a-button size="mini" @click="onMod(record)">修改</a-button>
             <a-popconfirm content="确定删除这条数据吗?" type="warning" @ok="onDelete(record)">
@@ -84,9 +88,9 @@
   </div>
 
   <!-- 新增钱包对话框 -->
-  <a-modal width="40%" v-model:visible="open" @close="afterClose" @ok="addWallet" @cancel="afterClose">
+  <a-modal :width="formDialogWidth" v-model:visible="open" @close="afterClose" @ok="addWallet" @cancel="afterClose">
     <template #title>{{ title }}</template>
-    <a-form ref="formRef" auto-label-width :rules="rules" :model="addFrom">
+    <a-form ref="formRef" auto-label-width :layout="formLayout" :rules="rules" :model="addFrom">
       <a-form-item field="name" label="钱包名称" validate-trigger="blur">
         <a-input v-model="addFrom.name" placeholder="请输入钱包名称" allow-clear />
       </a-form-item>
@@ -113,9 +117,9 @@
   </a-modal>
 
   <!-- 修改钱包对话框 -->
-  <a-modal width="40%" v-model:visible="modOpen" @close="afterModClose" @ok="modWallet" @cancel="afterModClose">
+  <a-modal :width="formDialogWidth" v-model:visible="modOpen" @close="afterModClose" @ok="modWallet" @cancel="afterModClose">
     <template #title>{{ modTitle }}</template>
-    <a-form ref="modFormRef" auto-label-width :rules="rules" :model="modFrom">
+    <a-form ref="modFormRef" auto-label-width :layout="formLayout" :rules="rules" :model="modFrom">
       <a-form-item field="name" label="钱包名称" validate-trigger="blur">
         <a-input v-model="modFrom.name" placeholder="请输入钱包名称" allow-clear />
       </a-form-item>
@@ -149,7 +153,7 @@
 
   <!-- 详情对话框 -->
   <a-modal
-    width="680px"
+    :width="detailDialogWidth"
     v-model:visible="detailVisible"
     @close="closeDetail"
     @cancel="closeDetail"
@@ -174,7 +178,7 @@
         </template>
 
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-idcard />
@@ -183,7 +187,7 @@
               <div class="detail-value">{{ detailData.id }}</div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-user />
@@ -195,7 +199,7 @@
         </a-row>
 
         <a-row :gutter="24">
-          <a-col :span="24">
+          <a-col :xs="24" :sm="24" :md="24">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-location />
@@ -209,7 +213,7 @@
         </a-row>
 
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-swap />
@@ -220,7 +224,7 @@
               </div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-notification />
@@ -247,7 +251,7 @@
 
       <a-card class="detail-card" title="时间信息" :bordered="false" v-if="detailData.created_at || detailData.updated_at">
         <a-row :gutter="24">
-          <a-col :span="12" v-if="detailData.created_at">
+          <a-col :xs="24" :sm="24" :md="12" v-if="detailData.created_at">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-plus-circle />
@@ -256,7 +260,7 @@
               <div class="detail-value">{{ detailData.created_at }}</div>
             </div>
           </a-col>
-          <a-col :span="12" v-if="detailData.updated_at">
+          <a-col :xs="24" :sm="24" :md="12" v-if="detailData.updated_at">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-edit />
@@ -277,9 +281,13 @@ import { List, FormData, Pagination, AddForm, ModForm } from "./config";
 import { Notification } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
 import { useWalletDetail } from "./detail";
+import { useLayoutModel } from "@/hooks/useLayoutModel";
 
 const userStores = useUserInfoStore();
 const { detailVisible, detailData, showDetail, closeDetail } = useWalletDetail();
+const { dialogWidth, formLayout } = useLayoutModel();
+const formDialogWidth = computed(() => dialogWidth("40%"));
+const detailDialogWidth = computed(() => dialogWidth("680px"));
 
 const tradeTypeOptions = computed(() => Object.entries(userStores.trade_type).map(([value, label]) => ({ value, label })));
 
@@ -531,7 +539,7 @@ getCommonTableList();
     margin-bottom: 20px;
 
     &:last-child {
-      margin-bottom: 0;
+      margin-bottom: 8px;
     }
 
     .detail-label {

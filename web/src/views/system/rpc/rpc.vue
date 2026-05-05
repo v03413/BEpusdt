@@ -24,7 +24,7 @@
         </template>
 
         <template #extra>
-          <a-space size="small">
+          <a-space size="small" wrap>
             <a-button @click="handleReset" :loading="loading" size="small" class="action-btn">
               <template #icon>
                 <icon-refresh />
@@ -52,7 +52,7 @@
               </div>
 
               <a-row :gutter="16">
-                <a-col :span="12">
+                <a-col :xs="24" :sm="24" :md="12">
                   <a-form-item
                     field="rpc_endpoint_tron"
                     label="Tron RPC"
@@ -74,30 +74,17 @@
                     </a-input>
                   </a-form-item>
                 </a-col>
-                <a-col :span="12">
+                <a-col :span="24">
                   <a-form-item field="rpc_endpoint_tron_grid_api_key" class="network-form-item">
                     <template #label>
-                      <div class="label-with-tip">
-                        <span>Tron Grid Api Key</span>
-                        <a-tooltip content="配置独立 Api Key 可提高扫块稳定性，多个可用半角符逗号隔开。" position="top">
-                          <icon-question-circle class="tip-icon" />
-                        </a-tooltip>
-                        <span class="optional-tag">(可选)</span>
-                      </div>
-                    </template>
-                    <a-input
-                      v-model="formData.rpc_endpoint_tron_grid_api_key"
-                      placeholder="请输入 Tron Grid Api Key (可选)，多个可用半角符逗号隔开"
-                      allow-clear
-                      size="small"
-                      class="network-input tron-input"
-                    >
-                      <template #prefix>
-                        <div class="input-icon">
-                          <icon-safe />
-                        </div>
-                      </template>
-                      <template #suffix>
+                      <div class="tron-grid-label">
+                        <span class="label-with-tip">
+                          <span>Tron Grid Api Key</span>
+                          <a-tooltip content="配置独立 Api Key 可提高扫块稳定性，多个可用半角符逗号隔开。" position="top">
+                            <icon-question-circle class="tip-icon" />
+                          </a-tooltip>
+                          <span class="optional-tag">(可选)</span>
+                        </span>
                         <a
                           href="https://github.com/v03413/BEpusdt/blob/main/docs/tron-grid/readme.md"
                           target="_blank"
@@ -106,8 +93,23 @@
                           <icon-question-circle />
                           获取方法
                         </a>
+                      </div>
+                    </template>
+
+                    <a-textarea
+                      v-model="formData.rpc_endpoint_tron_grid_api_key"
+                      placeholder="请输入 Tron Grid Api Key (可选)，多个可用半角符逗号隔开"
+                      allow-clear
+                      size="small"
+                      class="network-input tron-input tron-grid-api-key-input"
+                      :auto-size="{ minRows: 1, maxRows: 6 }"
+                    >
+                      <template>
+                        <div class="input-icon">
+                          <icon-safe />
+                        </div>
                       </template>
-                    </a-input>
+                    </a-textarea>
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -123,7 +125,14 @@
               </div>
 
               <a-row :gutter="[16, 6]">
-                <a-col v-for="network in networks.filter(n => n.key !== 'rpc_endpoint_tron')" :key="network.key" :span="8">
+                <a-col
+                  v-for="network in networks.filter(n => n.key !== 'rpc_endpoint_tron')"
+                  :key="network.key"
+                  :xs="24"
+                  :sm="24"
+                  :md="12"
+                  :lg="8"
+                >
                   <a-form-item
                     :field="network.key"
                     :label="network.label"
@@ -520,10 +529,6 @@ onMounted(() => {
       font-size: 12px;
     }
   }
-
-  :deep(.arco-form-item) {
-    margin-bottom: 0;
-  }
 }
 
 .network-input {
@@ -568,11 +573,30 @@ onMounted(() => {
   }
 }
 
+.tron-grid-api-key-input {
+  max-width: 100%;
+
+  :deep(textarea) {
+    max-height: 120px;
+    overflow-y: auto;
+    line-height: 20px;
+  }
+}
+
 .input-icon {
   display: flex;
   align-items: center;
   color: $color-text-3;
   font-size: 13px;
+}
+
+.tron-grid-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .label-with-tip {
@@ -690,10 +714,6 @@ onMounted(() => {
       height: 26px;
       font-size: 12px;
     }
-  }
-
-  :deep(.arco-col) {
-    span: 24 !important;
   }
 
   .info-grid {

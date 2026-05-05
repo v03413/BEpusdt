@@ -2,7 +2,7 @@
   <a-row align="center" :gutter="[0, 16]">
     <a-col :span="24">
       <a-card title="基本信息">
-        <a-form :model="form" :rules="rules" :style="{ width: '600px' }" @submit="onSubmit">
+        <a-form :model="form" :rules="rules" :layout="layoutMode" class="base-setting-form" @submit="onSubmit">
           <a-form-item
             field="block_height_max_diff"
             label="区块最大差值"
@@ -73,7 +73,9 @@
           </a-form-item>
 
           <a-form-item>
-            <a-button type="primary" html-type="submit">提交</a-button>
+            <a-space>
+              <a-button type="primary" html-type="submit">提交</a-button>
+            </a-space>
           </a-form-item>
         </a-form>
       </a-card>
@@ -82,10 +84,15 @@
 </template>
 
 <script setup lang="ts">
+import { useDevicesSize } from "@/hooks/useDevicesSize";
 import { Message } from "@arco-design/web-vue";
 import { setsConfAPI } from "@/api/modules/conf/index";
+
 const emit = defineEmits(["refresh"]);
 const data = defineModel() as any;
+const { isMobile } = useDevicesSize();
+const layoutMode = computed(() => (isMobile.value ? "vertical" : "horizontal"));
+
 const form = ref({
   payment_timeout: "",
   block_height_max_diff: "",

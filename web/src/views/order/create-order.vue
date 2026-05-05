@@ -11,7 +11,7 @@
           </a-col>
         </a-row>
         <a-row justify="center" class="margin-top">
-          <a-col :xs="18" :sm="12" :md="12" :lg="12" :xl="8" :xxl="8">
+          <a-col :xs="18" :sm="12" :md="12" :lg="12" :xl="12" :xxl="12">
             <a-form ref="formRef" auto-label-width :layout="formLayout" :model="form" :rules="rules" @submit="handleSubmit">
               <div v-if="currentStep == 1">
                 <a-form-item field="name" label="收款项目" :validate-trigger="['change', 'input']">
@@ -43,11 +43,11 @@
                   <template #subtitle> {{ resultSubtitle }} </template>
                   <template #extra>
                     <a-space direction="vertical" size="large">
-                      <div v-if="resultStatus === 'success'">
-                        订单链接:
-                        <a-link :href="paymentUrl" target="_blank" :hoverable="false">{{ paymentUrl }}</a-link>
-                      </div>
-                      <a-space>
+                      <a-space v-if="resultStatus === 'success'" class="payment-link-row" wrap>
+                        <span>订单链接: </span>
+                        <a-link class="payment-link" :href="paymentUrl" target="_blank" :hoverable="false">{{ paymentUrl }}</a-link>
+                      </a-space>
+                      <a-space wrap>
                         <a-button type="primary" v-if="resultStatus === 'success'" @click="copyLink">复制订单链接</a-button>
                         <a-button @click="resetForm">再次创建</a-button>
                       </a-space>
@@ -66,7 +66,7 @@
         </a-row>
         <a-row v-if="currentStep == 2">
           <a-col :span="16" :offset="4">
-            <a-typography style="padding: 24px; background: var(--color-fill-2)">
+            <a-typography class="result-tip">
               <a-typography-paragraph>提示</a-typography-paragraph>
               <ul>
                 <li>您可以将该链接发给客户让其支付</li>
@@ -224,5 +224,35 @@ const resetForm = () => {
 }
 .margin-top {
   margin-top: 60px;
+}
+
+.result-tip {
+  padding: 24px;
+  background: var(--color-fill-2);
+}
+
+.payment-link-row {
+  max-width: 100%;
+}
+
+.payment-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 32px 0;
+  }
+
+  .margin-top {
+    margin-top: 32px;
+  }
+
+  .result-tip {
+    padding: 16px;
+  }
 }
 </style>
