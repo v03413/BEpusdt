@@ -4,26 +4,18 @@
       <div>数据汇总</div>
     </div>
     <a-divider :margin="16" />
-    <a-grid class="finance-card" :cols="{ xs: 1, sm: 2, lg: 4, xl: 4 }" :col-gap="16" :row-gap="28">
+    <a-grid class="finance-card" :cols="{ xs: 1, sm: 2, lg: 3, xl: 5 }" :col-gap="16" :row-gap="20">
       <a-grid-item v-for="(item, index) in financeData" :key="index">
         <a-card hoverable class="finance-a-card" :class="'animated-fade-up-' + index">
           <div class="finance-nav">
             <div class="tag-dot" :style="{ border: `3px solid ${item.color}` }"></div>
             <span class="finance-nav-title">{{ item.title }}</span>
           </div>
-          <a-statistic
-            :value-style="{
-              fontSize: '13px',
-              marginLeft: '16px',
-              marginTop: '12px'
-            }"
-            :value="item.value"
-            :value-from="0"
-            :start="true"
-            animation
-            :show-group-separator="false"
-            :precision="item.precision"
-          />
+          <div class="finance-value">{{ item.value }}</div>
+          <div class="finance-sub">
+            <span>{{ item.subLabel }}</span>
+            <span>{{ item.subValue }}</span>
+          </div>
         </a-card>
       </a-grid-item>
     </a-grid>
@@ -35,47 +27,65 @@ const props = defineProps<{
   homeData: any;
 }>();
 
-const financeData = ref([
-  {
-    id: 1,
-    title: "累计订单",
-    value: props.homeData?.total_count || 0,
-    color: "#165DFF",
-    precision: 0
-  },
-  {
-    id: 2,
-    title: "今日订单",
-    value: props.homeData?.today_count || 0,
-    color: "#6c73ff",
-    precision: 0
-  },
-  {
-    id: 3,
-    title: "今日收款",
-    value: props.homeData?.today_money || 0,
-    color: "#39cbab",
-    precision: 2
-  },
+const formatAmount = (value: any) => Number(value || 0).toFixed(2);
 
-  {
-    id: 4,
-    title: "总计收款",
-    value: props.homeData?.total_money || 0,
-    color: "#ff8625",
-    precision: 2
-  }
-]);
+const formatPeriod = (from?: string, to?: string) => {
+  if (!from || !to) return "--";
+  return `${from.slice(5, 10).replace("-", "/")} - ${to.slice(5, 10).replace("-", "/")}`;
+};
+
+const buildFinanceData = (data: any) => {
+  const kpi = data?.kpi || {};
+  return [
+    {
+      id: 1,
+      title: "订单总数",
+      value: kpi.orders_total || 0,
+      subLabel: "已支付订单:",
+      subValue: kpi.orders_success || 0,
+      color: "#165DFF"
+    },
+    {
+      id: 2,
+      title: "收款金额",
+      value: formatAmount(kpi.gmv_paid),
+      subLabel: "支付成功率:",
+      subValue: `${formatAmount(kpi.order_success_rate)}%`,
+      color: "#14A058"
+    },
+    {
+      id: 3,
+      title: "待付订单",
+      value: kpi.orders_pending || 0,
+      subLabel: "确认中订单:",
+      subValue: kpi.orders_confirming || 0,
+      color: "#F5A623"
+    },
+    {
+      id: 4,
+      title: "失败订单",
+      value: kpi.orders_failed || 0,
+      subLabel: "通知失败:",
+      subValue: kpi.notify_failed || 0,
+      color: "#E33E38"
+    },
+    {
+      id: 5,
+      title: "统计周期",
+      value: formatPeriod(data?.from, data?.to),
+      subLabel: "",
+      subValue: data?.timezone || "--",
+      color: "#722ED1"
+    }
+  ];
+};
+
+const financeData = ref(buildFinanceData(props.homeData));
 
 watch(
   () => props.homeData,
   newData => {
-    if (newData) {
-      financeData.value[0].value = newData.total_count || 0;
-      financeData.value[1].value = newData.today_count || 0;
-      financeData.value[2].value = newData.today_money || 0;
-      financeData.value[3].value = newData.total_money || 0;
-    }
+    financeData.value = buildFinanceData(newData);
   },
   { immediate: true }
 );
@@ -107,6 +117,27 @@ watch(
   justify-content: space-between;
   font-size: $font-size-body-3;
   color: $color-text-1;
+}
+.finance-a-card {
+  min-height: 126px;
+}
+.finance-value {
+  margin: 14px 0 0 16px;
+  color: $color-text-1;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  word-break: break-word;
+}
+.finance-sub {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0 0 16px;
+  color: $color-text-2;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
 }
 .margin-left-text {
   margin-left: $margin-text;
