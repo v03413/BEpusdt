@@ -14,25 +14,13 @@
           <a-col :xs="18" :sm="12" :md="12" :lg="12" :xl="8" :xxl="8">
             <a-form ref="formRef" auto-label-width :layout="formLayout" :model="form" :rules="rules" @submit="handleSubmit">
               <div v-if="currentStep == 1">
-                <a-form-item
-                  field="name"
-                  label="收款项目"
-                  :validate-trigger="['change', 'input']"
-                >
+                <a-form-item field="name" label="收款项目" :validate-trigger="['change', 'input']">
                   <a-input :style="{ width: '100%' }" v-model="form.name" placeholder="请输入收款项目" allow-clear />
                 </a-form-item>
-                <a-form-item
-                  field="order_id"
-                  label="订单号"
-                  :validate-trigger="['change', 'input']"
-                >
+                <a-form-item field="order_id" label="订单号" :validate-trigger="['change', 'input']">
                   <a-input :style="{ width: '100%' }" v-model="form.order_id" placeholder="请输入订单号" allow-clear />
                 </a-form-item>
-                <a-form-item
-                  field="amount"
-                  label="订单金额"
-                  :validate-trigger="['change', 'input']"
-                >
+                <a-form-item field="amount" label="订单金额" :validate-trigger="['change', 'input']">
                   <a-input-number :style="{ width: '100%' }" v-model="form.amount" placeholder="请输入订单金额" allow-clear />
                 </a-form-item>
                 <a-form-item field="trade_fiat" label="法币币种" :rules="[{ required: true, message: '法币币种不能为空' }]">
@@ -55,7 +43,10 @@
                   <template #subtitle> {{ resultSubtitle }} </template>
                   <template #extra>
                     <a-space direction="vertical" size="large">
-                      <div v-if="resultStatus === 'success'">订单链接：<a :href="paymentUrl" class="link" target="_blank">{{ paymentUrl }}</a></div>
+                      <div v-if="resultStatus === 'success'">
+                        订单链接:
+                        <a-link :href="paymentUrl" target="_blank" :hoverable="false">{{ paymentUrl }}</a-link>
+                      </div>
                       <a-space>
                         <a-button type="primary" v-if="resultStatus === 'success'" @click="copyLink">复制订单链接</a-button>
                         <a-button @click="resetForm">再次创建</a-button>
@@ -180,7 +171,7 @@ const paymentUrl = ref("");
 const handleSubmit = async ({ errors, values }: ArcoDesign.ArcoSubmit) => {
   if (errors) return;
   if (currentStep.value == 2) return;
-  
+
   loading.value = true;
   try {
     const payload = {
@@ -209,7 +200,7 @@ const handleSubmit = async ({ errors, values }: ArcoDesign.ArcoSubmit) => {
     resultStatus.value = "error";
     resultTitle.value = "订单创建失败";
     resultSubtitle.value = err.message || "请求失败";
-     paymentUrl.value = "";
+    paymentUrl.value = "";
     currentStep.value += 1;
   } finally {
     loading.value = false;
@@ -224,7 +215,7 @@ const onLastStep = () => {
 const resetForm = () => {
   currentStep.value = 1;
   initForm();
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -233,14 +224,5 @@ const resetForm = () => {
 }
 .margin-top {
   margin-top: 60px;
-}
-
-.link {
-  color: #409eff;
-  text-decoration: none;
-}
-
-.link:hover {
-  color: #66b1ff;
 }
 </style>

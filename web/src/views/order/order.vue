@@ -368,7 +368,7 @@ getOrderList();
 
 .wallet-name {
   cursor: help;
-  color: #165dff;
+  color: $color-link;
 
   &:hover {
     text-decoration: underline;
@@ -385,19 +385,19 @@ getOrderList();
 
   :deep(.arco-form-item-label-col) {
     font-weight: 500;
-    color: #1d2129;
+    color: $color-text-1;
   }
 
   :deep(.arco-input-wrapper) {
     &:hover {
-      border-color: #4080ff;
+      border-color: $color-primary;
     }
   }
 }
 
 :deep(.arco-modal) {
   .arco-modal-header {
-    border-bottom: 1px solid #e5e6eb;
+    border-bottom: 1px solid var(--color-neutral-3);
     padding: 16px 20px;
   }
 
@@ -406,7 +406,7 @@ getOrderList();
   }
 
   .arco-modal-footer {
-    border-top: 1px solid #e5e6eb;
+    border-top: 1px solid var(--color-neutral-3);
     padding: 12px 20px;
   }
 }

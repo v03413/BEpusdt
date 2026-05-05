@@ -316,9 +316,9 @@ onMounted(() => {
 .warning-banner {
   margin-bottom: 12px;
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(255, 125, 0, 0.08);
-  background: linear-gradient(135deg, #fff7e6 0%, #fff1d6 100%);
-  border: 1px solid #ffb84d;
+  box-shadow: 0 2px 6px rgb(var(--warning-6) / 8%);
+  background: rgb(var(--warning-1));
+  border: 1px solid rgb(var(--warning-3));
 
   :deep(.arco-alert-content) {
     font-size: 13px;
@@ -334,12 +334,12 @@ onMounted(() => {
   margin-top: 0;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  background: $color-bg-2;
 
   :deep(.arco-card-header) {
-    border-bottom: 1px solid #f2f3f5;
+    border-bottom: 1px solid $color-border-2;
     padding: 14px 18px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    background: $color-bg-3;
     border-radius: 8px 8px 0 0;
   }
 
@@ -354,7 +354,7 @@ onMounted(() => {
   gap: 8px;
   font-weight: 600;
   font-size: 15px;
-  color: #1d2129;
+  color: $color-text-1;
 
   .title-icon {
     display: flex;
@@ -362,9 +362,9 @@ onMounted(() => {
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: linear-gradient(135deg, #165dff 0%, #246fff 100%);
+    background: $color-primary;
     border-radius: 6px;
-    color: white;
+    color: #fff;
     font-size: 13px;
   }
 }
@@ -383,11 +383,11 @@ onMounted(() => {
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #165dff 0%, #246fff 100%);
+  background: $color-primary;
   border: none;
 
   &:hover {
-    background: linear-gradient(135deg, #0e42d2 0%, #1a5dff 100%);
+    background: rgb(var(--primary-5));
   }
 }
 
@@ -397,8 +397,8 @@ onMounted(() => {
 
 // Tron 配置区域样式 - 使用 Tron 官方红色系
 .tron-section {
-  background: linear-gradient(135deg, #fff5f5 0%, #fffafa 100%);
-  border: 1px solid #ffccc7;
+  background: rgba(var(--danger-6), 0.06);
+  border: 1px solid rgba(var(--danger-6), 0.18);
   border-radius: 6px;
   padding: 10px 12px;
   margin-bottom: 12px;
@@ -412,7 +412,7 @@ onMounted(() => {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #ef1e23 0%, #ff4d4f 100%);
+    background: rgba(var(--danger-6), 0.72);
   }
 
   .section-header {
@@ -421,7 +421,7 @@ onMounted(() => {
     gap: 6px;
     margin-bottom: 8px;
     padding-bottom: 6px;
-    border-bottom: 1px solid #ffccc7;
+    border-bottom: 1px solid $color-border-2;
 
     .header-icon {
       display: flex;
@@ -429,25 +429,25 @@ onMounted(() => {
       justify-content: center;
       width: 20px;
       height: 20px;
-      background: linear-gradient(135deg, #ef1e23 0%, #ff4d4f 100%);
+      background: $color-danger;
       border-radius: 4px;
-      color: white;
+      color: #fff;
       font-size: 11px;
-      box-shadow: 0 2px 4px rgba(239, 30, 35, 0.3);
+      box-shadow: 0 2px 4px rgba(var(--danger-6), 0.3);
     }
 
     .header-title {
       font-weight: 600;
       font-size: 13px;
-      color: #1d2129;
+      color: $color-text-1;
     }
   }
 }
 
 // 其他网络配置区域样式 - 使用柔和的浅绿色系
 .other-section {
-  background: linear-gradient(135deg, #f6ffed 0%, #fcfff9 100%);
-  border: 1px solid #d9f7be;
+  background: rgba(var(--success-6), 0.06);
+  border: 1px solid rgba(var(--success-6), 0.18);
   border-radius: 6px;
   padding: 10px 12px;
   margin-bottom: 12px;
@@ -461,7 +461,7 @@ onMounted(() => {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
+    background: rgba(var(--success-6), 0.72);
   }
 
   .section-header {
@@ -470,7 +470,7 @@ onMounted(() => {
     gap: 6px;
     margin-bottom: 8px;
     padding-bottom: 6px;
-    border-bottom: 1px solid #d9f7be;
+    border-bottom: 1px solid $color-border-2;
 
     .header-icon {
       display: flex;
@@ -478,33 +478,33 @@ onMounted(() => {
       justify-content: center;
       width: 20px;
       height: 20px;
-      background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+      background: $color-success;
       border-radius: 4px;
-      color: white;
+      color: #fff;
       font-size: 11px;
-      box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
+      box-shadow: 0 2px 4px rgba(var(--success-6), 0.3);
     }
 
     .header-title {
       font-weight: 600;
       font-size: 13px;
-      color: #1d2129;
+      color: $color-text-1;
     }
   }
 
   .network-input {
     :deep(.arco-input-wrapper) {
-      border-color: #d9f7be;
-      background: #ffffff;
+      border-color: $color-border-2;
+      background: $color-bg-2;
 
       &:hover {
-        border-color: #52c41a;
-        box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.08);
+        border-color: $color-success;
+        box-shadow: 0 0 0 2px rgba(var(--success-6), 0.08);
       }
 
       &.arco-input-focus {
-        border-color: #52c41a;
-        box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.1);
+        border-color: $color-success;
+        box-shadow: 0 0 0 2px rgba(var(--success-6), 0.1);
       }
     }
   }
@@ -516,7 +516,7 @@ onMounted(() => {
 
     .arco-form-item-label {
       font-weight: 500;
-      color: #1d2129;
+      color: $color-text-1;
       font-size: 12px;
     }
   }
@@ -531,18 +531,18 @@ onMounted(() => {
   transition: all 0.2s ease;
 
   :deep(.arco-input-wrapper) {
-    border: 1px solid #e5e6eb;
-    background: #ffffff;
+    border: 1px solid $color-border-2;
+    background: $color-bg-2;
     height: 32px;
 
     &:hover {
-      border-color: #165dff;
-      box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.08);
+      border-color: $color-primary;
+      box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.08);
     }
 
     &.arco-input-focus {
-      border-color: #165dff;
-      box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
+      border-color: $color-primary;
+      box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.1);
     }
   }
 
@@ -554,16 +554,16 @@ onMounted(() => {
 // Tron 输入框特殊样式
 .tron-input {
   :deep(.arco-input-wrapper) {
-    border-color: #ffccc7;
+    border-color: $color-border-2;
 
     &:hover {
-      border-color: #ef1e23;
-      box-shadow: 0 0 0 2px rgba(239, 30, 35, 0.08);
+      border-color: $color-danger;
+      box-shadow: 0 0 0 2px rgba(var(--danger-6), 0.08);
     }
 
     &.arco-input-focus {
-      border-color: #ef1e23;
-      box-shadow: 0 0 0 2px rgba(239, 30, 35, 0.1);
+      border-color: $color-danger;
+      box-shadow: 0 0 0 2px rgba(var(--danger-6), 0.1);
     }
   }
 }
@@ -571,7 +571,7 @@ onMounted(() => {
 .input-icon {
   display: flex;
   align-items: center;
-  color: #86909c;
+  color: $color-text-3;
   font-size: 13px;
 }
 
@@ -581,17 +581,17 @@ onMounted(() => {
   gap: 5px;
 
   .tip-icon {
-    color: #86909c;
+    color: $color-text-3;
     cursor: help;
     font-size: 13px;
 
     &:hover {
-      color: #165dff;
+      color: $color-primary;
     }
   }
 
   .optional-tag {
-    color: #86909c;
+    color: $color-text-3;
     font-size: 11px;
     font-weight: normal;
   }
@@ -601,14 +601,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 3px;
-  color: #ef1e23;
+  color: $color-danger;
   font-size: 11px;
   text-decoration: none;
   transition: all 0.2s ease;
   font-weight: 500;
 
   &:hover {
-    color: #d11a1f;
+    color: rgb(var(--danger-5));
   }
 }
 
@@ -619,14 +619,14 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 5px;
-    color: #1d2129;
+    color: $color-text-1;
     font-weight: 500;
     font-size: 13px;
   }
 
   :deep(.arco-divider-text) {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    border: 1px solid #e5e6eb;
+    background: $color-bg-2;
+    border: 1px solid $color-border-2;
     border-radius: 12px;
     padding: 4px 10px;
     font-size: 12px;
@@ -634,10 +634,10 @@ onMounted(() => {
 }
 
 .info-section {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  background: $color-bg-3;
   border-radius: 6px;
   padding: 12px;
-  border: 1px solid #e5e6eb;
+  border: 1px solid $color-border-2;
 }
 
 .info-grid {
@@ -650,15 +650,15 @@ onMounted(() => {
   align-items: flex-start;
   gap: 8px;
   padding: 7px;
-  background: white;
+  background: $color-bg-2;
   border-radius: 5px;
-  border: 1px solid #f2f3f5;
+  border: 1px solid $color-border-2;
   transition: all 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-    border-color: #165dff;
+    border-color: $color-primary;
   }
 
   .info-icon {
@@ -668,13 +668,13 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #165dff;
+    color: $color-primary;
     font-size: 13px;
     margin-top: 1px;
   }
 
   span {
-    color: #4e5969;
+    color: $color-text-2;
     line-height: 1.4;
     font-size: 12px;
   }
@@ -718,6 +718,6 @@ onMounted(() => {
 
 // 暗色主题适配
 :deep(.arco-card.arco-card-bordered) {
-  border: 1px solid #e5e6eb;
+  border: 1px solid $color-border-2;
 }
 </style>
