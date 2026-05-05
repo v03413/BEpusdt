@@ -1,54 +1,56 @@
 <template>
-  <div>
-    <a-row align="center" :gutter="[0, 16]">
-      <a-col :span="24">
-        <a-card title="通知设置">
-          <a-form :model="form" :rules="rules" :style="{ width: '600px' }" @submit="onSubmit">
-            <a-form-item field="notifier_channel" label="通知渠道">
-              <a-select v-model="form.notifier_channel" placeholder="请选择通知渠道" @change="onChannelChange">
-                <a-option
-                  v-for="channel in channelConfigs"
-                  :key="channel.value"
-                  :value="channel.value"
-                  :disabled="channel.disabled"
-                >
-                  {{ channel.label }}
-                </a-option>
-              </a-select>
-            </a-form-item>
+  <a-row align="center" :gutter="[0, 16]">
+    <a-col :span="24">
+      <a-card title="通知设置">
+        <a-form :model="form" :rules="rules" :layout="layoutMode" class="base-setting-form" @submit="onSubmit">
+          <a-form-item field="notifier_channel" label="通知渠道">
+            <a-select v-model="form.notifier_channel" placeholder="请选择通知渠道" @change="onChannelChange">
+              <a-option
+                v-for="channel in channelConfigs"
+                :key="channel.value"
+                :value="channel.value"
+                :disabled="channel.disabled"
+              >
+                {{ channel.label }}
+              </a-option>
+            </a-select>
+          </a-form-item>
 
-            <template v-for="field in currentChannelFields" :key="field.key">
-              <a-form-item :field="field.key" :label="field.label">
-                <a-input
-                  v-model="form.notifier_params[field.key]"
-                  :placeholder="field.placeholder"
-                  :type="field.type || 'text'"
-                  allow-clear
-                />
-              </a-form-item>
-            </template>
-
-            <a-form-item>
-              <a-space>
-                <a-button type="primary" html-type="submit">保存配置</a-button>
-                <a-button v-if="form.notifier_channel !== 'none'" type="outline" @click="onTest" :loading="testLoading">
-                  推送测试
-                </a-button>
-              </a-space>
+          <template v-for="field in currentChannelFields" :key="field.key">
+            <a-form-item :field="field.key" :label="field.label">
+              <a-input
+                v-model="form.notifier_params[field.key]"
+                :placeholder="field.placeholder"
+                :type="field.type || 'text'"
+                allow-clear
+              />
             </a-form-item>
-          </a-form>
-        </a-card>
-      </a-col>
-    </a-row>
-  </div>
+          </template>
+
+          <a-form-item>
+            <a-space>
+              <a-button type="primary" html-type="submit">保存配置</a-button>
+              <a-button v-if="form.notifier_channel !== 'none'" type="outline" @click="onTest" :loading="testLoading">
+                推送测试
+              </a-button>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </a-card>
+    </a-col>
+  </a-row>
 </template>
 
 <script setup lang="ts">
+import { useDevicesSize } from "@/hooks/useDevicesSize";
+
 import { Message } from "@arco-design/web-vue";
 import { notifierAPI, notifierTestAPI } from "@/api/modules/conf/index";
 
 const emit = defineEmits(["refresh"]);
 const data = defineModel() as any;
+const { isMobile } = useDevicesSize();
+const layoutMode = computed(() => (isMobile.value ? "vertical" : "horizontal"));
 
 interface FieldConfig {
   key: string;
