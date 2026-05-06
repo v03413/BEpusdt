@@ -67,8 +67,7 @@ export default defineConfig([
       "/docs",
       ".husky",
       ".local",
-      "/bin",
-      "/src/mock/*"
+      "/bin"
     ]
   },
   eslintConfigPrettier

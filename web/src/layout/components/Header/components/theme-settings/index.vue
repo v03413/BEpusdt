@@ -1,9 +1,9 @@
 <template>
   <a-drawer :width="340" :visible="props.themeOpen" @ok="handleCancel" @cancel="handleCancel" unmount-on-close>
-    <template #title> 主题设置 </template>
+    <template #title>{{ $t(`system.theme-settings`) }}</template>
     <div>
       <div>
-        <a-divider orientation="center">导航模式</a-divider>
+        <a-divider orientation="center">{{ $t(`system.navigate mode`) }}</a-divider>
         <div class="flex-center">
           <a-tooltip v-for="item in layoutList" :key="item.value" :content="item.label" position="top" mini>
             <div
@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="box-gap">
-        <a-divider orientation="center">主题设置</a-divider>
+        <a-divider orientation="center">{{ $t(`system.theme-settings`) }}</a-divider>
         <div class="flex-center">
           <ColorPicker
             :theme="darkMode ? 'dark' : 'light'"
@@ -29,20 +29,20 @@
       </div>
       <div class="box-gap">
         <div class="flex-row">
-          <div>色弱模式</div>
+          <div>{{ $t(`system.color weakness mode`) }}</div>
           <a-switch v-model="colorWeakMode" @change="onColorWeak" />
         </div>
         <div class="flex-row">
-          <div>灰色模式</div>
+          <div>{{ $t(`system.grey mode`) }}</div>
           <a-switch v-model="grayMode" @change="onGray" />
         </div>
         <div class="flex-row">
-          <div>侧边栏深色</div>
+          <div>{{ $t(`system.sidebar is dark`) }}</div>
           <a-switch :disabled="darkMode" v-model="asideDark" />
         </div>
         <div class="flex-row">
-          <div>页面过渡</div>
-          <a-select v-model="transitionPage" :style="{ width: '120px' }" placeholder="请选择">
+          <div>{{ $t(`system.page transition`) }}</div>
+          <a-select v-model="transitionPage" :style="{ width: '120px' }" :placeholder="$t(`system.please select`)">
             <a-option v-for="item in transitions" :key="item.value" :value="item.value" :label="item.label" />
           </a-select>
         </div>

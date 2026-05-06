@@ -1,24 +1,26 @@
 import NProgress from "@/config/nprogress";
 import pinia from "@/store/index";
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHashHistory, createWebHistory } from "vue-router";
 import { staticRoutes, notFoundAndNoPower } from "@/router/route.ts";
 import { currentlyRoute } from "@/router/route-output";
 import { storeToRefs } from "pinia";
 import { useUserInfoStore } from "@/store/modules/user-info";
 import { useRouteConfigStore } from "@/store/modules/route-config";
 import { useRoutingMethod } from "@/hooks/useRoutingMethod";
+
 /**
  * 创建vue的路由示例
  * @method createRouter(options: RouterOptions): Router
  * @link 参考：https://next.router.vuejs.org/zh/api/#createrouter
  */
+const routerHistory = import.meta.env.VITE_ROUTER_MODE === "history" ? createWebHistory() : createWebHashHistory();
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: routerHistory,
   /**
    * 设置静态路由，其它的路由通过addRoute动态添加
    * 1、staticRoutes登录页、layout页、默认页面('/')
    * 2、notFoundAndNoPower 添加默认 401、500界面，防止提示 No match found for location with path 'xxx'
-   * 2、后端控制路由中也需要添加 notFoundAndNoPower 401、500界面
+   * 3、后端控制路由中也需要添加 notFoundAndNoPower 401、500界面
    * 静态添加 notFoundAndNoPower 401、500界面将全屏显示
    * 如果要 notFoundAndNoPower 在layout容器展示，则需要移除静态添加并将其添加到缓存路由树
    */
@@ -41,46 +43,35 @@ router.beforeEach(async (to: any, _: any, next: any) => {
   const routeStore = useRouteConfigStore(pinia);
   const { token } = storeToRefs(store);
   const { routeTree } = storeToRefs(routeStore);
-  // console.log("去", to, "来自", from);
+  // console.log("去", to, "来自", _);
   // next()内部加了path等于跳转指定路由会再次触发router.beforeEach，内部无参数等于放行，不会触发router.beforeEach
 
-  // 1、去登录页，无token，放行
-  if (to.path === "/login" && !token.value) return next();
+  // 1、无token处理
+  if (!token.value) {
+    // 如果是去登录页，直接放行；否则重定向到登录页
+    return to.path === "/login" ? next() : next("/login");
+  }
 
-  // 2、没有token，直接重定向到登录页
-  if (!token.value) return next("/login");
-
-  // 3、去登录页，有token，直接重定向到home页
-  if (to.path === "/login" && token.value) {
+  // 2、有token但去登录页 -> 重定向到首页
+  if (to.path === "/login") {
     // 项目内的跳转，处理跳转路由高亮
     currentlyRoute(to);
     return next("/home");
   }
 
-  // 4、去非登录页，有token，用户信息是否存在，有则放行，否则重新获取路由信息、初始化路由
+  // 3、去非登录页，有token，路由树是否存在，有则放行，否则重新获取路由信息、初始化路由
   // 判断路由是否获取，先获取账号信息和路由信息，添加路由后再跳转(页面刷新时触发)
   // 解决刷新页面404的问题
   if (!routeTree.value.length) {
     const routeStore = useRouteConfigStore(pinia);
+    // 获取账号信息
+    await store.setAccount();
+    // 获取路由信息
+    await routeStore.initSetRouter();
 
-    try {
-      // 获取账号信息
-      await store.setAccount();
-      // 获取路由信息
-      await routeStore.initSetRouter();
-
-      // 判断是否是动态路由
-      const { isDynamicRoute } = useRoutingMethod();
-      if (isDynamicRoute(to.path)) {
-        return next({ name: to.name, params: to.params });
-      } else {
-        return next({ path: to.path, query: to.query });
-      }
-    } catch (error) {
-      console.error(error);
-
-      return next(false);
-    }
+    // 普通路由需要添加query
+    // 动态路由会自动匹配params
+    return next({ path: to.path, query: to.query });
   }
 
   // 获取外链路由的处理函数

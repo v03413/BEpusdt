@@ -7,4 +7,5 @@ conf.toml
 # Added by goreleaser init:
 dist/
 static/web
+static/secure
 *.log

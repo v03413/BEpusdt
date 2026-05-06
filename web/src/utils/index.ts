@@ -158,7 +158,7 @@ export const isSecureEnvironment = () => {
  * 获取不同路由模式所对应的 url + params
  * @returns {String} 返回路径
  */
-export const getUrlWithParams = () => {
+export const getUrlWithParams = (): string => {
   type UrlParams = {
     hash: string;
     history: string;

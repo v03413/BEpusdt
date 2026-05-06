@@ -9,8 +9,6 @@ import router from "@/router/index";
 import pinia from "@/store/index";
 // arco-css
 import "@arco-design/web-vue/dist/arco.css";
-// vchart-arco-theme 主题关联-黑暗模式
-import { initVChartArcoTheme } from "@visactor/vchart-arco-theme";
 // 额外引入图标库
 import ArcoVueIcon from "@arco-design/web-vue/es/icon";
 // 注册全局svg
@@ -21,10 +19,6 @@ import i18n from "@/lang/index";
 import "@/assets/fonts/fonts.scss";
 // 引入自定义指令
 import directives from "@/directives/index";
-
-// vchart黑暗模式
-// https://arco.design/react/docs/vchart
-initVChartArcoTheme();
 
 const app = createApp(App);
 

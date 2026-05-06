@@ -65,17 +65,17 @@ export default defineConfig(({ mode }) => {
       include
     },
     build: {
-      outDir: "dist", // 指定打包路径,默认为项目根目录下的dist目录
-      // minify: "esbuild", // esbuild打包更快但是不能去除console.log,terser打包慢但能去除console.log
-      minify: "terser", // Vite 2.6.x 以上需要配置 minify:"terser",terserOptions才能生效,terser可以去除 console.log
+      outDir: "dist", // 指定打包路径，默认为项目根目录下的dist目录
+      // minify: "esbuild", // esbuild打包更快但是不能去除console.log，terser打包慢但能去除console.log
+      minify: "terser", // Vite 2.6.x 以上需要配置 minify："terser"，terserOptions才能生效，terser可以去除 console.log
       terserOptions: {
         compress: {
-          keep_infinity: true, // 防止 Infinity 被压缩成 1/0,这可能会导致 Chrome 上的性能问题
+          keep_infinity: true, // 防止 Infinity 被压缩成 1/0，这可能会导致 Chrome 上的性能问题
           drop_console: true, // 生产环境去除 console
           drop_debugger: true // 生产环境去除 debugger
         },
         format: {
-          comments: true // 删除注释
+          comments: false // 删除注释
         }
       },
       assetsInlineLimit: 50 * 1024, // 打包内联阈值100kb

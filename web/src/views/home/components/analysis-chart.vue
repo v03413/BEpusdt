@@ -1,179 +1,99 @@
 <template>
-  <div class="analysis-chart" :class="{ empty: isEmpty }" ref="dailyAnalysis">
+  <div class="analysis-chart" :class="{ empty: isEmpty }">
     <a-empty v-if="isEmpty" description="暂无交易数据" />
+    <s-echarts v-else :options="option" :theme="theme" :update-options="{ notMerge: true }" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { default as VChart } from "@visactor/vchart";
+import { use } from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+import { PieChart } from "echarts/charts";
+import { TooltipComponent, LegendComponent } from "echarts/components";
+import { useChart } from "@/hooks/useChart";
+
+use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent]);
 
 const props = defineProps<{
   homeData: any;
 }>();
 
-const dailyAnalysis = ref();
-const isEmpty = ref(false);
-let vchart: any = null;
-let resizeObserver: ResizeObserver | null = null;
-let initTimer: ReturnType<typeof setTimeout> | null = null;
-
-const releaseChart = () => {
-  if (vchart) {
-    vchart.release();
-    vchart = null;
-  }
+const colorMap: Record<string, string> = {
+  USDT: "#1E90FF",
+  USDC: "#32CD32",
+  CNYE: "#F754A8",
+  TRX: "#FF4500",
+  BNB: "#F5A623",
+  ETH: "#722ED1"
 };
 
-const scheduleInit = (delay = 0) => {
-  if (initTimer) {
-    clearTimeout(initTimer);
-  }
-  initTimer = setTimeout(() => {
-    initTimer = null;
-    init();
-  }, delay);
-};
+const chartData = computed(() => {
+  const tokenMap = props.homeData?.token_map;
+  if (!tokenMap || typeof tokenMap !== "object") return [];
 
-const init = async (retryCount = 0) => {
-  try {
-    if (!props.homeData?.token_map || !dailyAnalysis.value) return;
+  const totalAmount = Object.values(tokenMap).reduce((sum: number, value: any) => {
+    const numValue = Number(value);
+    return sum + (Number.isNaN(numValue) ? 0 : numValue);
+  }, 0);
+  if (totalAmount <= 0) return [];
 
-    const tokenMap = props.homeData.token_map;
-    if (typeof tokenMap !== "object" || tokenMap === null) return;
+  return Object.entries(tokenMap)
+    .map(([token, amount]) => {
+      const numAmount = Number(amount);
+      if (Number.isNaN(numAmount) || numAmount <= 0) return null;
 
-    const totalAmount = Object.values(tokenMap).reduce((sum: number, value: any) => {
-      const numValue = Number(value);
-      return sum + (isNaN(numValue) ? 0 : numValue);
-    }, 0);
-
-    if (totalAmount === 0) {
-      releaseChart();
-      isEmpty.value = true;
-      return;
-    }
-
-    const chartData = Object.entries(tokenMap)
-      .map(([token, amount]) => {
-        const numAmount = Number(amount);
-        if (isNaN(numAmount) || numAmount <= 0) return null;
-        const percentage = (numAmount / totalAmount) * 100;
-        return {
-          type: token,
-          value: Number(percentage.toFixed(2)),
-          amount: Number(numAmount.toFixed(2))
-        };
-      })
-      .filter(item => item !== null);
-
-    if (chartData.length === 0) {
-      releaseChart();
-      isEmpty.value = true;
-      return;
-    }
-
-    isEmpty.value = false;
-    await nextTick();
-
-    const containerWidth = dailyAnalysis.value?.clientWidth || 0;
-    const containerHeight = dailyAnalysis.value?.clientHeight || 0;
-    if ((!containerWidth || !containerHeight) && retryCount < 8) {
-      setTimeout(() => init(retryCount + 1), 100);
-      return;
-    }
-
-    releaseChart();
-
-    const colorMap = {
-      USDT: "#1E90FF",
-      USDC: "#32CD32",
-      TRX: "#FF4500",
-      BNB: "#F5A623",
-      ETH: "#722ED1"
-    };
-
-    const spec = {
-      type: "pie",
-      data: [{ id: "dailyAnalysisData", values: chartData }],
-      outerRadius: 0.8,
-      innerRadius: 0.5,
-      padAngle: 0.6,
-      valueField: "value",
-      categoryField: "type",
-      color: {
-        type: "ordinal",
-        domain: chartData.map(item => item.type),
-        range: chartData.map(item => colorMap[item.type as keyof typeof colorMap] || "#666666")
-      },
-      pie: {
-        style: { cornerRadius: 0 },
-        state: {
-          hover: { outerRadius: 0.85, stroke: "#fff", lineWidth: 1 },
-          selected: { outerRadius: 0.85, stroke: "#fff", lineWidth: 1 }
-        }
-      },
-      legends: { visible: true, orient: "left" },
-      label: { visible: true, content: "{type}: {value}%" },
-      tooltip: {
-        mark: {
-          content: [
-            {
-              key: (datum: any) => datum["type"],
-              value: (datum: any) => `${datum["value"]}% (${datum["amount"]})`
-            }
-          ]
-        }
-      },
-      animation: false,
-      width: containerWidth || 400,
-      height: containerHeight || 300
-    };
-
-    if (dailyAnalysis.value?.isConnected) {
-      vchart = new VChart(spec as any, { dom: dailyAnalysis.value });
-      vchart.renderSync();
-    }
-  } catch (error) {
-    console.error("分析图表初始化错误:", error);
-    releaseChart();
-  }
-};
-
-watch(
-  () => props.homeData,
-  newData => {
-    try {
-      if (newData?.token_map) scheduleInit(120);
-    } catch (error) {
-      console.error("分析图表更新失败:", error);
-    }
-  },
-  { immediate: true, deep: true }
-);
-
-onMounted(() => {
-  try {
-    if (typeof ResizeObserver !== "undefined" && dailyAnalysis.value) {
-      resizeObserver = new ResizeObserver(() => scheduleInit(120));
-      resizeObserver.observe(dailyAnalysis.value);
-    }
-    if (props.homeData?.token_map) scheduleInit(160);
-  } catch (error) {
-    console.error("分析图表初始化失败:", error);
-  }
+      return {
+        name: token,
+        value: Number(((numAmount / totalAmount) * 100).toFixed(2)),
+        amount: Number(numAmount.toFixed(2))
+      };
+    })
+    .filter(Boolean) as Array<{ name: string; value: number; amount: number }>;
 });
 
-onUnmounted(() => {
-  try {
-    if (initTimer) {
-      clearTimeout(initTimer);
-      initTimer = null;
-    }
-    resizeObserver?.disconnect();
-    resizeObserver = null;
-    releaseChart();
-  } catch (error) {
-    console.error("清理图表失败:", error);
-  }
+const isEmpty = computed(() => chartData.value.length === 0);
+
+const { option, theme } = useChart((_, palette = []) => {
+  const colors = chartData.value.map(item => colorMap[item.name] || palette[chartData.value.indexOf(item) % palette.length] || "#666666");
+
+  return {
+    backgroundColor: "transparent",
+    color: colors,
+    tooltip: {
+      trigger: "item",
+      borderWidth: 0,
+      formatter: (params: any) => {
+        const amount = params.data?.amount ?? 0;
+        return `<b>${params.name}</b><br/>${params.marker} 占比 <b style="margin-left: 16px">${params.value}%</b><br/>金额 <b style="margin-left: 16px">${amount}</b>`;
+      }
+    },
+    legend: {
+      orient: "vertical",
+      left: "left",
+      top: "middle",
+      icon: "circle",
+      itemHeight: 10,
+      itemGap: 14,
+      data: chartData.value.map(item => item.name)
+    },
+    series: [
+      {
+        type: "pie",
+        center: ["62%", "50%"],
+        padAngle: 1,
+        radius: ["45%", "70%"],
+        label: {
+          color: "inherit",
+          formatter: "{b}: {c}%"
+        },
+        data: chartData.value,
+        emphasis: {
+          scale: true,
+          scaleSize: 10
+        }
+      }
+    ]
+  };
 });
 </script>
 

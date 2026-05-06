@@ -1,198 +1,157 @@
 <template>
   <div class="histogram-scroll" :class="{ empty: isEmpty, scrollable: isScrollable }" ref="histogramScroll">
     <a-empty v-if="isEmpty" description="暂无订单数据" />
-    <div v-show="!isEmpty" class="histogram-canvas" ref="sellHistogram" :style="{ width: `${chartWidth}px` }"></div>
+    <div v-else class="histogram-canvas" :style="{ width: chartWidth }">
+      <s-echarts :options="option" :theme="theme" :update-options="{ notMerge: true }" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { default as VChart } from "@visactor/vchart";
+import { use } from "echarts/core";
+import { BarChart } from "echarts/charts";
+import { CanvasRenderer } from "echarts/renderers";
+import { TooltipComponent, GridComponent, LegendComponent } from "echarts/components";
+import { useChart } from "@/hooks/useChart";
+
+use([TooltipComponent, GridComponent, LegendComponent, BarChart, CanvasRenderer]);
 
 const props = defineProps<{
   homeData: any;
 }>();
 
-const sellHistogram = ref();
-const histogramScroll = ref();
-const chartWidth = ref(0);
-const isEmpty = ref(false);
-const isScrollable = ref(false);
-let vchart: any = null;
+const histogramScroll = ref<HTMLElement>();
+const containerWidth = ref(0);
 let resizeObserver: ResizeObserver | null = null;
-let initTimer: ReturnType<typeof setTimeout> | null = null;
 
-const releaseChart = () => {
-  if (vchart) {
-    vchart.release();
-    vchart = null;
-  }
-};
+const points = computed(() => {
+  const source = props.homeData?.points;
+  return Array.isArray(source) ? source : [];
+});
 
-const scheduleInit = (delay = 0) => {
-  if (initTimer) {
-    clearTimeout(initTimer);
-  }
-  initTimer = setTimeout(() => {
-    initTimer = null;
-    init();
-  }, delay);
-};
-
-const getCssVarRgb = (name: string, fallback: string) => {
-  const bodyValue = getComputedStyle(document.body).getPropertyValue(name).trim();
-  const value = bodyValue || getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value ? `rgb(${value})` : fallback;
-};
-
-const getThemeColors = () => {
-  return [getCssVarRgb("--primary-6", "#165dff"), getCssVarRgb("--success-6", "#00b42a")];
-};
-
-const init = async (retryCount = 0) => {
-  try {
-    if (!props.homeData?.points || !sellHistogram.value || !histogramScroll.value) return;
-
-    const points = props.homeData.points;
-    if (!Array.isArray(points)) return;
-
-    const gmvPaidByDate: Record<string, string> = {};
-    const chartData = points.flatMap(point => {
-      const date = String(point.date || "")
-        .slice(5)
-        .replace("-", "/");
-      gmvPaidByDate[date] = Number(point.gmv_paid || 0).toFixed(2);
-      return [
-        {
-          date,
-          type: "订单总数",
-          value: Number(point.orders_total || 0)
-        },
-        {
-          date,
-          type: "已支付订单",
-          value: Number(point.orders_paid ?? point.orders_success ?? 0)
-        }
-      ];
-    });
-
-    if (chartData.length === 0) return;
-
-    const hasOrderData = chartData.some(item => item.value > 0);
-    if (!hasOrderData) {
-      releaseChart();
-      isEmpty.value = true;
-      isScrollable.value = false;
-      return;
-    }
-
-    isEmpty.value = false;
-    await nextTick();
-
-    const containerWidth = histogramScroll.value?.clientWidth || 0;
-    const containerHeight = sellHistogram.value?.clientHeight || histogramScroll.value?.clientHeight || 0;
-    if ((!containerWidth || !containerHeight) && retryCount < 8) {
-      setTimeout(() => init(retryCount + 1), 100);
-      return;
-    }
-
-    const renderWidth = containerWidth || 400;
-    const renderHeight = containerHeight || 300;
-    isScrollable.value = points.length > 7;
-    chartWidth.value = isScrollable.value ? Math.max(renderWidth, points.length * 44) : renderWidth;
-    await nextTick();
-
-    releaseChart();
-
-    const spec = {
-      type: "bar",
-      data: [{ id: "sellHistogramData", values: chartData }],
-      xField: ["date", "type"],
-      yField: "value",
-      seriesField: "type",
-      barWidth: 9,
-      barGapInGroup: 2,
-      legends: { visible: true, orient: "top", position: "middle" },
-      color: {
-        type: "ordinal",
-        domain: ["订单总数", "已支付订单"],
-        range: getThemeColors()
-      },
-      axes: [
-        {
-          orient: "bottom",
-          label: {
-            visible: true,
-            formatMethod: (value: string) => (gmvPaidByDate[value] ? [value, gmvPaidByDate[value]] : value),
-            style: {
-              fontSize: 10,
-              lineHeight: 13
-            }
-          },
-          showAllGroupLayers: false
-        },
-        { orient: "left", label: { visible: true }, min: 0 }
-      ],
-      tooltip: {
-        mark: {
-          content: [
-            {
-              key: (datum: any) => datum["type"],
-              value: (datum: any) => datum["value"]
-            }
-          ]
-        }
-      },
-      animation: false,
-      width: chartWidth.value || renderWidth,
-      height: renderHeight
-    };
-
-    if (sellHistogram.value?.isConnected) {
-      vchart = new VChart(spec as any, { dom: sellHistogram.value });
-      vchart.renderSync();
-    }
-  } catch (error) {
-    console.error("图表初始化错误:", error);
-    releaseChart();
-  }
-};
-
-watch(
-  () => props.homeData,
-  newData => {
-    try {
-      if (newData?.points) scheduleInit(120);
-    } catch (error) {
-      console.error("图表更新失败:", error);
-    }
-  },
-  { immediate: true, deep: true }
+const dates = computed(() =>
+  points.value.map(point =>
+    String(point.date || "")
+      .slice(5)
+      .replace("-", "/")
+  )
 );
 
+const ordersTotalData = computed(() => points.value.map(point => Number(point.orders_total || 0)));
+const ordersPaidData = computed(() => points.value.map(point => Number(point.orders_paid ?? point.orders_success ?? 0)));
+
+const gmvPaidByDate = computed(() => {
+  return points.value.reduce<Record<string, string>>((result, point, index) => {
+    result[dates.value[index]] = Number(point.gmv_paid || 0).toFixed(2);
+    return result;
+  }, {});
+});
+
+const isEmpty = computed(() => !ordersTotalData.value.some(Boolean) && !ordersPaidData.value.some(Boolean));
+const isScrollable = computed(() => points.value.length > 7);
+const chartWidth = computed(() => {
+  if (!isScrollable.value) return "100%";
+  return `${Math.max(containerWidth.value || 0, points.value.length * 58)}px`;
+});
+
+const { option, theme } = useChart((isDark, palette = []) => {
+  return {
+    backgroundColor: "transparent",
+    color: [palette[0] || "#4080FF", palette[3] || "#4CD263"],
+    tooltip: {
+      trigger: "axis",
+      borderWidth: 0,
+      axisPointer: {
+        type: "shadow",
+        shadowStyle: {
+          color: isDark ? "rgba(247, 248, 250,0.03)" : "rgba(0, 0, 0,0.03)"
+        }
+      },
+      formatter: (params: any) => {
+        const items = Array.isArray(params) ? params : [params];
+        const date = items[0]?.name || "";
+        const rows = items
+          .map(item => `${item.marker} ${item.seriesName} <b style="margin-left: 16px">${item.value}</b>`)
+          .join("<br/>");
+        const gmv = gmvPaidByDate.value[date] || "0.00";
+        return `<b>${date}</b><br/>${rows}<br/>已收款 <b style="margin-left: 16px">${gmv}</b>`;
+      }
+    },
+    legend: {
+      top: 0,
+      left: "center",
+      icon: "circle"
+    },
+    grid: {
+      left: "3%",
+      right: "4%",
+      top: 42,
+      bottom: "3%",
+      containLabel: true
+    },
+    xAxis: [
+      {
+        type: "category",
+        data: dates.value,
+        axisLabel: {
+          color: "#86909c",
+          fontSize: 10,
+          formatter: (value: string) => (gmvPaidByDate.value[value] ? `${value}\n${gmvPaidByDate.value[value]}` : value),
+          interval: 0,
+          lineHeight: 11
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDark ? "#373738" : "#ebedf0"
+          }
+        }
+      }
+    ],
+    yAxis: [
+      {
+        type: "value",
+        min: 0,
+        axisLabel: {
+          color: "#86909c"
+        },
+        splitLine: {
+          lineStyle: {
+            color: isDark ? "#373738" : "#ebedf0"
+          }
+        }
+      }
+    ],
+    series: [
+      {
+        name: "订单总数",
+        type: "bar",
+        barWidth: 9,
+        barGap: "25%",
+        data: ordersTotalData.value
+      },
+      {
+        name: "已支付订单",
+        type: "bar",
+        barWidth: 9,
+        data: ordersPaidData.value
+      }
+    ]
+  };
+});
+
 onMounted(() => {
-  try {
-    if (typeof ResizeObserver !== "undefined" && histogramScroll.value) {
-      resizeObserver = new ResizeObserver(() => scheduleInit(120));
-      resizeObserver.observe(histogramScroll.value);
-    }
-    if (props.homeData?.points) scheduleInit(160);
-  } catch (error) {
-    console.error("图表初始化失败:", error);
+  if (typeof ResizeObserver !== "undefined" && histogramScroll.value) {
+    resizeObserver = new ResizeObserver(entries => {
+      containerWidth.value = entries[0]?.contentRect.width || histogramScroll.value?.clientWidth || 0;
+    });
+    resizeObserver.observe(histogramScroll.value);
   }
+  containerWidth.value = histogramScroll.value?.clientWidth || 0;
 });
 
 onUnmounted(() => {
-  try {
-    if (initTimer) {
-      clearTimeout(initTimer);
-      initTimer = null;
-    }
-    resizeObserver?.disconnect();
-    resizeObserver = null;
-    releaseChart();
-  } catch (error) {
-    console.error("清理图表失败:", error);
-  }
+  resizeObserver?.disconnect();
+  resizeObserver = null;
 });
 </script>
 
