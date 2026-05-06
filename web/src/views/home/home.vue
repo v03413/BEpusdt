@@ -18,6 +18,25 @@
             </div>
           </div>
         </div>
+
+        <div class="range-actions">
+          <a-range-picker
+            v-if="range === 'custom'"
+            v-model="customDates"
+            format="YYYY-MM-DD"
+            style="width: 240px"
+            @change="handleCustomDateChange"
+          />
+          <a-select v-model="range" style="width: 132px" @change="handleRangeChange">
+            <a-option v-for="item in rangeOptions" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </a-option>
+          </a-select>
+          <a-button type="primary" :loading="loading" @click="forceRefresh">
+            <template #icon><icon-refresh /></template>
+            强制刷新
+          </a-button>
+        </div>
       </div>
 
       <!-- 财务指标 -->
@@ -34,7 +53,12 @@ import DataBox from "@/views/home/components/data-box.vue";
 import { getDashboardHomeAPI } from "@/api/modules/home/index";
 
 const fiat = ref("CNY");
+const range = ref("7d");
+const customDates = ref<any[]>([]);
 const home = ref<any>(null);
+const loading = ref(false);
+const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
+let dashboardRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
 const fiatOptions = ref([
   { value: "CNY", label: "人民币", symbol: "¥" },
@@ -44,9 +68,56 @@ const fiatOptions = ref([
   { value: "JPY", label: "日元", symbol: "¥" }
 ]);
 
-const getDashboardHome = async () => {
-  const data = await getDashboardHomeAPI({ fiat: fiat.value });
-  home.value = data.data;
+const rangeOptions = [
+  { value: "today", label: "今天" },
+  { value: "7d", label: "最近 7 天" },
+  { value: "30d", label: "最近 30 天" },
+  { value: "custom", label: "自定义" }
+];
+
+const clearDashboardRetry = () => {
+  if (dashboardRetryTimer) {
+    clearTimeout(dashboardRetryTimer);
+    dashboardRetryTimer = null;
+  }
+};
+
+const getDashboardHome = async (force = false, retryCount = 0) => {
+  if (range.value === "custom" && (!Array.isArray(customDates.value) || customDates.value.length !== 2)) return;
+
+  if (retryCount === 0) {
+    clearDashboardRetry();
+  }
+
+  loading.value = true;
+  try {
+    const params: any = {
+      range: range.value,
+      tz: timezone,
+      fiat: fiat.value,
+      force
+    };
+    if (range.value === "custom") {
+      params.from = customDates.value[0];
+      params.to = customDates.value[1];
+    }
+
+    const data = await getDashboardHomeAPI(params);
+    if (!data?.data) {
+      throw new Error("仪表盘数据为空");
+    }
+    home.value = data.data;
+  } catch (error) {
+    if (retryCount < 3) {
+      dashboardRetryTimer = setTimeout(() => {
+        getDashboardHome(force, retryCount + 1);
+      }, (retryCount + 1) * 1000);
+      return;
+    }
+    console.error("获取首页统计失败:", error);
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 处理法币切换
@@ -55,8 +126,26 @@ const handleFiatChange = (value: string) => {
   getDashboardHome();
 };
 
+const handleRangeChange = () => {
+  if (range.value !== "custom") {
+    getDashboardHome();
+  }
+};
+
+const handleCustomDateChange = () => {
+  getDashboardHome();
+};
+
+const forceRefresh = () => {
+  getDashboardHome(true);
+};
+
 onMounted(() => {
   getDashboardHome();
+});
+
+onUnmounted(() => {
+  clearDashboardRetry();
 });
 </script>
 
@@ -141,6 +230,14 @@ onMounted(() => {
   }
 }
 
+.range-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
 // 响应式设计
 @media (max-width: 768px) {
   .dashboard-toolbar {
@@ -164,6 +261,13 @@ onMounted(() => {
       min-width: auto;
       margin-bottom: 4px;
     }
+  }
+
+  .range-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
   }
 }
 </style>
