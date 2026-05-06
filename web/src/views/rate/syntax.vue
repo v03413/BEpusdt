@@ -1,273 +1,276 @@
 <template>
-  <div class="rate-syntax">
-    <div class="snow-page">
-      <div class="snow-inner">
-        <a-row :gutter="16" style="margin: 16px 0">
-          <a-col :span="12">
-            <a-space size="medium">
-              <a-button type="primary" @click="showSyncModal">
-                <template #icon>
-                  <icon-settings />
-                </template>
-                同步配置
-              </a-button>
-              <a-button type="primary" @click="showAtomModal" :status="'danger'">
-                <template #icon>
-                  <icon-robot-add />
-                </template>
-                支付颗粒度
-              </a-button>
-            </a-space>
-          </a-col>
-        </a-row>
-        <a-table
-          row-key="key"
-          :size="'medium'"
-          :bordered="{ cell: true }"
-          :scroll="{ x: 1400, y: 600 }"
-          :loading="loading"
-          :columns="columns"
-          :data="data"
-          v-model:selectedKeys="selectedKeys"
-          :pagination="false"
-        >
-          <template #fiat="{ record }">
-            <span class="fiat-display">
-              {{ getFiatFlag(record.fiat) }} <strong>{{ record.fiat }}</strong>
-            </span>
-          </template>
-          <template #crypto="{ record }">
-            <a-tag :color="getCryptoColor(record.crypto)" :bordered="true">
-              {{ record.crypto }}
-            </a-tag>
-          </template>
-          <template #syntax="{ record }">
-            <div class="syntax-display">
-              <span class="syntax-value">{{ record.syntax || "无" }}</span>
-              <span class="syntax-description">{{ getTableSyntaxDescription(record.syntax) }}</span>
-            </div>
-          </template>
-          <template #optional="{ record }">
-            <a-space>
-              <a-button size="mini" type="primary" @click="onEdit(record)">编辑</a-button>
-            </a-space>
-          </template>
-        </a-table>
-      </div>
+  <div class="snow-page">
+    <div class="snow-inner">
+      <a-row :gutter="16" style="margin: 16px 0">
+        <a-col :xs="24" :sm="24" :md="12">
+          <a-space size="medium" wrap>
+            <a-button type="primary" @click="showSyncModal">
+              <template #icon>
+                <icon-settings />
+              </template>
+              同步配置
+            </a-button>
+            <a-button type="primary" @click="showAtomModal" :status="'danger'">
+              <template #icon>
+                <icon-robot-add />
+              </template>
+              支付颗粒度
+            </a-button>
+          </a-space>
+        </a-col>
+      </a-row>
+      <a-table
+        row-key="key"
+        :size="'medium'"
+        :bordered="{ cell: true }"
+        :scroll="{ x: 590, y: 600 }"
+        :loading="loading"
+        :columns="columns"
+        :data="data"
+        v-model:selectedKeys="selectedKeys"
+        :pagination="false"
+      >
+        <template #fiat="{ record }">
+          <span class="fiat-display">
+            {{ getFiatFlag(record.fiat) }} <strong>{{ record.fiat }}</strong>
+          </span>
+        </template>
+        <template #crypto="{ record }">
+          <a-tag :color="getCryptoColor(record.crypto)" :bordered="true">
+            {{ record.crypto }}
+          </a-tag>
+        </template>
+        <template #syntax="{ record }">
+          <div class="syntax-display">
+            <span class="syntax-value">{{ record.syntax || "无" }}</span>
+            <span class="syntax-description">{{ getTableSyntaxDescription(record.syntax) }}</span>
+          </div>
+        </template>
+        <template #optional="{ record }">
+          <a-space wrap>
+            <a-button size="mini" type="primary" @click="onEdit(record)">编辑</a-button>
+          </a-space>
+        </template>
+      </a-table>
     </div>
-
-    <!-- 编辑汇率语法模态框 -->
-    <a-modal
-      v-model:visible="editModalVisible"
-      title="编辑汇率语法"
-      @ok="handleEditSubmit"
-      @cancel="handleEditCancel"
-      :ok-loading="editLoading"
-      width="480px"
-      class="edit-modal"
-    >
-      <a-form ref="editFormRef" :model="editForm" layout="vertical">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="交易法币">
-              <a-input v-model="editForm.fiat" readonly size="small">
-                <template #prefix>{{ getFiatFlag(editForm.fiat) }}</template>
-              </a-input>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="加密货币">
-              <a-tag :color="getCryptoColor(editForm.crypto)" :bordered="true">
-                {{ editForm.crypto }}
-              </a-tag>
-            </a-form-item>
-          </a-col>
-        </a-row>
-
-        <a-form-item label="语法类型">
-          <a-radio-group v-model="syntaxType" @change="handleSyntaxTypeChange">
-            <a-radio value="">固定数值</a-radio>
-            <a-radio value="+">固定增加</a-radio>
-            <a-radio value="-">固定减少</a-radio>
-            <a-radio value="~">百分比浮动</a-radio>
-          </a-radio-group>
-        </a-form-item>
-
-        <a-form-item label="数值">
-          <a-input-number
-            v-model="syntaxValue"
-            :placeholder="getSyntaxPlaceholder()"
-            :min="syntaxType === '~' ? 0.000001 : 0"
-            :max="syntaxType === '~' ? 10 : 999999"
-            :step="syntaxType === '~' ? 0.000001 : 0.01"
-            style="width: 100%"
-          >
-            <template #prefix v-if="syntaxType">
-              <span class="syntax-prefix">{{ syntaxType }}</span>
-            </template>
-          </a-input-number>
-        </a-form-item>
-
-        <div v-if="getFormSyntaxDescription()" class="syntax-tip">
-          <a-typography-text type="secondary">
-            <icon-info-circle style="margin-right: 4px" />
-            {{ getFormSyntaxDescription() }}
-          </a-typography-text>
-        </div>
-      </a-form>
-    </a-modal>
-
-    <!-- 同步频率设置模态框 -->
-    <a-modal
-      v-model:visible="syncModalVisible"
-      title="汇率同步配置"
-      @ok="handleSyncSubmit"
-      @cancel="handleSyncCancel"
-      :ok-loading="syncLoading"
-      width="480px"
-      class="sync-modal"
-    >
-      <a-form ref="syncFormRef" :model="syncForm" layout="vertical">
-        <a-form-item label="同步频率（分钟）">
-          <a-input-number
-            v-model="syncForm.minutes"
-            :min="10"
-            :max="1440"
-            :precision="0"
-            placeholder="请输入同步频率"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <a-form-item label="API 接口">
-          <a-select v-model="syncForm.apiUrl" placeholder="请选择 API 接口" style="width: 100%">
-            <a-option v-for="option in apiUrlOptions" :key="option.value" :value="option.value" :label="option.label">
-              {{ option.label }}
-            </a-option>
-          </a-select>
-        </a-form-item>
-
-        <a-form-item label="API Key">
-          <a-input v-model="syncForm.apiKey" placeholder="请输入 API Key（可选）" allow-clear style="width: 100%" />
-        </a-form-item>
-
-        <a-form-item label="汇率保留天数">
-          <a-input-number
-            v-model="syncForm.historyDays"
-            :min="1"
-            :max="365"
-            :precision="0"
-            placeholder="请输入汇率保留天数"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <div class="sync-tip">
-          <a-typography-text type="secondary">
-            <icon-info-circle style="margin-right: 4px" />
-            同步频率：10-1440分钟，推荐60分钟<br />
-            官方接口：免费但有速率限制，配置
-            <a-link href="https://www.coingecko.com/" target="_blank" :hoverable="false">API Key</a-link>
-            可解除限制<br />
-            开源接口：作者提供的免费缓存接口（落后官方接口3分钟），无速率限制<br />
-            <b class="sync-warning">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
-            <hr />
-          </a-typography-text>
-        </div>
-      </a-form>
-    </a-modal>
-
-    <!-- 支付颗粒度设置模态框 -->
-    <a-modal
-      v-model:visible="atomModalVisible"
-      title="设置支付颗粒度"
-      @ok="handleAtomSubmit"
-      @cancel="handleAtomCancel"
-      :ok-loading="atomLoading"
-      width="400px"
-      class="atom-modal"
-    >
-      <a-form ref="atomFormRef" :model="atomForm" layout="vertical">
-        <a-form-item label="USDT 颗粒度">
-          <a-input-number
-            v-model="atomForm.usdt"
-            :min="0.000001"
-            :max="100"
-            :precision="undefined"
-            :step="0.000001"
-            placeholder="推荐0.01"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <a-form-item label="USDC 颗粒度">
-          <a-input-number
-            v-model="atomForm.usdc"
-            :min="0.000001"
-            :max="100"
-            :precision="undefined"
-            :step="0.000001"
-            placeholder="推荐0.01"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <a-form-item label="TRX 颗粒度">
-          <a-input-number
-            v-model="atomForm.trx"
-            :min="0.000001"
-            :max="100"
-            :precision="undefined"
-            :step="0.000001"
-            placeholder="推荐0.01"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <a-form-item label="BNB 颗粒度">
-          <a-input-number
-            v-model="atomForm.bnb"
-            :min="0.00000001"
-            :max="100"
-            :precision="undefined"
-            :step="0.000001"
-            placeholder="推荐0.00001"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <a-form-item label="ETH 颗粒度">
-          <a-input-number
-            v-model="atomForm.eth"
-            :min="0.00000001"
-            :max="100"
-            :precision="undefined"
-            :step="0.000001"
-            placeholder="推荐0.000001"
-            style="width: 100%"
-          />
-        </a-form-item>
-
-        <div class="atom-tip">
-          <a-typography-text type="secondary">
-            <icon-info-circle style="margin-right: 4px" />
-            支付数额递增时的最小单位，支付数额的最终保留位数；除非你明确知道其功能含义，一般情况下不推荐修改。
-          </a-typography-text>
-        </div>
-      </a-form>
-    </a-modal>
   </div>
+
+  <!-- 编辑汇率语法模态框 -->
+  <a-modal
+    v-model:visible="editModalVisible"
+    title="编辑汇率语法"
+    @ok="handleEditSubmit"
+    @cancel="handleEditCancel"
+    :ok-loading="editLoading"
+    :width="editDialogWidth"
+    class="edit-modal"
+  >
+    <a-form ref="editFormRef" :model="editForm" layout="vertical">
+      <a-row :gutter="12">
+        <a-col :xs="24" :sm="24" :md="12">
+          <a-form-item label="交易法币">
+            <a-input v-model="editForm.fiat" readonly size="small">
+              <template #prefix>{{ getFiatFlag(editForm.fiat) }}</template>
+            </a-input>
+          </a-form-item>
+        </a-col>
+        <a-col :xs="24" :sm="24" :md="12">
+          <a-form-item label="加密货币">
+            <a-tag :color="getCryptoColor(editForm.crypto)" :bordered="true">
+              {{ editForm.crypto }}
+            </a-tag>
+          </a-form-item>
+        </a-col>
+      </a-row>
+
+      <a-form-item label="语法类型">
+        <a-radio-group v-model="syntaxType" @change="handleSyntaxTypeChange">
+          <a-radio value="">固定数值</a-radio>
+          <a-radio value="+">固定增加</a-radio>
+          <a-radio value="-">固定减少</a-radio>
+          <a-radio value="~">百分比浮动</a-radio>
+        </a-radio-group>
+      </a-form-item>
+
+      <a-form-item label="数值">
+        <a-input-number
+          v-model="syntaxValue"
+          :placeholder="getSyntaxPlaceholder()"
+          :min="syntaxType === '~' ? 0.000001 : 0"
+          :max="syntaxType === '~' ? 10 : 999999"
+          :step="syntaxType === '~' ? 0.000001 : 0.01"
+          style="width: 100%"
+        >
+          <template #prefix v-if="syntaxType">
+            <span class="syntax-prefix">{{ syntaxType }}</span>
+          </template>
+        </a-input-number>
+      </a-form-item>
+
+      <div v-if="getFormSyntaxDescription()" class="syntax-tip">
+        <a-typography-text type="secondary">
+          <icon-info-circle style="margin-right: 4px" />
+          {{ getFormSyntaxDescription() }}
+        </a-typography-text>
+      </div>
+    </a-form>
+  </a-modal>
+
+  <!-- 同步频率设置模态框 -->
+  <a-modal
+    v-model:visible="syncModalVisible"
+    title="汇率同步配置"
+    @ok="handleSyncSubmit"
+    @cancel="handleSyncCancel"
+    :ok-loading="syncLoading"
+    :width="syncDialogWidth"
+    class="sync-modal"
+  >
+    <a-form ref="syncFormRef" :model="syncForm" layout="vertical">
+      <a-form-item label="同步频率（分钟）">
+        <a-input-number
+          v-model="syncForm.minutes"
+          :min="10"
+          :max="1440"
+          :precision="0"
+          placeholder="请输入同步频率"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="API 接口">
+        <a-select v-model="syncForm.apiUrl" placeholder="请选择 API 接口" style="width: 100%">
+          <a-option v-for="option in apiUrlOptions" :key="option.value" :value="option.value" :label="option.label">
+            {{ option.label }}
+          </a-option>
+        </a-select>
+      </a-form-item>
+
+      <a-form-item label="API Key">
+        <a-input v-model="syncForm.apiKey" placeholder="请输入 API Key（可选）" allow-clear style="width: 100%" />
+      </a-form-item>
+
+      <a-form-item label="汇率保留天数">
+        <a-input-number
+          v-model="syncForm.historyDays"
+          :min="1"
+          :max="365"
+          :precision="0"
+          placeholder="请输入汇率保留天数"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <div class="sync-tip">
+        <a-typography-text type="secondary">
+          <icon-info-circle style="margin-right: 4px" />
+          同步频率：10-1440分钟，推荐60分钟<br />
+          官方接口：免费但有速率限制，配置
+          <a-link href="https://www.coingecko.com/" target="_blank" :hoverable="false">API Key</a-link>
+          可解除限制<br />
+          开源接口：作者提供的免费缓存接口（落后官方接口3分钟），无速率限制<br />
+          <hr />
+          <b class="sync-warning">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
+        </a-typography-text>
+      </div>
+    </a-form>
+  </a-modal>
+
+  <!-- 支付颗粒度设置模态框 -->
+  <a-modal
+    v-model:visible="atomModalVisible"
+    title="设置支付颗粒度"
+    @ok="handleAtomSubmit"
+    @cancel="handleAtomCancel"
+    :ok-loading="atomLoading"
+    :width="atomDialogWidth"
+    class="atom-modal"
+  >
+    <a-form ref="atomFormRef" :model="atomForm" layout="vertical">
+      <a-form-item label="USDT 颗粒度">
+        <a-input-number
+          v-model="atomForm.usdt"
+          :min="0.000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.01"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="USDC 颗粒度">
+        <a-input-number
+          v-model="atomForm.usdc"
+          :min="0.000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.01"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="TRX 颗粒度">
+        <a-input-number
+          v-model="atomForm.trx"
+          :min="0.000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.01"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="BNB 颗粒度">
+        <a-input-number
+          v-model="atomForm.bnb"
+          :min="0.00000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.00001"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="ETH 颗粒度">
+        <a-input-number
+          v-model="atomForm.eth"
+          :min="0.00000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.000001"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <div class="atom-tip">
+        <a-typography-text type="secondary">
+          <icon-info-circle style="margin-right: 4px" />
+          支付数额递增时的最小单位，支付数额的最终保留位数；除非你明确知道其功能含义，一般情况下不推荐修改。
+        </a-typography-text>
+      </div>
+    </a-form>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { computed, ref, reactive } from "vue";
 import { Message } from "@arco-design/web-vue";
 import { IconInfoCircle } from "@arco-design/web-vue/es/icon";
 import { getSyntaxListAPI, setSyntaxAPI } from "@/api/modules/rate/index";
 import { getsConfAPI, setsConfAPI } from "@/api/modules/conf/index";
 import { List, EditForm } from "./syntax";
 import { getFiatFlag, getCryptoColor } from "@/views/rate/common";
+import { useLayoutModel } from "@/hooks/useLayoutModel";
 
+const { dialogWidth } = useLayoutModel();
+const editDialogWidth = computed(() => dialogWidth("480px"));
+const syncDialogWidth = computed(() => dialogWidth("480px"));
+const atomDialogWidth = computed(() => dialogWidth("400px"));
 const selectedKeys = ref<string[]>([]);
 const loading = ref<boolean>(false);
 const data = reactive<List[]>([]);
@@ -288,7 +291,7 @@ const columns = [
     title: "交易法币",
     dataIndex: "fiat",
     align: "center",
-    width: 160,
+    width: 100,
     slotName: "fiat",
     filterable: {
       filters: [
@@ -306,7 +309,7 @@ const columns = [
     title: "加密货币",
     dataIndex: "crypto",
     align: "center",
-    width: 140,
+    width: 100,
     slotName: "crypto",
     filterable: {
       filters: [
@@ -324,14 +327,14 @@ const columns = [
     title: "汇率浮动",
     dataIndex: "syntax",
     slotName: "syntax",
-    width: 480
+    width: 300
   },
   {
     title: "操作",
     slotName: "optional",
     align: "center",
     fixed: "right",
-    width: 120
+    width: 90
   }
 ];
 
@@ -686,12 +689,12 @@ getCommonTableList();
   display: flex;
   align-items: center;
   gap: 12px;
-  white-space: nowrap;
+  flex-wrap: wrap;
 
   .syntax-value {
     font-weight: 500;
     color: $color-text-1;
-    min-width: 80px;
+    min-width: 56px;
     text-align: left;
     flex-shrink: 0;
   }
@@ -700,7 +703,8 @@ getCommonTableList();
     font-size: 12px;
     color: $color-text-3;
     font-style: italic;
-    flex-shrink: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 

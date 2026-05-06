@@ -1,24 +1,28 @@
 <template>
-  <div class="rate-list">
-    <div class="snow-page">
-      <div class="snow-inner">
-        <a-form ref="formRef" auto-label-width :model="formData.form">
-          <a-row :gutter="16">
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+  <div class="snow-page">
+    <div class="snow-inner">
+      <a-form ref="formRef" auto-label-width :model="formData.form">
+        <a-row :gutter="16">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="fiat" label="交易法币">
               <a-select v-model="formData.form.fiat" placeholder="请选择交易法币" allow-clear allow-search>
                 <a-option v-for="item in tradeFiatOptions" :key="item.value" :value="item.value">
                   {{ item.value }}
                 </a-option>
               </a-select>
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="crypto" label="加密货币">
               <a-select v-model="formData.form.crypto" placeholder="请选择加密货币" allow-clear allow-search>
                 <a-option v-for="item in tradeCryptoOptions" :key="item.value" :value="item.value">
                   {{ item.value }}
                 </a-option>
               </a-select>
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="datetime" label="同步时间">
               <a-range-picker
                 v-model="formData.form.datetime"
                 :placeholder="['开始时间', '结束时间']"
@@ -27,51 +31,51 @@
                 style="width: 100%"
                 allow-clear
               />
-            </a-col>
-            <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
-              <a-space class="search-btn">
-                <a-button type="primary" @click="getCommonTableList">
-                  <template #icon><icon-search /></template>
-                  查询
-                </a-button>
-                <a-button @click="onReset">
-                  <template #icon><icon-refresh /></template>
-                  重置
-                </a-button>
-                <a-button type="primary" status="success" @click="onSync">
-                  <template #icon><icon-loop /></template>
-                  立刻同步
-                </a-button>
-              </a-space>
-            </a-col>
-          </a-row>
-        </a-form>
-        <a-divider :margin="10" />
-        <a-table
-          row-key="key"
-          size="medium"
-          :bordered="{ cell: true }"
-          :scroll="{ x: 1400, y: 600 }"
-          :loading="loading"
-          :columns="columns"
-          :data="data"
-          v-model:selectedKeys="selectedKeys"
-          :pagination="pagination"
-          @page-change="pageChange"
-          @page-size-change="pageSizeChange"
-        >
-          <template #fiat="{ record }">
-            <span class="fiat-display">
-              {{ getFiatFlag(record.fiat) }} <strong>{{ record.fiat }}</strong>
-            </span>
-          </template>
-          <template #crypto="{ record }">
-            <a-tag :color="getCryptoColor(record.crypto)" bordered>
-              {{ record.crypto }}
-            </a-tag>
-          </template>
-        </a-table>
-      </div>
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-space class="search-btn" wrap>
+              <a-button type="primary" @click="getCommonTableList">
+                <template #icon><icon-search /></template>
+                查询
+              </a-button>
+              <a-button @click="onReset">
+                <template #icon><icon-refresh /></template>
+                重置
+              </a-button>
+              <a-button type="primary" status="success" @click="onSync">
+                <template #icon><icon-loop /></template>
+                立刻同步
+              </a-button>
+            </a-space>
+          </a-col>
+        </a-row>
+      </a-form>
+      <a-divider :margin="10" />
+      <a-table
+        row-key="key"
+        size="medium"
+        :bordered="{ cell: true }"
+        :scroll="{ x: 510, y: 600 }"
+        :loading="loading"
+        :columns="columns"
+        :data="data"
+        v-model:selectedKeys="selectedKeys"
+        :pagination="pagination"
+        @page-change="pageChange"
+        @page-size-change="pageSizeChange"
+      >
+        <template #fiat="{ record }">
+          <span class="fiat-display">
+            {{ getFiatFlag(record.fiat) }} <strong>{{ record.fiat }}</strong>
+          </span>
+        </template>
+        <template #crypto="{ record }">
+          <a-tag :color="getCryptoColor(record.crypto)" bordered>
+            {{ record.crypto }}
+          </a-tag>
+        </template>
+      </a-table>
     </div>
   </div>
 </template>
@@ -109,12 +113,11 @@ const loading = ref(false);
 const data = reactive<List[]>([]);
 
 const columns = [
-  { title: "ID", dataIndex: "id", align: "center", width: "100" },
-  { title: "交易法币", align: "center", dataIndex: "fiat", width: "180", slotName: "fiat" },
-  { title: "加密货币", align: "center", dataIndex: "crypto", width: "180", slotName: "crypto" },
-  { title: "订单汇率", align: "center", dataIndex: "rate" },
-  { title: "基准汇率", dataIndex: "raw_rate", align: "center", slotName: "raw_rate" },
-  { title: "同步时间", dataIndex: "created_at", align: "center", slotName: "created_at" }
+  { title: "交易法币", align: "center", dataIndex: "fiat", width: 102, slotName: "fiat" },
+  { title: "加密货币", align: "center", dataIndex: "crypto", width: 92, slotName: "crypto" },
+  { title: "订单汇率", align: "center", dataIndex: "rate", width: 102 },
+  { title: "基准汇率", dataIndex: "raw_rate", align: "center", slotName: "raw_rate", width: 102 },
+  { title: "同步时间", dataIndex: "created_at", align: "center", slotName: "created_at", width: 212 }
 ];
 
 const getCommonTableList = async () => {
@@ -169,6 +172,10 @@ getCommonTableList();
 </script>
 
 <style lang="scss" scoped>
+.search-btn {
+  margin-bottom: 20px;
+}
+
 .fiat-display {
   display: inline-flex;
   align-items: center;

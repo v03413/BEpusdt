@@ -1,10 +1,10 @@
 <template>
   <div class="snow-page">
-    <a-spin :loading="loading" tip="loading...">
+    <a-spin :loading="loading" class="container" tip="loading...">
       <a-card :bordered="false">
         <a-row align="center">
-          <a-col :span="2">
-            <div>
+          <a-col :span="isMobile ? 24 : 2">
+            <div :class="{ center: isMobile }">
               <a-avatar :size="100" trigger-type="mask">
                 <img alt="avatar" src="https://avatars.githubusercontent.com/u/49953737?v=4" />
                 <template #trigger-icon>
@@ -13,9 +13,9 @@
               </a-avatar>
             </div>
           </a-col>
-          <a-col :span="22">
-            <a-space direction="vertical" size="large">
-              <a-descriptions :column="2" title="基本信息" :align="{ label: 'right' }">
+          <a-col :span="isMobile ? 24 : 22">
+            <a-space direction="vertical" size="large" fill class="base-profile-space">
+              <a-descriptions :column="descriptionsColumn(1, 2)" title="基本信息" :align="{ label: 'right' }">
                 <a-descriptions-item label="管理员">
                   {{ Conf.admin_username }}
                 </a-descriptions-item>
@@ -33,7 +33,7 @@
       <a-card class="margin-top" :bordered="false">
         <a-row align="center">
           <a-col :span="24">
-            <a-tabs :type="type" :size="size" :active-key="activeTabs" @change="onChangeTab">
+            <a-tabs :type="tabsType" :size="tabsSize" :active-key="activeTabs" @change="onChangeTab">
               <a-tab-pane key="1" title="基本设置">
                 <Info v-model="Conf" @refresh="refresh" />
               </a-tab-pane>
@@ -58,16 +58,20 @@
 </template>
 
 <script setup lang="ts">
-import Info from "@/views/system/base/info.vue";
-import Security from "@/views/system/base/security.vue";
-import Api from "@/views/system/base/api.vue";
+import Info from "./components/info.vue";
+import Security from "./components/security.vue";
+import Api from "./components/api.vue";
 import { getsConfAPI } from "@/api/modules/conf/index";
-import Notifier from "./notifier.vue";
-import Mqtt from "./mqtt.vue";
+import Notifier from "./components/notifier.vue";
+import Mqtt from "./components/mqtt.vue";
+import { useDevicesSize } from "@/hooks/useDevicesSize";
+import { useLayoutModel } from "@/hooks/useLayoutModel";
 
 const route = useRoute();
-const type = ref("rounded");
-const size = ref("medium");
+const { isMobile } = useDevicesSize();
+const { descriptionsColumn } = useLayoutModel();
+const tabsType = computed(() => (isMobile.value ? "line" : "rounded"));
+const tabsSize = computed(() => (isMobile.value ? "small" : "medium"));
 const activeTabs = ref(route.query.type || "1");
 
 const onChangeTab = (e: string) => {
@@ -121,7 +125,24 @@ getConf();
 </script>
 
 <style lang="scss" scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
 .margin-top {
   margin-top: $padding;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+:deep(.base-setting-form) {
+  width: 100%;
+  max-width: 600px;
+  min-width: 0;
 }
 </style>

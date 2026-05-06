@@ -1,5 +1,5 @@
 <template>
-  <a-modal width="680px" :visible="visible" @close="onClose" @cancel="onClose" @update:visible="onClose" unmount-on-close>
+  <a-modal :width="detailDialogWidth" :visible="visible" @close="onClose" @cancel="onClose" @update:visible="onClose" unmount-on-close>
     <template #title>
       <div class="detail-modal-title">
         <icon-star />
@@ -9,7 +9,7 @@
 
     <!-- 功能操作按钮 -->
     <template #footer>
-      <a-space>
+      <a-space wrap>
         <a-button
           v-if="detailData.status === 2 && detailData.notify_state === 0"
           type="primary"
@@ -41,7 +41,7 @@
           </a-tag>
         </template>
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-user />
@@ -50,7 +50,7 @@
               <div class="detail-value">{{ detailData.name }}</div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-swap />
@@ -63,7 +63,7 @@
           </a-col>
         </a-row>
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-file />
@@ -74,7 +74,7 @@
               </div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-tag />
@@ -87,7 +87,7 @@
           </a-col>
         </a-row>
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-archive />
@@ -100,7 +100,7 @@
               </div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-pushpin />
@@ -150,7 +150,7 @@
       <!-- 回调信息卡片 -->
       <a-card class="detail-card" title="回调信息" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-check />
@@ -162,7 +162,7 @@
               </div>
             </div>
           </a-col>
-          <a-col :span="12" v-if="detailData.return_url">
+          <a-col :xs="24" :sm="24" :md="12" v-if="detailData.return_url">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-link />
@@ -181,7 +181,7 @@
       <!-- 区块链信息卡片 -->
       <a-card class="detail-card" title="区块链数据" :bordered="false" v-if="detailData.status === 2 || detailData.status === 5">
         <a-row :gutter="24" v-if="detailData.ref_hash">
-          <a-col :span="12" v-if="detailData.ref_block_num">
+          <a-col :xs="24" :sm="24" :md="12" v-if="detailData.ref_block_num">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-layers />
@@ -190,7 +190,7 @@
               <div class="detail-value">{{ detailData.ref_block_num }}</div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-safe />
@@ -218,7 +218,7 @@
       <!-- 时间信息卡片 -->
       <a-card class="detail-card" title="订单时间" :bordered="false">
         <a-row :gutter="24">
-          <a-col :span="12" v-if="detailData.created_at">
+          <a-col :xs="24" :sm="24" :md="12" v-if="detailData.created_at">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-plus-circle />
@@ -227,7 +227,7 @@
               <div class="detail-value">{{ formatDateTime(detailData.created_at) }}</div>
             </div>
           </a-col>
-          <a-col :span="12">
+          <a-col :xs="24" :sm="24" :md="12">
             <div class="detail-item">
               <div class="detail-label">
                 <icon-check-circle v-if="detailData.confirmed_at && (detailData.status === 2 || detailData.status === 5)" />
@@ -261,6 +261,7 @@ import { getCryptoColor } from "@/views/rate/common";
 import { delOrderApi } from "@/api/modules/order/index";
 import { Notification, Modal } from "@arco-design/web-vue";
 import { manualNotifyAPI } from "@/api/modules/order/index";
+import { useLayoutModel } from "@/hooks/useLayoutModel";
 
 const props = defineProps({
   visible: Boolean,
@@ -269,6 +270,9 @@ const props = defineProps({
     required: true
   }
 });
+
+const { dialogWidth } = useLayoutModel();
+const detailDialogWidth = computed(() => dialogWidth("820px"));
 
 const emits = defineEmits(["close", "refresh"]);
 
@@ -358,7 +362,18 @@ const currencySymbolMap: Record<string, string> = {
 const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+:deep(.arco-modal-body) {
+  max-height: calc(100vh - 172px);
+  overflow-y: auto;
+  padding: 16px 20px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .detail-modal-title {
   display: flex;
   align-items: center;
@@ -366,13 +381,20 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 }
 
 .detail-content {
-  padding: 8px 0;
-  max-height: 70vh;
-  overflow-y: auto;
+  padding: 0;
+  overflow-y: visible;
 }
 
 .detail-card {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.detail-card :deep(.arco-card-header) {
+  padding: 14px 20px 10px;
+}
+
+.detail-card :deep(.arco-card-body) {
+  padding: 16px 20px 12px;
 }
 
 .detail-card:last-child {
@@ -387,11 +409,12 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 }
 
 .detail-item {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  min-width: 0;
 }
 
 .detail-item:last-child {
-  margin-bottom: 0;
+  margin-bottom: 8px;
 }
 
 .detail-label {
@@ -400,7 +423,7 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
   gap: 8px;
   font-weight: 500;
   color: var(--color-text-2);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-size: 14px;
 }
 
@@ -408,7 +431,8 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
   font-size: 14px;
   color: var(--color-text-1);
   line-height: 1.5;
-  padding-left: 26px;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .detail-value :deep(.arco-typography) {
@@ -432,7 +456,7 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
 }
 
 .address-value :deep(.arco-typography-operation-copy) {
-  color: var(--color-link);
+  color: $color-link;
   margin-left: 4px;
 }
 
@@ -488,7 +512,7 @@ const getCurrencySymbol = (fiat: string) => currencySymbolMap[fiat] || "";
   }
 
   .detail-content {
-    max-height: 80vh;
+    max-height: none;
   }
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
   <div class="snow-page">
     <div class="snow-inner">
-      <a-form ref="formRef" :model="formData.form" auto-label-width>
+      <a-form ref="formRef" auto-label-width :model="formData.form">
         <a-row :gutter="16">
-          <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
             <a-form-item field="order_id" label="商户订单">
               <a-input v-model="formData.form.order_id" placeholder="请输入商户订单" allow-clear />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
             <a-form-item field="trade_type" label="交易类型">
               <a-select v-model="formData.form.trade_type" placeholder="请选择交易类型" allow-clear allow-search>
                 <a-option v-for="item in tradeTypeOptions" :key="item.value" :value="item.value">
@@ -17,7 +17,7 @@
               </a-select>
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
             <a-form-item field="status" label="订单状态">
               <a-select v-model="formData.form.status" placeholder="请选择订单状态" allow-clear>
                 <a-option v-for="item in statusOptions" :key="item.value" :value="item.value">
@@ -27,48 +27,45 @@
             </a-form-item>
           </a-col>
 
-          <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6" class="btn-col">
-            <a-form-item label=" " style="margin-bottom: 0">
-              <a-space>
-                <a-button type="primary" @click="getOrderList">
-                  <template #icon><icon-search /></template>
-                  查询
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-space class="search-btn" wrap>
+              <a-button type="primary" @click="getOrderList">
+                <template #icon><icon-search /></template>
+                查询
+              </a-button>
+              <a-button @click="onReset">
+                <template #icon><icon-refresh /></template>
+                重置
+              </a-button>
+              <a-popconfirm :content="batchDelConfirm" type="warning" @ok="onBatchDelete">
+                <a-button v-show="selectedKeys.length > 0" type="primary" status="danger">
+                  <template #icon><icon-delete /></template>
+                  删除
                 </a-button>
-                <a-button @click="onReset">
-                  <template #icon><icon-refresh /></template>
-                  重置
-                </a-button>
-                <a-popconfirm :content="batchDelConfirm" type="warning" @ok="onBatchDelete">
-                  <a-button v-show="selectedKeys.length > 0" type="primary" status="danger">
-                    <template #icon><icon-delete /></template>
-                    删除
-                  </a-button>
-                </a-popconfirm>
-                <a-button type="text" @click="formData.search = !formData.search">
-                  {{ formData.search ? "收起" : "展开" }}
-                  <icon-down :class="{ 'rotate-icon': formData.search }" />
-                </a-button>
-              </a-space>
+              </a-popconfirm>
+              <a-button type="text" @click="formData.search = !formData.search">
+                {{ formData.search ? "收起" : "展开" }}
+                <icon-down :class="{ 'rotate-icon': formData.search }" />
+              </a-button>
+            </a-space>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16" v-if="formData.search">
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="trade_id" label="交易ID">
+              <a-input v-model="formData.form.trade_id" placeholder="请输入交易ID" allow-clear />
             </a-form-item>
           </a-col>
-
-          <template v-if="formData.search">
-            <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
-              <a-form-item field="trade_id" label="交易ID">
-                <a-input v-model="formData.form.trade_id" placeholder="请输入交易ID" allow-clear />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
-              <a-form-item field="address" label="钱包地址">
-                <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="12" :lg="8" :xl="6">
-              <a-form-item field="createTime" label="创建时间">
-                <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
-              </a-form-item>
-            </a-col>
-          </template>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="address" label="钱包地址">
+              <a-input v-model="formData.form.address" placeholder="请输入钱包地址" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="24" :md="12" :lg="12" :xl="6" :xxl="6">
+            <a-form-item field="createTime" label="创建时间">
+              <a-range-picker v-model="formData.form.createTime" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+            </a-form-item>
+          </a-col>
         </a-row>
       </a-form>
 
@@ -124,7 +121,7 @@
 
         <!-- 不常用的操作优先放置在详情页，尽量保持第一视角的干净整洁 -->
         <template #optional="{ record }">
-          <a-space>
+          <a-space wrap>
             <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
             <a-button size="mini" type="primary" status="warning" :disabled="record.status === 2" @click="showPaidModal(record)">
               补单
@@ -145,7 +142,7 @@
     @cancel="closePaidModal"
     ok-text="确认补单"
     cancel-text="取消"
-    width="500px"
+    :width="paidDialogWidth"
     :mask-closable="false"
   >
     <div class="paid-modal-content">
@@ -180,12 +177,15 @@ import { listAPI, paidAPI, delOrderApi } from "@/api/modules/order/index";
 import { List, FormData, Pagination } from "./config";
 import { Notification } from "@arco-design/web-vue";
 import { useUserInfoStore } from "@/store/modules/user-info";
-import DetailModal from "./detail.vue";
+import DetailModal from "./components/detail.vue";
 import { useOrderDetail } from "./detail";
 import { getCryptoColor } from "@/views/rate/common";
+import { useLayoutModel } from "@/hooks/useLayoutModel";
 
 const userStores = useUserInfoStore();
 const { detailVisible, detailData, showDetail, closeDetail } = useOrderDetail();
+const { dialogWidth } = useLayoutModel();
+const paidDialogWidth = computed(() => dialogWidth("500px"));
 const tradeTypeOptions = computed(() => Object.entries(userStores.trade_type).map(([value, label]) => ({ value, label })));
 
 const statusOptions = [
@@ -355,15 +355,13 @@ getOrderList();
 </script>
 
 <style lang="scss" scoped>
-.btn-col {
-  .arco-form-item {
-    margin-bottom: 0;
-  }
-}
-
 .rotate-icon {
   transform: rotate(180deg);
   transition: transform 0.3s;
+}
+
+.search-btn {
+  margin-bottom: 20px;
 }
 
 .wallet-name {

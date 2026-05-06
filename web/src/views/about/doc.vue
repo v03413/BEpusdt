@@ -23,6 +23,7 @@
 }
 
 .card {
+  min-width: 0;
   background: $color-bg-2;
   border: 1px solid $color-border-2;
   border-radius: 4px;
@@ -46,11 +47,17 @@ p {
   margin: 0;
   color: $color-text-2;
   font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .link {
+  display: inline;
   color: $color-link;
   text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .link:hover {
