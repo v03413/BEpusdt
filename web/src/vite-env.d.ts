@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-svg-icons/client" />
 declare module "*.vue" {
   import { DefineComponent } from "vue";
   const component: DefineComponent<object, object, any>;
@@ -15,7 +16,6 @@ declare module "@codemirror/lang-vue";
 declare module "nprogress";
 declare module "@wangeditor/editor-for-vue";
 declare module "@/directives/modules/custom";
-declare module "mockjs";
 declare module "@/store/modules/route-config";
 declare module "fingerprintjs2";
 declare module "@arco-design/web-vue";

@@ -9,7 +9,7 @@
     "checkJs": true, // 报告 javascript 文件中的错误
 
     /* 模块解析 */
-    "moduleResolution": "node", //模块解析策略。默认使用node的模块解析策略
+    "moduleResolution": "bundler", // 模块解析策略：适配 Vite 等现代构建工具
     "allowImportingTsExtensions": true, // 允许导入包含 TypeScript 文档扩展名。
     "resolveJsonModule": true, //允许导入扩展名为".json"的模块
     "sourceMap": true, // 是否生成相应的Map映射的文件，默认：false

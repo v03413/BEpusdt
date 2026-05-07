@@ -68,8 +68,13 @@ export const useRoutingMethod = () => {
    * @param {string} path 路由path
    * @returns 是否是动态匹配路由
    */
-  const isDynamicRoute = (path: string) => {
-    return path.includes("/:");
+  const isDynamicRoute = (route: any) => {
+    // to.matched 包含了当前路由匹配到的所有层级（包括父级 layout 等）
+    // 我们主要关心叶子节点或包含参数的节点
+    return route.matched.some((record: any) => {
+      // record.path 是定义时的路径，如 "/user/:id"
+      return record.path.includes("/:");
+    });
   };
 
   return {

@@ -43,8 +43,8 @@ declare namespace TabsMenu {
 interface ViteEnv {
   VITE_GLOB_APP_TITLE: string;
   VITE_IMG_BASE_URL: string;
-  VITE_APP_OPEN_MOCK: boolean | string;
   VITE_USER_NODE_ENV: "development" | "production" | "test";
+  VITE_ROUTER_MODE: "hash" | "history";
   VITE_PUBLIC_PATH: string;
   VITE_APP_BASE_URL: string;
 }

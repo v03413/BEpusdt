@@ -2,13 +2,14 @@
   <a-layout-footer class="footer">
     <div class="footer_title">
       <div class="left-placeholder"></div>
-      <span @click="onBEpusdt" class="primary-copyright">© 2026 BEpusdt. All rights reserved.</span>
+      <span @click="onBEpusdt" class="primary-copyright">{{ currentYear }} © BEpusdt. All rights reserved.</span>
       <span class="secondary-info">Powered by SnowAdmin</span>
     </div>
   </a-layout-footer>
 </template>
 
 <script setup lang="ts">
+const currentYear = ref(new Date().getFullYear());
 const onBEpusdt = () => {
   window.open("https://github.com/v03413/BEpusdt", "_blank");
 };

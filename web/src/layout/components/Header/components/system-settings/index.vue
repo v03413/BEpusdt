@@ -1,34 +1,34 @@
 <template>
   <a-drawer :width="340" :visible="props.systemOpen" @ok="handleCancel" @cancel="handleCancel" unmount-on-close>
-    <template #title> 系统设置 </template>
+    <template #title>{{ $t(`system.system settings`) }}</template>
     <div>
       <div>
-        <div class="title">界面设置</div>
+        <div class="title">{{ $t(`system.interface settings`) }}</div>
         <div class="flex-row">
-          <div>菜单折叠</div>
+          <div>{{ $t(`system.menu folding`) }}</div>
           <a-switch v-model="collapsed" />
         </div>
         <div class="flex-row">
-          <div>菜单手风琴</div>
+          <div>{{ $t(`system.menu accordion`) }}</div>
           <a-switch v-model="isAccordion" />
         </div>
         <div class="flex-row">
-          <div>面包屑</div>
+          <div>{{ $t(`system.breadcrumb`) }}</div>
           <a-switch v-model="isBreadcrumb" />
         </div>
         <div class="flex-row">
-          <div>标签栏</div>
+          <div>{{ $t(`system.tab bar`) }}</div>
           <a-switch v-model="isTabs" @change="tabsChange" />
         </div>
         <div class="flex-row">
-          <div>页脚</div>
+          <div>{{ $t(`system.page footer`) }}</div>
           <a-switch v-model="isFooter" />
         </div>
       </div>
       <div>
-        <div class="title">水印设置</div>
+        <div class="title">{{ $t(`system.watermark settings`) }}</div>
         <div class="flex-row">
-          <div>水印颜色</div>
+          <div>{{ $t(`system.watermark color`) }}</div>
           <pick-colors
             :theme="darkMode ? 'dark' : 'light'"
             show-alpha
@@ -39,26 +39,31 @@
           />
         </div>
         <div class="flex-row">
-          <div>水印文案</div>
-          <a-input :style="{ width: '100px' }" v-model="watermark" placeholder="请输入" allow-clear />
+          <div>{{ $t(`system.watermark text`) }}</div>
+          <a-input
+            :style="{ width: '100px' }"
+            v-model="watermark"
+            :placeholder="$t(`system.please-enter-something`)"
+            allow-clear
+          />
         </div>
         <div class="flex-row">
-          <div>水印大小</div>
+          <div>{{ $t(`system.watermark size`) }}</div>
           <a-slider v-model="watermarkStyle.fontSize" :min="10" :max="50" :style="{ width: '100px' }" />
         </div>
         <div class="flex-row">
-          <div>水印角度</div>
+          <div>{{ $t(`system.watermark angle`) }}</div>
           <a-slider v-model="watermarkRotate" :min="0" :max="360" :style="{ width: '100px' }" />
         </div>
         <div class="flex-row">
-          <div>水印间隙</div>
+          <div>{{ $t(`system.watermark gap`) }}</div>
           <a-slider :default-value="gapInfo[0]" :min="0" :max="300" :style="{ width: '100px' }" @change="onWatermarkGap" />
         </div>
       </div>
       <div>
-        <div class="title">系统设置</div>
+        <div class="title">{{ $t(`system.system settings`) }}</div>
         <div class="flex-row">
-          <div>防调试</div>
+          <div>{{ $t(`system.anti-debugging`) }}</div>
           <a-switch v-model="debugPrevention" />
         </div>
       </div>
