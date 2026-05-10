@@ -13,6 +13,7 @@ dist.zip
 dist.7z
 dist-ssr
 *.local
+.eslintcache
 
 # Editor directories and files
 .vscode/*
