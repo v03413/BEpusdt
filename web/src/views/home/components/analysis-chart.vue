@@ -21,7 +21,6 @@ const props = defineProps<{
 const colorMap: Record<string, string> = {
   USDT: "#1E90FF",
   USDC: "#32CD32",
-  CNYE: "#F754A8",
   TRX: "#FF4500",
   BNB: "#F5A623",
   ETH: "#722ED1"
