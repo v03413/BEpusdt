@@ -223,14 +223,14 @@
         />
       </a-form-item>
 
-      <a-form-item label="BNB 颗粒度">
+      <a-form-item label="TON 颗粒度">
         <a-input-number
-          v-model="atomForm.bnb"
+          v-model="atomForm.ton"
           :min="0.00000001"
           :max="100"
           :precision="undefined"
           :step="0.000001"
-          placeholder="推荐0.00001"
+          placeholder="推荐0.0001"
           style="width: 100%"
         />
       </a-form-item>
@@ -243,6 +243,18 @@
           :precision="undefined"
           :step="0.000001"
           placeholder="推荐0.000001"
+          style="width: 100%"
+        />
+      </a-form-item>
+
+      <a-form-item label="BNB 颗粒度">
+        <a-input-number
+          v-model="atomForm.bnb"
+          :min="0.00000001"
+          :max="100"
+          :precision="undefined"
+          :step="0.000001"
+          placeholder="推荐0.00001"
           style="width: 100%"
         />
       </a-form-item>
@@ -316,6 +328,7 @@ const columns = [
         { text: "USDT", value: "USDT" },
         { text: "USDC", value: "USDC" },
         { text: "TRX", value: "TRX" },
+        { text: "TON", value: "TON" },
         { text: "ETH", value: "ETH" },
         { text: "BNB", value: "BNB" }
       ],
@@ -612,6 +625,7 @@ const atomForm = reactive({
   usdt: 0.01,
   usdc: 0.01,
   trx: 0.01,
+  ton: 0.0001,
   eth: 0.000001,
   bnb: 0.00001
 });
@@ -619,7 +633,7 @@ const atomForm = reactive({
 const showAtomModal = async () => {
   try {
     const res = await getsConfAPI({
-      keys: ["atom_usdt", "atom_usdc", "atom_trx", "atom_eth", "atom_bnb"]
+      keys: ["atom_usdt", "atom_usdc", "atom_trx", "atom_ton", "atom_eth", "atom_bnb"]
     });
 
     if (res.data) {
@@ -627,6 +641,7 @@ const showAtomModal = async () => {
       atomForm.usdt = res.data.atom_usdt ? parseFloat(res.data.atom_usdt) : 0.01;
       atomForm.usdc = res.data.atom_usdc ? parseFloat(res.data.atom_usdc) : 0.01;
       atomForm.trx = res.data.atom_trx ? parseFloat(res.data.atom_trx) : 0.01;
+      atomForm.ton = res.data.atom_ton ? parseFloat(res.data.atom_ton) : 0.0001;
       atomForm.eth = res.data.atom_eth ? parseFloat(res.data.atom_eth) : 0.000001;
       atomForm.bnb = res.data.atom_bnb ? parseFloat(res.data.atom_bnb) : 0.00001;
     }
@@ -640,7 +655,7 @@ const showAtomModal = async () => {
 
 const handleAtomSubmit = async () => {
   try {
-    if (!atomForm.usdt || !atomForm.usdc || !atomForm.trx || !atomForm.eth || !atomForm.bnb) {
+    if (!atomForm.usdt || !atomForm.usdc || !atomForm.trx || !atomForm.ton || !atomForm.eth || !atomForm.bnb) {
       Message.error("请填写所有颗粒度配置");
       return;
     }
@@ -651,6 +666,7 @@ const handleAtomSubmit = async () => {
       { key: "atom_usdt", value: atomForm.usdt.toString() },
       { key: "atom_usdc", value: atomForm.usdc.toString() },
       { key: "atom_trx", value: atomForm.trx.toString() },
+      { key: "atom_ton", value: atomForm.ton.toString() },
       { key: "atom_eth", value: atomForm.eth.toString() },
       { key: "atom_bnb", value: atomForm.bnb.toString() }
     ]);
@@ -671,6 +687,7 @@ const handleAtomCancel = () => {
   atomForm.usdt = 0.01;
   atomForm.usdc = 0.01;
   atomForm.trx = 0.01;
+  atomForm.ton = 0.0001;
   atomForm.eth = 0.000001;
   atomForm.bnb = 0.00001;
 };

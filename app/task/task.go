@@ -33,6 +33,7 @@ func Init() error {
 	arbitrumInit()
 	xlayerInit()
 	baseInit()
+	tonInit()
 
 	return nil
 }

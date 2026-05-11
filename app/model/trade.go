@@ -44,13 +44,17 @@ func StartBuildOrder(p OrderParams) (Order, error) {
 		if !utils.IsValidTronAddress(p.Address) &&
 			!utils.IsValidEvmAddress(p.Address) &&
 			!utils.IsValidSolanaAddress(p.Address) &&
-			!utils.IsValidAptosAddress(p.Address) {
+			!utils.IsValidAptosAddress(p.Address) &&
+			!utils.IsValidTonAddress(p.Address) {
 
 			return order, fmt.Errorf("钱包地址格式错误：%s", p.Address)
 		}
 	}
 	if _, ok := registry[p.TradeType]; !ok {
 		return order, fmt.Errorf("不支持的交易类型：%s", p.TradeType)
+	}
+	if p.Address != "" {
+		p.Address = NormalizeTradeAddress(p.TradeType, p.Address)
 	}
 	if _, ok := supportFiat[p.Fiat]; !ok {
 		return order, fmt.Errorf("不支持的法币类型：%s", p.Fiat)

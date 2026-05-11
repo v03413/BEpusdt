@@ -49,6 +49,7 @@
           <a-form-item field="mqtt_networks" label="区块链网络" extra="选择需要持续监听的区块链网络，多选">
             <a-checkbox-group v-model="networksSelected" class="mqtt-network-group">
               <a-checkbox value="tron">Tron</a-checkbox>
+              <a-checkbox value="ton">Ton</a-checkbox>
               <a-checkbox value="bsc">Bsc</a-checkbox>
               <a-checkbox value="polygon">Polygon</a-checkbox>
               <a-checkbox value="ethereum">Ethereum</a-checkbox>

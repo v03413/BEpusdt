@@ -8,7 +8,7 @@
         </template>
         <div>
           <strong>重要提醒：</strong>
-          一般情况下不推荐修改RPC节点,除非您非常了解区块网络并确保节点的可用性和稳定性。
+          一般情况下不推荐修改 RPC 节点或 API 端点，除非您非常了解区块网络并确保端点的可用性和稳定性。
         </div>
       </a-alert>
 
@@ -126,7 +126,7 @@
 
               <a-row :gutter="[16, 6]">
                 <a-col
-                  v-for="network in networks.filter(n => n.key !== 'rpc_endpoint_tron')"
+                  v-for="network in networks.filter(n => n.key !== 'rpc_endpoint_tron' && n.key !== 'ton_center_v3_endpoint')"
                   :key="network.key"
                   :xs="24"
                   :sm="24"
@@ -152,6 +152,79 @@
                         </div>
                       </template>
                     </a-input>
+                  </a-form-item>
+                </a-col>
+              </a-row>
+            </div>
+
+            <!-- TON 网络配置 -->
+            <div class="ton-section">
+              <div class="section-header">
+                <div class="header-icon">
+                  <icon-thunderbolt />
+                </div>
+                <span class="header-title">TON 网络</span>
+              </div>
+
+              <a-row :gutter="[16, 6]">
+                <a-col :xs="24" :sm="24" :md="12">
+                  <a-form-item
+                    field="ton_center_v3_endpoint"
+                    label="TON Center V3 Endpoint"
+                    :rules="[{ required: true, message: '请输入TON Center V3 Endpoint' }]"
+                    class="network-form-item"
+                  >
+                    <a-input
+                      v-model="formData.ton_center_v3_endpoint"
+                      placeholder="请输入 TON Center V3 Endpoint"
+                      allow-clear
+                      size="small"
+                      class="network-input ton-input"
+                    >
+                      <template #prefix>
+                        <div class="input-icon">
+                          <icon-link />
+                        </div>
+                      </template>
+                    </a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :span="24">
+                  <a-form-item field="ton_center_v3_api_key" class="network-form-item">
+                    <template #label>
+                      <div class="tron-grid-label">
+                        <span class="label-with-tip">
+                          <span>TON Center V3 Api Key</span>
+                          <a-tooltip content="配置独立 Api Key 可提高 TON 扫描稳定性，多个可用半角逗号隔开；请求会通过 X-API-Key 发送。" position="top">
+                            <icon-question-circle class="tip-icon" />
+                          </a-tooltip>
+                          <span class="optional-tag">(可选)</span>
+                        </span>
+                        <a
+                          href="https://github.com/v03413/BEpusdt/blob/main/docs/ton/readme.md"
+                          target="_blank"
+                          class="help-link ton-help-link"
+                        >
+                          <icon-question-circle />
+                          获取方法
+                        </a>
+                      </div>
+                    </template>
+
+                    <a-textarea
+                      v-model="formData.ton_center_v3_api_key"
+                      placeholder="请输入 TON Center V3 Api Key (可选)，多个可用半角逗号隔开"
+                      allow-clear
+                      size="small"
+                      class="network-input ton-input tron-grid-api-key-input"
+                      :auto-size="{ minRows: 1, maxRows: 6 }"
+                    >
+                      <template>
+                        <div class="input-icon">
+                          <icon-safe />
+                        </div>
+                      </template>
+                    </a-textarea>
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -212,12 +285,13 @@ const networks = [
   { key: "rpc_endpoint_tron", label: "Tron RPC", icon: IconLink },
   { key: "rpc_endpoint_solana", label: "Solana RPC", icon: IconLink },
   { key: "rpc_endpoint_aptos", label: "Aptos RPC", icon: IconLink },
-  { key: "rpc_endpoint_plasma", label: "Plasma RPC", icon: IconLink }
+  { key: "rpc_endpoint_plasma", label: "Plasma RPC", icon: IconLink },
+  { key: "ton_center_v3_endpoint", label: "TON Center V3 Endpoint", icon: IconLink }
 ];
 
 const infoList = [
-  { icon: IconCheckCircle, text: "RPC节点是与区块链网络通信的关键接口，请确保所配置的节点稳定可靠" },
-  { icon: IconStar, text: "建议使用官方推荐的RPC节点或知名的第三方服务商" },
+  { icon: IconCheckCircle, text: "RPC 节点或 API 端点是与区块链网络通信的关键接口，请确保配置稳定可靠" },
+  { icon: IconStar, text: "建议使用官方推荐的 RPC 节点、API 端点或知名的第三方服务商" },
   { icon: IconThunderbolt, text: "配置前请先测试节点的连通性和响应速度" },
   { icon: IconFire, text: "修改配置后系统将立即生效，请谨慎操作" }
 ];
@@ -231,7 +305,7 @@ const originalData = ref<Record<string, string>>({});
 const getConf = async () => {
   try {
     loading.value = true;
-    const keys = [...networks.map(network => network.key), "rpc_endpoint_tron_grid_api_key"];
+    const keys = [...networks.map(network => network.key), "rpc_endpoint_tron_grid_api_key", "ton_center_v3_api_key"];
 
     const response = await getsConfAPI({ keys });
     const data = response.data || {};
@@ -240,6 +314,7 @@ const getConf = async () => {
       formData[network.key] = data[network.key] || "";
     });
     formData.rpc_endpoint_tron_grid_api_key = data.rpc_endpoint_tron_grid_api_key || "";
+    formData.ton_center_v3_api_key = data.ton_center_v3_api_key || "";
 
     originalData.value = { ...formData };
   } catch (error) {
@@ -269,7 +344,7 @@ const handleSave = async () => {
     // 构建保存数据数组
     const saveData: Array<{ key: string; value: string }> = [];
 
-    // 添加所有网络的 RPC 配置
+    // 添加所有网络的 RPC 节点或 API 端点配置
     networks.forEach(network => {
       const value = formData[network.key]?.trim();
       if (value) {
@@ -280,9 +355,9 @@ const handleSave = async () => {
       }
     });
 
-    // 验证所有必填的 RPC 节点是否都已填写
+    // 验证所有必填的 RPC 节点或 API 端点是否都已填写
     if (saveData.length < networks.length) {
-      Message.error("所有RPC节点都必须填写");
+      Message.error("所有 RPC 节点或 API 端点都必须填写");
       return;
     }
 
@@ -291,6 +366,12 @@ const handleSave = async () => {
     saveData.push({
       key: "rpc_endpoint_tron_grid_api_key",
       value: tronApiKey
+    });
+
+    const tonApiKey = formData.ton_center_v3_api_key?.trim() || "";
+    saveData.push({
+      key: "ton_center_v3_api_key",
+      value: tonApiKey
     });
 
     await setsConfAPI(saveData);
@@ -519,6 +600,54 @@ onMounted(() => {
   }
 }
 
+.ton-section {
+  background: rgba(var(--primary-6), 0.08);
+  border: 1px solid rgba(var(--primary-6), 0.22);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(var(--primary-6), 0.76);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(var(--primary-6), 0.18);
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: $color-primary;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 11px;
+      box-shadow: 0 2px 4px rgba(var(--primary-6), 0.28);
+    }
+
+    .header-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: $color-text-1;
+    }
+  }
+}
+
 .network-form-item {
   :deep(.arco-form-item-label-col) {
     margin-bottom: 4px;
@@ -583,6 +712,22 @@ onMounted(() => {
   }
 }
 
+.ton-input {
+  :deep(.arco-input-wrapper) {
+    border-color: rgba(var(--primary-6), 0.3);
+
+    &:hover {
+      border-color: $color-primary;
+      box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.1);
+    }
+
+    &.arco-input-focus {
+      border-color: $color-primary;
+      box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.14);
+    }
+  }
+}
+
 .input-icon {
   display: flex;
   align-items: center;
@@ -633,6 +778,14 @@ onMounted(() => {
 
   &:hover {
     color: rgb(var(--danger-5));
+  }
+}
+
+.ton-help-link {
+  color: $color-primary;
+
+  &:hover {
+    color: rgb(var(--primary-5));
   }
 }
 
@@ -731,7 +884,8 @@ onMounted(() => {
   }
 
   .tron-section,
-  .other-section {
+  .other-section,
+  .ton-section {
     padding: 8px 10px;
   }
 }

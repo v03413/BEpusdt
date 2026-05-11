@@ -67,10 +67,7 @@ func (Wallet) Add(ctx *gin.Context) {
 		return
 	}
 
-	// 非大小写敏感的地址，统一转为小写存储
-	if !model.AddrCaseSens(model.TradeType(wallet.TradeType)) {
-		wallet.MatchAddr = strings.ToLower(wallet.MatchAddr)
-	}
+	wallet.MatchAddr = model.NormalizeTradeAddress(model.TradeType(wallet.TradeType), wallet.Address)
 
 	if err := model.Db.Create(&wallet).Error; err != nil {
 		base.Error(ctx, err)
@@ -164,10 +161,7 @@ func (Wallet) Mod(ctx *gin.Context) {
 		return
 	}
 
-	// 非大小写敏感的地址，统一转为小写存储
-	if !model.AddrCaseSens(model.TradeType(w.TradeType)) {
-		w.MatchAddr = strings.ToLower(w.Address)
-	}
+	w.MatchAddr = model.NormalizeTradeAddress(model.TradeType(w.TradeType), w.Address)
 
 	if err := model.Db.Save(&w).Error; err != nil {
 		base.Error(ctx, err)

@@ -22,8 +22,9 @@ var supportCrypto = map[Crypto]CoinId{
 	USDT: "tether",
 	USDC: "usd-coin",
 	TRX:  "tron",
-	BNB:  "binancecoin",
+	TON:  "the-open-network",
 	ETH:  "ethereum",
+	BNB:  "binancecoin",
 }
 
 // TradeType 交易类型，当下类型开始增多，现在这里统一管理、尽量收缩配置项
@@ -128,6 +129,17 @@ var registry = map[TradeType]TradeTypeConf{
 		AmountRange: usdGeneralRange,
 		ExplorerFmt: "https://arbiscan.io/tx/%s",
 		EndpointKey: RpcEndpointArbitrum,
+	},
+	UsdtTon: {
+		Alias:       "USDT・Ton",
+		NetworkName: "Ton",
+		Network:     conf.Ton,
+		Crypto:      USDT,
+		Contract:    conf.UsdtTon,
+		Decimal:     conf.UsdtTonDecimals,
+		AmountRange: usdGeneralRange,
+		ExplorerFmt: "https://tonviewer.com/transaction/%s",
+		EndpointKey: TonCenterV3Endpoint,
 	},
 	UsdcErc20: {
 		Alias:       "USDC・ERC20",
@@ -236,13 +248,28 @@ var registry = map[TradeType]TradeTypeConf{
 		Network:     conf.Tron,
 		Crypto:      TRX,
 		Native:      true,
-		Decimal:     -6,
+		Decimal:     conf.TronTrxDecimals,
 		AmountRange: Range{
 			MinAmount: decimal.NewFromFloat(0.1),
 			MaxAmount: decimal.NewFromFloat(1000000),
 		},
 		ExplorerFmt:  "https://tronscan.org/#/transaction/%s",
 		EndpointKey:  RpcEndpointTron,
+		AddrCaseSens: true,
+	},
+	TonTon: {
+		Alias:       "TON・Ton",
+		NetworkName: "Ton",
+		Network:     conf.Ton,
+		Crypto:      TON,
+		Native:      true,
+		Decimal:     conf.TonTonDecimals,
+		AmountRange: Range{
+			MinAmount: decimal.NewFromFloat(0.0001),
+			MaxAmount: decimal.NewFromFloat(1000000),
+		},
+		ExplorerFmt:  "https://tonviewer.com/transaction/%s",
+		EndpointKey:  TonCenterV3Endpoint,
 		AddrCaseSens: true,
 	},
 	EthereumEth: {

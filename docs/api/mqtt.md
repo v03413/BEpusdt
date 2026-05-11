@@ -67,6 +67,7 @@ bepusdt/transfer/{network}
 | Base     | `bepusdt/transfer/base`     | USDC                          |
 | Solana   | `bepusdt/transfer/solana`   | USDT、USDC                     |
 | Aptos    | `bepusdt/transfer/aptos`    | USDT、USDC                     |
+| TON      | `bepusdt/transfer/ton`      | USDT、TON                      |
 | X Layer  | `bepusdt/transfer/xlayer`   | USDT、USDC                     |
 | Plasma   | `bepusdt/transfer/plasma`   | USDT                          |
 

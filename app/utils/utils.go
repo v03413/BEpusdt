@@ -3,6 +3,8 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -12,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -98,6 +101,90 @@ func IsValidTronAddress(address string) bool {
 	match, err := regexp.MatchString(`^T[a-zA-Z0-9]{33}$`, address)
 
 	return match && err == nil
+}
+
+// IsValidTonAddress 校验 TON 地址是否为 raw 或 user-friendly 格式。
+func IsValidTonAddress(address string) bool {
+	_, ok := NormalizeTonAddress(address)
+
+	return ok
+}
+
+// NormalizeTonAddress 将 TON raw/user-friendly 地址统一转换为 raw 地址。
+func NormalizeTonAddress(address string) (string, bool) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return "", false
+	}
+
+	rawMatch, _ := regexp.MatchString(`^-?\d+:[0-9a-fA-F]{64}$`, address)
+	if rawMatch {
+		parts := strings.SplitN(address, ":", 2)
+
+		return parts[0] + ":" + strings.ToLower(parts[1]), true
+	}
+
+	data, err := base64.RawURLEncoding.DecodeString(address)
+	if err != nil {
+		data, err = base64.RawStdEncoding.DecodeString(address)
+	}
+	if err != nil || len(data) != 36 {
+		return "", false
+	}
+
+	if tonCRC16(data[:34]) != binary.BigEndian.Uint16(data[34:]) {
+		return "", false
+	}
+
+	workchain := int(int8(data[1]))
+
+	return fmt.Sprintf("%d:%s", workchain, hex.EncodeToString(data[2:34])), true
+}
+
+// FormatTonAddress 将 TON 地址转换为 non-bounceable user-friendly 格式用于展示和付款。
+func FormatTonAddress(address string) (string, bool) {
+	raw, ok := NormalizeTonAddress(address)
+	if !ok {
+		return "", false
+	}
+
+	parts := strings.SplitN(raw, ":", 2)
+	workchain, err := strconv.Atoi(parts[0])
+	if err != nil || workchain < -128 || workchain > 127 {
+		return "", false
+	}
+
+	hash, err := hex.DecodeString(parts[1])
+	if err != nil || len(hash) != 32 {
+		return "", false
+	}
+
+	data := make([]byte, 34)
+	data[0] = 0x51
+	data[1] = byte(int8(workchain))
+	copy(data[2:], hash)
+
+	crc := tonCRC16(data)
+	full := append(data, byte(crc>>8), byte(crc))
+
+	return base64.RawURLEncoding.EncodeToString(full), true
+}
+
+// tonCRC16 计算 TON user-friendly 地址使用的 CRC16-CCITT 校验值。
+func tonCRC16(data []byte) uint16 {
+	var crc uint16
+	for _, b := range data {
+		crc ^= uint16(b) << 8
+		for i := 0; i < 8; i++ {
+			if crc&0x8000 != 0 {
+				crc = (crc << 1) ^ 0x1021
+			} else {
+				crc <<= 1
+			}
+		}
+	}
+
+	return crc
 }
 
 func IsValidEvmAddress(address string) bool {

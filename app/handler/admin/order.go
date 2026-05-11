@@ -132,7 +132,8 @@ func (Order) List(ctx *gin.Context) {
 		db = db.Where("status = ?", *req.Status)
 	}
 	if req.Address != "" {
-		db = db.Where("address like ?", "%"+req.Address+"%")
+		address := model.NormalizeKnownAddress(req.Address)
+		db = db.Where("address like ?", "%"+address+"%")
 	}
 	if req.TradeType != "" {
 		db = db.Where("trade_type = ?", req.TradeType)
@@ -153,6 +154,9 @@ func (Order) List(ctx *gin.Context) {
 		base.Response(ctx, 400, err.Error())
 
 		return
+	}
+	for i := range data {
+		formatAdminOrderAddress(&data[i].Order)
 	}
 
 	base.Response(ctx, 200, data, total)
@@ -179,10 +183,17 @@ func (Order) Detail(ctx *gin.Context) {
 		return
 	}
 
+	formatAdminOrderAddress(&o)
+
 	base.Ok(ctx, detail{
 		Order: o,
 		TxUrl: o.GetTxUrl(),
 	})
+}
+
+func formatAdminOrderAddress(order *model.Order) {
+	order.Address = model.FormatTradeAddress(order.TradeType, order.Address)
+	order.FromAddress = model.FormatTradeAddress(order.TradeType, order.FromAddress)
 }
 
 func (Order) Paid(ctx *gin.Context) {

@@ -10,6 +10,7 @@ const Debug = false
 const (
 	Bsc      = "bsc" // Binance Smart Chain
 	Tron     = "tron"
+	Ton      = "ton" // The Open Network
 	Aptos    = "aptos"
 	Solana   = "solana"
 	Xlayer   = "xlayer"
@@ -30,6 +31,7 @@ const (
 	UsdtSolana   = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
 	SolSplToken  = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 	UsdtAptos    = "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+	UsdtTon      = "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe" // EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs
 	UsdcErc20    = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 	UsdcPolygon  = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"
 	UsdcXlayer   = "0x74b7f16337b8972027f6196a17a631ac6de26d22"
@@ -50,6 +52,7 @@ const (
 	UsdtArbitrumDecimals = -6  // USDT Arbitrum小数位数
 	UsdtAptosDecimals    = -6  // USDT Aptos小数位数
 	UsdtSolanaDecimals   = -6  // USDT Solana小数位数
+	UsdtTonDecimals      = -6  // USDT Ton 小数位数
 
 	UsdcEthDecimals      = -6  // USDC ERC20小数位数
 	UsdcPolygonDecimals  = -6  // USDC Polygon小数位数
@@ -61,6 +64,8 @@ const (
 	UsdcAptosDecimals    = -6  // USDC Aptos小数位数
 	UsdcSolanaDecimals   = -6  // USDC Solana小数位数
 
-	BscBnbDecimals      = -18 // BSC BNB 小数位数
+	TronTrxDecimals     = -6  // Tron TRX 小数位数
+	TonTonDecimals      = -9  // Ton TON 小数位数
 	EthereumEthDecimals = -18 // Ethereum ETH 小数位数
+	BscBnbDecimals      = -18 // BSC BNB 小数位数
 )

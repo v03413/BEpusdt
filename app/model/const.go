@@ -41,8 +41,9 @@ const (
 	AtomUSDT ConfKey = "atom_usdt"
 	AtomUSDC ConfKey = "atom_usdc"
 	AtomTRX  ConfKey = "atom_trx"
-	AtomBNB  ConfKey = "atom_bnb"
+	AtomTON  ConfKey = "atom_ton"
 	AtomETH  ConfKey = "atom_eth"
+	AtomBNB  ConfKey = "atom_bnb"
 
 	MonitorMinAmount  ConfKey = "monitor_min_amount" // 监控最小金额，低于此金额的入账不进行通知
 	PaymentMinAmount  ConfKey = "payment_min_amount"
@@ -62,6 +63,8 @@ const (
 	RpcEndpointAptos          ConfKey = "rpc_endpoint_aptos"             // APTOS RPC节点
 	RpcEndpointTron           ConfKey = "rpc_endpoint_tron"              // TRON RPC节点
 	RpcEndpointTronGridApiKey ConfKey = "rpc_endpoint_tron_grid_api_key" // TRON RPC节点 TronGrid Api Key
+	TonCenterV3Endpoint       ConfKey = "ton_center_v3_endpoint"         // TON Center V3 节点
+	TonCenterV3ApiKey         ConfKey = "ton_center_v3_api_key"          // TON Center V3 Api Key
 
 	RateSyncCoingeckoApiUrl ConfKey = "rate_sync_coingecko_api_url" // 汇率同步 Coingecko Api URL
 	RateSyncCoingeckoApiKey ConfKey = "rate_sync_coingecko_api_key" // 汇率同步 Coingecko Api Key
@@ -96,8 +99,9 @@ const (
 	USDT Crypto = "USDT"
 	USDC Crypto = "USDC"
 	TRX  Crypto = "TRX"
-	BNB  Crypto = "BNB"
+	TON  Crypto = "TON"
 	ETH  Crypto = "ETH"
+	BNB  Crypto = "BNB"
 )
 const (
 	Classic   MatchMode = "classic"    // 经典模式，精确匹配

@@ -15,6 +15,7 @@ export const getCryptoColor = (crypto: string): string => {
     USDT: "green",
     USDC: "blue",
     TRX: "red",
+    TON: "arcoblue",
     ETH: "purple",
     BNB: "orange"
   };

@@ -258,7 +258,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		"status":          newOrder.Status,
 		"amount":          newOrder.Money,
 		"actual_amount":   newOrder.Amount,
-		"token":           newOrder.Address,
+		"token":           model.FormatOrderPaymentAddress(newOrder),
 		"expiration_time": uint64(newOrder.ExpiredAt.Sub(time.Now()).Seconds()),
 		"payment_url":     model.CheckoutCounter(host, newOrder.TradeId),
 	}))
@@ -321,7 +321,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		"status":          order.Status,
 		"amount":          order.Money,
 		"actual_amount":   order.Amount,
-		"token":           order.Address,
+		"token":           model.FormatOrderPaymentAddress(order),
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
 		"payment_url":     model.CheckoutCounter(utils.GetRequestHost(ctx.Request), order.TradeId),
 	}))
@@ -377,7 +377,7 @@ func (Epusdt) CheckoutCounter(ctx *gin.Context) {
 	ctx.HTML(200, string(order.TradeType+".html"), gin.H{
 		"http_host":  uri.Host,
 		"amount":     order.Amount,
-		"address":    order.Address,
+		"address":    model.FormatOrderPaymentAddress(order),
 		"expire":     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
 		"return_url": order.ReturnUrl,
 		"usdt_rate":  order.Rate,

@@ -21,8 +21,9 @@ var defaultConf = map[ConfKey]string{
 	AtomUSDT:                "0.01",
 	AtomUSDC:                "0.01",
 	AtomTRX:                 "0.01",
-	AtomBNB:                 "0.00001",
+	AtomTON:                 "0.0001",
 	AtomETH:                 "0.000001",
+	AtomBNB:                 "0.00001",
 	MonitorMinAmount:        "0.01",
 	PaymentMinAmount:        "0.01",
 	PaymentMaxAmount:        "99999",
@@ -36,6 +37,8 @@ var defaultConf = map[ConfKey]string{
 	RpcEndpointBase:         "https://base-public.nodies.app/",
 	RpcEndpointAptos:        "https://aptos-rest.publicnode.com/",
 	RpcEndpointPlasma:       "https://rpc.plasma.to/",
+	TonCenterV3Endpoint:     "https://toncenter.com/api/v3",
+	TonCenterV3ApiKey:       "",
 	NotifyMaxRetry:          "10",
 	BlockHeightMaxDiff:      "1000",
 	BlockOffsetConfirm:      "0",
@@ -228,6 +231,19 @@ func GetInstallInfo() gin.H {
 
 func GetTronGridApiKeys() []string {
 	return strings.Split(GetK(RpcEndpointTronGridApiKey), ",")
+}
+
+func GetTonCenterV3ApiKeys() []string {
+	items := strings.Split(GetC(TonCenterV3ApiKey), ",")
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		key := strings.TrimSpace(item)
+		if key != "" {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
 }
 
 func FillDefaultConf() {

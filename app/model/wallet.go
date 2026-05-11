@@ -41,6 +41,11 @@ func (wa *Wallet) IsValid() bool {
 		return utils.IsValidTronAddress(wa.Address)
 	}
 
+	// Ton 地址验证
+	if tradeType == TonTon || tradeType == UsdtTon {
+		return utils.IsValidTonAddress(wa.Address)
+	}
+
 	// Solana 地址验证
 	if tradeType == UsdtSolana || tradeType == UsdcSolana {
 		return utils.IsValidSolanaAddress(wa.Address)

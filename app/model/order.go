@@ -23,6 +23,7 @@ const (
 
 	BscBnb      TradeType = "bsc.bnb"
 	EthereumEth TradeType = "ethereum.eth"
+	TonTon      TradeType = "ton.ton"
 	TronTrx     TradeType = "tron.trx"
 
 	UsdtTrc20    TradeType = "usdt.trc20"
@@ -43,6 +44,7 @@ const (
 	UsdtAptos    TradeType = "usdt.aptos"
 	UsdcAptos    TradeType = "usdc.aptos"
 	UsdtPlasma   TradeType = "usdt.plasma"
+	UsdtTon      TradeType = "usdt.ton"
 )
 
 const (
