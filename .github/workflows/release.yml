@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '25'
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@10
       - name: Install frontend dependencies
         working-directory: ./web
         run: pnpm install --frozen-lockfile --shamefully-hoist
