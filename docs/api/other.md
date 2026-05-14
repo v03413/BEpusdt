@@ -22,4 +22,4 @@
 - [异次元发卡](acg-faka/README.md)
 - [萌次元商城](./mcy-faka/mcy-shop.md)
 - [EdgeKey](./edge-key/edge-key.md)
-
+- [WooCommerce/WordPress 收款插件-BEpusdt for WooCommerce](https://github.com/immonsterx/bepusdt-woocommerce)
