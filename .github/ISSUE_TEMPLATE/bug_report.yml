@@ -20,7 +20,7 @@ body:
         - label: 我明白任何人针对我提交的问题没有义务提供帮助，包括项目维护者。
           required: true
         - label: 我没有阅读这个清单，只是闭眼选中了所有的复选框，请关闭这个 Issue 。
-          required: true
+          required: false
   - type: dropdown
     attributes:
       label: 问题类型
