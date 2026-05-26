@@ -17,7 +17,7 @@
         </template>
 
         <div class="network-stats-grid">
-          <div v-for="net in allNetworks" :key="net.key" class="network-stat-card" :class="getNetworkClass(net.key)">
+          <div v-for="net in sortedNetworks" :key="net.key" class="network-stat-card" :class="getNetworkClass(net.key)">
             <!-- 网络头部 -->
             <div class="net-card-header">
               <div class="net-badge" :style="{ background: net.color }">
@@ -225,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
 import { Message } from "@arco-design/web-vue";
 import { setsConfAPI, getRpcConfAPI } from "@/api/modules/conf/index";
 import {
@@ -291,6 +291,14 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const getNetStat = (statKey: string): StatInfo | undefined => {
   return statsData.value[statKey];
 };
+
+const sortedNetworks = computed(() => {
+  return [...allNetworks].sort((a, b) => {
+    const hasA = !!statsData.value[a.statKey];
+    const hasB = !!statsData.value[b.statKey];
+    return Number(hasB) - Number(hasA);
+  });
+});
 
 const getNetworkClass = (key: string) => {
   return key === "rpc_endpoint_tron" ? "tron-net-card" : "";
