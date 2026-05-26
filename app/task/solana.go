@@ -183,7 +183,7 @@ func (s *solana) slotParse(n any) {
 	post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getBlock","params":[%d,{"encoding":"json","maxSupportedTransactionVersion":0,"transactionDetails":"full","rewards":false}]}`, slot))
 	network := conf.Solana
 
-	conf.RecordSuccess(network)
+	conf.RecordSuccess(network, cast.ToString(slot))
 	resp, err := s.client.Post(model.Endpoint(conf.Solana), "application/json", bytes.NewBuffer(post))
 	if err != nil {
 		conf.RecordFailure(network)

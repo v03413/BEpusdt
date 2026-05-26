@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/handler/base"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/notifier"
@@ -125,6 +126,34 @@ func (Conf) Sets(ctx *gin.Context) {
 	defer model.RefreshC()
 
 	base.Ok(ctx, "配置成功")
+}
+
+func (Conf) Rpc(ctx *gin.Context) {
+	var keys = []model.ConfKey{
+		model.RpcEndpointPlasma,
+		model.RpcEndpointBsc,
+		model.RpcEndpointSolana,
+		model.RpcEndpointXlayer,
+		model.RpcEndpointPolygon,
+		model.RpcEndpointArbitrum,
+		model.RpcEndpointEthereum,
+		model.RpcEndpointBase,
+		model.RpcEndpointAptos,
+		model.RpcEndpointTron,
+		model.RpcEndpointTronGridApiKey,
+	}
+
+	var rpc = make(map[model.ConfKey]string)
+	var items = make([]model.Conf, 0)
+	model.Db.Where("k IN ?", keys).Find(&items)
+	for _, item := range items {
+		rpc[item.K] = item.V
+	}
+
+	base.Ok(ctx, gin.H{
+		"rpc":   rpc,
+		"stats": conf.GetStats(),
+	})
 }
 
 func (Conf) Notifier(ctx *gin.Context) {

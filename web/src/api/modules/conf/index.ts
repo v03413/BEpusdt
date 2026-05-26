@@ -56,4 +56,11 @@ const resetApiAuthToken = (data: any) => {
   });
 };
 
-export { setConfAPI, getConfAPI, getsConfAPI, setsConfAPI, notifierAPI, notifierTestAPI, resetApiAuthToken };
+const getRpcConfAPI = () => {
+  return axios({
+    url: "/api/conf/rpc",
+    method: "get"
+  });
+};
+
+export {setConfAPI, getConfAPI, getsConfAPI, setsConfAPI, notifierAPI, notifierTestAPI, resetApiAuthToken, getRpcConfAPI};
