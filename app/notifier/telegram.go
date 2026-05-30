@@ -141,10 +141,7 @@ func (t *Telegram) NotifyFail(o model.Order, reason string) {
 }
 
 func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
-	title := "收入"
-	if trans.RecvAddress != wa.Address {
-		title = "支出"
-	}
+	title := nonOrderTransferTitle(trans, wa)
 
 	text := fmt.Sprintf(
 		"\\#账户%s \\#非订单交易\n\\-\\-\\-\n```\n💲交易数额：%v \n💍交易类别："+strings.ToUpper(string(trans.TradeType))+"\n⏱️交易时间：%v\n✅接收地址：%v\n🅾️发送地址：%v```\n",
@@ -166,6 +163,14 @@ func (t *Telegram) NonOrderTransfer(trans model.TronTransfer, wa model.Wallet) {
 			},
 		},
 	})
+}
+
+func nonOrderTransferTitle(trans model.TronTransfer, wa model.Wallet) string {
+	if trans.RecvAddress == wa.MatchAddr {
+		return "收入"
+	}
+
+	return "支出"
 }
 
 func (t *Telegram) TronResourceChange(res model.TronResource) {
