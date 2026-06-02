@@ -86,6 +86,7 @@ const (
 	NotifierChannel ConfKey = "notifier_channel" // 通知渠道 (telegram, wechat, email
 
 	SystemInstallLock ConfKey = "system_install_lock" // 系统安装锁
+	HomeRedirectUrl   ConfKey = "home_redirect_url"
 )
 const (
 	CNY Fiat = "CNY"

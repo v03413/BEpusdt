@@ -72,6 +72,14 @@
             </a-select>
           </a-form-item>
 
+          <a-form-item
+            field="home_redirect_url"
+            label="主页跳转地址"
+            extra="如需在访问网关主页时自动跳转到其他网站，可在此处设置地址"
+          >
+            <a-input v-model="form.home_redirect_url" placeholder="主页跳转地址 留空则显示默认页面" allow-clear />
+          </a-form-item>
+
           <a-form-item>
             <a-space>
               <a-button type="primary" html-type="submit">提交</a-button>
@@ -100,7 +108,8 @@ const form = ref({
   notify_max_retry: "",
   payment_max_amount: "",
   payment_min_amount: "",
-  payment_match_mode: "classic"
+  payment_match_mode: "classic",
+  home_redirect_url: ""
 });
 const rules = {
   block_height_max_diff: [
@@ -169,7 +178,8 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
     { key: "payment_max_amount", value: form.value.payment_max_amount },
     { key: "payment_min_amount", value: form.value.payment_min_amount },
     { key: "payment_timeout", value: form.value.payment_timeout },
-    { key: "payment_match_mode", value: form.value.payment_match_mode }
+    { key: "payment_match_mode", value: form.value.payment_match_mode },
+    { key: "home_redirect_url", value: form.value.home_redirect_url }
   ]);
 
   Message.success("保存成功");
@@ -187,6 +197,7 @@ watch(
     form.value.payment_min_amount = data.value.payment_min_amount;
     form.value.payment_timeout = data.value.payment_timeout;
     form.value.payment_match_mode = data.value.payment_match_mode || "classic";
+    form.value.home_redirect_url = data.value.home_redirect_url || "";
   }
 );
 </script>

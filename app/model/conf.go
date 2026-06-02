@@ -47,6 +47,7 @@ var defaultConf = map[ConfKey]string{
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
 	MqttTopicPrefix:         "bepusdt",
+	HomeRedirectUrl:         "",
 }
 
 type Conf struct {
