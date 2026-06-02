@@ -1,7 +1,12 @@
 package model
 
 import (
+	"errors"
+	"strings"
+
+	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/utils"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 const (
@@ -33,26 +38,57 @@ func (wa *Wallet) SetStatus(status uint8) {
 	Db.Save(wa)
 }
 
-func (wa *Wallet) IsValid() bool {
+func (wa *Wallet) Validate() error {
 	tradeType := TradeType(wa.TradeType)
 
-	// Tron 地址验证
-	if tradeType == TronTrx || tradeType == UsdtTrc20 || tradeType == UsdcTrc20 {
-		return utils.IsValidTronAddress(wa.Address)
+	switch tradeType {
+	case TronTrx, UsdtTrc20, UsdcTrc20:
+		if !utils.IsValidTronAddress(wa.Address) {
+			return errors.New("钱包地址格式不合法，请检查")
+		}
+	case UsdtSolana, UsdcSolana:
+		if !utils.IsValidSolanaAddress(wa.Address) {
+			return errors.New("钱包地址格式不合法，请检查")
+		}
+	case UsdtAptos, UsdcAptos:
+		if !utils.IsValidAptosAddress(wa.Address) {
+			return errors.New("钱包地址格式不合法，请检查")
+		}
+	case UsdtTon:
+		if !strings.HasPrefix(wa.Address, "UQ") {
+			return errors.New("TON 地址必须以 UQ 开头")
+		}
+		owner, err := address.ParseAddr(wa.Address)
+		if err != nil {
+			return err
+		}
+		addr, err := utils.GetJettonWalletAddr(utils.NewTonClient(GetC(RpcGlobalConfigUrlTon)), address.MustParseAddr(conf.UsdtTon), owner)
+		if err != nil {
+			return err
+		}
+		wa.MatchAddr = addr.Bounce(false).String()
+		return nil
+	case TonTon:
+		if !strings.HasPrefix(wa.Address, "UQ") {
+			return errors.New("TON 地址必须以 UQ 开头")
+		}
+		owner, err := address.ParseAddr(wa.Address)
+		if err != nil {
+			return err
+		}
+		wa.MatchAddr = owner.Bounce(false).String()
+		return nil
+	default:
+		if !utils.IsValidEvmAddress(wa.Address) {
+			return errors.New("钱包地址格式不合法，请检查")
+		}
 	}
 
-	// Solana 地址验证
-	if tradeType == UsdtSolana || tradeType == UsdcSolana {
-		return utils.IsValidSolanaAddress(wa.Address)
+	if !AddrCaseSens(tradeType) {
+		wa.MatchAddr = strings.ToLower(wa.Address)
 	}
 
-	// Aptos 地址验证
-	if tradeType == UsdtAptos || tradeType == UsdcAptos {
-		return utils.IsValidAptosAddress(wa.Address)
-	}
-
-	// 默认使用 EVM 地址验证（Ethereum, BSC, Polygon, Arbitrum, Base, X Layer）
-	return utils.IsValidEvmAddress(wa.Address)
+	return nil
 }
 
 func (wa *Wallet) SetOtherNotify(notify uint8) {
@@ -92,14 +128,32 @@ func (wa *Wallet) GetNetwork() Network {
 	return ""
 }
 
-func GetAvailableAddress(t TradeType) []string {
-	var rows []Wallet
-	Db.Where("trade_type = ? and status = ?", t, WaStatusEnable).Find(&rows)
+func (wa *Wallet) GetPaymentAddr() string {
+	if wa.TradeType == string(UsdtTon) {
 
-	wallets := make([]string, 0, len(rows))
-	for _, w := range rows {
-		wallets = append(wallets, w.MatchAddr)
+		return wa.Address
 	}
 
+	return wa.MatchAddr
+}
+
+func (wa *Wallet) GetMatchAddr() string {
+	return wa.MatchAddr
+}
+
+func GetAvailableWallets(t TradeType) []Wallet {
+	var wallets = make([]Wallet, 0)
+
+	Db.Where("trade_type = ? and status = ?", t, WaStatusEnable).Find(&wallets)
+
 	return wallets
+}
+
+func NewWallet(address string, tradeType TradeType) (Wallet, error) {
+	wa := Wallet{Address: address, TradeType: string(tradeType)}
+	if err := wa.Validate(); err != nil {
+		return Wallet{}, err
+	}
+
+	return wa, nil
 }

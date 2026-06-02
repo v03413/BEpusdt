@@ -24,6 +24,7 @@ const (
 	BscBnb      TradeType = "bsc.bnb"
 	EthereumEth TradeType = "ethereum.eth"
 	TronTrx     TradeType = "tron.trx"
+	TonTon      TradeType = "ton.toncoin"
 
 	UsdtTrc20    TradeType = "usdt.trc20"
 	UsdcTrc20    TradeType = "usdc.trc20"
@@ -43,6 +44,7 @@ const (
 	UsdtAptos    TradeType = "usdt.aptos"
 	UsdcAptos    TradeType = "usdc.aptos"
 	UsdtPlasma   TradeType = "usdt.plasma"
+	UsdtTon      TradeType = "usdt.ton"
 )
 
 const (
@@ -64,6 +66,7 @@ type Order struct {
 	Money         string     `gorm:"column:money;type:varchar(32);not null;default:0.00;comment:交易金额" json:"money"`
 	Address       string     `gorm:"column:address;type:varchar(128);index;not null;comment:收款地址" json:"address"`
 	FromAddress   string     `gorm:"column:from_address;type:varchar(128);not null;default:'';comment:支付地址" json:"from_address"`
+	MatchAddress  string     `gorm:"column:match_address;type:varchar(128);not null;default:'';comment:校验地址" json:"match_address"`
 	AddressLocked bool       `gorm:"column:address_locked;not null;default:false;comment:地址锁定 1:独占 0:共享" json:"address_locked"`
 	Status        int        `gorm:"column:status;not null;default:1;index;index:idx_order_notify_retry,priority:1;comment:交易状态" json:"status"`
 	Name          string     `gorm:"column:name;type:varchar(64);not null;default:'';comment:商品名称" json:"name"`
@@ -193,9 +196,9 @@ func GetNotifyFailedTradeOrders() ([]Order, error) {
 }
 
 // CalcTradeAmount 计算当前实际可用的交易金额
-func CalcTradeAmount(address []string, rate decimal.Decimal, p OrderParams) (string, string, error) {
+func CalcTradeAmount(wallets []Wallet, rate decimal.Decimal, p OrderParams) (Wallet, string, error) {
 	if p.AddressLocked {
-		return LockTradeAddress(address, p.TradeType)
+		return LockTradeAddress(wallets, p.TradeType)
 	}
 
 	var orders []Order
@@ -208,7 +211,7 @@ func CalcTradeAmount(address []string, rate decimal.Decimal, p OrderParams) (str
 
 	atom, precision := GetAtomicity(p.TradeType)
 	if rate.LessThanOrEqual(decimal.Zero) || precision <= 0 {
-		return "", "", errors.New(fmt.Sprintf("[%v - %v]原子颗粒度计算异常，联系管理员处理！", atom, precision))
+		return Wallet{}, "", errors.New(fmt.Sprintf("[%v - %v]原子颗粒度计算异常，联系管理员处理！", atom, precision))
 	}
 
 	amount := p.Money.DivRound(rate, precision)
@@ -219,36 +222,36 @@ func CalcTradeAmount(address []string, rate decimal.Decimal, p OrderParams) (str
 	var i = 0
 	var m = 100
 	for {
-		for _, addr := range address {
-			k := addr + amount.String()
+		for _, w := range wallets {
+			k := w.GetMatchAddr() + amount.String()
 			if _, ok := lock[k]; ok {
 				continue
 			}
 
-			return addr, amount.String(), nil
+			return w, amount.String(), nil
 		}
 
 		// 已经被占用，每次递增一个原子精度
 		amount = amount.Add(atom)
 		if i++; i > m {
-			return "", "", errors.New("计算交易金额异常，联系管理员处理！")
+			return Wallet{}, "", errors.New("计算交易金额异常，联系管理员处理！")
 		}
 	}
 }
 
 // LockTradeAddress 检测交易地址，独占使用
-func LockTradeAddress(address []string, t TradeType) (string, string, error) {
+func LockTradeAddress(wallets []Wallet, t TradeType) (Wallet, string, error) {
 	zero := decimal.Zero.String()
 	status := []int{OrderStatusConfirming, OrderStatusWaiting}
-	for _, addr := range address {
+	for _, w := range wallets {
 		var o Order
-		Db.Where("address = ? and status in (?) and trade_type = ? and address_locked = ?", addr, status, t, true).Order("id desc").Limit(1).Find(&o)
+		Db.Where("match_addr = ? and status in (?) and trade_type = ? and address_locked = ?", w.GetMatchAddr(), status, t, true).Order("id desc").Limit(1).Find(&o)
 		if o.ID == 0 {
-			return addr, zero, nil
+			return w, zero, nil
 		}
 	}
 
-	return "", zero, errors.New("暂无可用钱包地址")
+	return Wallet{}, zero, errors.New("暂无可用钱包地址")
 }
 
 // CalcTradeExpiredAt 计算订单过期时间 最小180，最大3600，默认1200

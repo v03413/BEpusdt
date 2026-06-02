@@ -28,11 +28,16 @@ type OrderParams struct {
 	AddressLocked bool            `json:"address_locked"` // 地址独占锁定
 }
 
+type Addr struct {
+	Address   string // 对外前端收款地址
+	MatchAddr string // 对内订单校验地址
+}
+
 type Trade struct {
-	Crypto  Crypto
-	Rate    decimal.Decimal
-	Address string
-	Amount  string
+	Wallet Wallet
+	Crypto Crypto
+	Rate   decimal.Decimal
+	Amount string
 }
 
 var buildMutex sync.Mutex
@@ -85,7 +90,7 @@ func StartBuildOrder(p OrderParams) (Order, error) {
 	return BuildOrder(p, data)
 }
 
-func BuildOrder(p OrderParams, data Trade) (Order, error) {
+func BuildOrder(p OrderParams, trade Trade) (Order, error) {
 	tradeId, err := utils.GenerateTradeId()
 	if err != nil {
 		return Order{}, err
@@ -97,10 +102,11 @@ func BuildOrder(p OrderParams, data Trade) (Order, error) {
 		TradeId:       tradeId,
 		RefHash:       tradeId,
 		TradeType:     p.TradeType,
-		Rate:          fmt.Sprintf("%v", data.Rate),
-		Amount:        data.Amount,
+		Rate:          fmt.Sprintf("%v", trade.Rate),
+		Amount:        trade.Amount,
 		Money:         p.Money.String(),
-		Address:       data.Address,
+		Address:       trade.Wallet.GetPaymentAddr(),
+		MatchAddress:  trade.Wallet.GetMatchAddr(),
 		AddressLocked: p.Money.IsZero(), // 零值订单，地址锁定 独占
 		Status:        OrderStatusWaiting,
 		Name:          p.Name,
@@ -111,7 +117,7 @@ func BuildOrder(p OrderParams, data Trade) (Order, error) {
 		NotifyState:   OrderNotifyStateFail,
 		ExpiredAt:     CalcTradeExpiredAt(p.Timeout),
 		Fiat:          p.Fiat,
-		Crypto:        data.Crypto,
+		Crypto:        trade.Crypto,
 		CurrencyLimit: p.CurrencyLimit,
 		ConfirmedAt:   &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
 	}
@@ -143,30 +149,32 @@ func BuildTrade(p OrderParams) (Trade, error) {
 		return Trade{}, fmt.Errorf("%s %s 汇率异常", crypto, p.Fiat)
 	}
 
-	var wallet = GetAvailableAddress(p.TradeType)
-	if p.Address != "" {
-		wallet = []string{p.Address}
-		if !AddrCaseSens(p.TradeType) { // 交易类型不区分大小写，统一转小写；这个地址最后的交易匹配要用到，千万不能错
-			wallet = []string{strings.ToLower(p.Address)}
+	var wallets = GetAvailableWallets(p.TradeType)
+	if p.Address != "" { // 指定地址
+		w, err := NewWallet(p.Address, p.TradeType)
+		if err != nil {
+			return Trade{}, err
 		}
+
+		wallets = []Wallet{w}
 	}
 
-	if len(wallet) == 0 {
+	if len(wallets) == 0 {
 		return Trade{}, fmt.Errorf("%s 未检测到可用钱包地址", p.TradeType)
 	}
 
 	// 计算交易金额
-	address, amount, err := CalcTradeAmount(wallet, rate, p)
+	wallet, amount, err := CalcTradeAmount(wallets, rate, p)
 	if err != nil {
 
 		return Trade{}, err
 	}
 
 	return Trade{
-		Crypto:  crypto,
-		Rate:    rate,
-		Address: address,
-		Amount:  amount,
+		Crypto: crypto,
+		Rate:   rate,
+		Wallet: wallet,
+		Amount: amount,
 	}, nil
 }
 
@@ -181,7 +189,8 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	}
 
 	t.Fiat = p.Fiat
-	t.Address = data.Address
+	t.Address = data.Wallet.GetPaymentAddr()
+	t.MatchAddress = data.Wallet.GetMatchAddr()
 	t.Crypto = data.Crypto
 	t.Amount = data.Amount
 	t.Money = p.Money.String()
@@ -222,9 +231,9 @@ func BuildPendingOrder(p OrderParams) (Order, error) {
 	}
 
 	return BuildOrder(p, Trade{
-		Crypto:  crypto,
-		Rate:    decimal.Zero,
-		Amount:  "0",
-		Address: "",
+		Crypto: crypto,
+		Rate:   decimal.Zero,
+		Amount: "0",
+		Wallet: Wallet{},
 	})
 }

@@ -24,10 +24,23 @@ var supportCrypto = map[Crypto]CoinId{
 	TRX:  "tron",
 	BNB:  "binancecoin",
 	ETH:  "ethereum",
+	TON:  "the-open-network",
 }
 
 // TradeType 交易类型，当下类型开始增多，现在这里统一管理、尽量收缩配置项
 var registry = map[TradeType]TradeTypeConf{
+	UsdtTon: {
+		Alias:        "USDT・Ton",
+		NetworkName:  "Ton",
+		Network:      conf.Ton,
+		Crypto:       USDT,
+		Contract:     conf.UsdtTon,
+		Decimal:      conf.UsdtTonDecimals,
+		AmountRange:  usdGeneralRange,
+		ExplorerFmt:  "https://tonscan.org/tx/%s#overview",
+		EndpointKey:  RpcGlobalConfigUrlTon,
+		AddrCaseSens: true,
+	},
 	UsdtPlasma: {
 		Alias:       "USDT・Plasma",
 		NetworkName: "Plasma",
@@ -272,6 +285,21 @@ var registry = map[TradeType]TradeTypeConf{
 		},
 		ExplorerFmt: "https://bscscan.com/tx/%s",
 		EndpointKey: RpcEndpointBsc,
+	},
+	TonTon: {
+		Alias:       "Ton・Ton",
+		NetworkName: "Ton",
+		Network:     conf.Ton,
+		Crypto:      TON,
+		Native:      true,
+		Decimal:     conf.TonTonDecimals,
+		AmountRange: Range{
+			MinAmount: decimal.NewFromFloat(0.00001),
+			MaxAmount: decimal.NewFromFloat(1000000),
+		},
+		ExplorerFmt:  "https://tonscan.org/tx/%s#overview",
+		EndpointKey:  RpcGlobalConfigUrlTon,
+		AddrCaseSens: true,
 	},
 }
 

@@ -507,7 +507,7 @@ func GetPaymentItem(crypto model.Crypto, order model.Order) []PaymentItem {
 		}
 
 		// 检查是否有可用钱包
-		count := len(model.GetAvailableAddress(model.TradeType(tradeTypeStr)))
+		count := len(model.GetAvailableWallets(model.TradeType(tradeTypeStr)))
 		if count == 0 {
 			continue
 		}

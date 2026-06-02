@@ -231,18 +231,18 @@ func markFinalConfirmed(o model.Order) {
 }
 
 func getAllWaitingOrders() map[string][]model.Order {
-	var tradeOrders = model.GetOrderByStatus(model.OrderStatusWaiting)
+	var orders = model.GetOrderByStatus(model.OrderStatusWaiting)
 	var data = make(map[string][]model.Order)
-	for _, t := range tradeOrders {
-		if time.Now().Unix() >= t.ExpiredAt.Unix() { // 订单过期
-			t.SetExpired()
-			notify.Bepusdt(t)
+	for _, itm := range orders {
+		if time.Now().Unix() >= itm.ExpiredAt.Unix() { // 订单过期
+			itm.SetExpired()
+			notify.Bepusdt(itm)
 
 			continue
 		}
 
-		key := t.Address + string(t.TradeType)
-		data[key] = append(data[key], t)
+		key := itm.MatchAddress + string(itm.TradeType)
+		data[key] = append(data[key], itm)
 	}
 
 	return data
