@@ -224,7 +224,7 @@ func (t *ton) syncBreak() bool {
 	}
 
 	var count int64 = 0
-	trade := []model.TradeType{model.UsdtTon, model.TonTon}
+	trade := []model.TradeType{model.UsdtTon, model.TonGram}
 	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
 	if count > 0 {
 
@@ -356,13 +356,13 @@ func (t *ton) parseTonTransfer(tx *tlb.Transaction, blockNum uint32) (transfer, 
 		RecvAddress: msg.DstAddr.Bounce(false).String(),
 		Timestamp:   time.Unix(int64(tx.Now), 0),
 		Amount:      decimal.NewFromBigInt(msg.Amount.Nano(), conf.TonTonDecimals),
-		TradeType:   model.TonTon,
+		TradeType:   model.TonGram,
 		BlockNum:    int(blockNum),
 	}, true
 }
 
 func (t *ton) tradeConfirmHandle(context.Context) {
-	var orders = getConfirmingOrders([]model.TradeType{model.UsdtTon, model.TonTon})
+	var orders = getConfirmingOrders([]model.TradeType{model.UsdtTon, model.TonGram})
 	var wg sync.WaitGroup
 
 	for _, order := range orders {

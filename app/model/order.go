@@ -24,7 +24,7 @@ const (
 	BscBnb      TradeType = "bsc.bnb"
 	EthereumEth TradeType = "ethereum.eth"
 	TronTrx     TradeType = "tron.trx"
-	TonTon      TradeType = "ton.toncoin"
+	TonGram     TradeType = "ton.gram"
 
 	UsdtTrc20    TradeType = "usdt.trc20"
 	UsdcTrc20    TradeType = "usdc.trc20"

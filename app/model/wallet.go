@@ -68,7 +68,7 @@ func (wa *Wallet) Validate() error {
 		}
 		wa.MatchAddr = addr.Bounce(false).String()
 		return nil
-	case TonTon:
+	case TonGram:
 		if !strings.HasPrefix(wa.Address, "UQ") {
 			return errors.New("TON 地址必须以 UQ 开头")
 		}
