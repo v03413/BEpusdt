@@ -15,6 +15,6 @@
 | Arbitrum-One | `usdt.arbitrum` | `usdc.arbitrum` |                |
 |     Base     |                 |   `usdc.base`   |                |
 |    Plasma    |  `usdt.plasma`  |                 |                |
-|     Ton      |   `usdt.ton`    |                 | `ton.toncoin`  |
+|     Ton      |   `usdt.ton`    |                 |   `ton.gram`   |
 
 ---
