@@ -98,21 +98,18 @@ func orderTransferHandle(ctx context.Context) {
 
 				var matched bool
 				for i, o := range orderList {
-					// 金额匹配
-					if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
+					if !orderTransferMatch(o, t) {
 						continue
 					}
 
-					// 有效期检测
-					if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
+					// 订单匹配 进入确认流程
+					if err := o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
+						log.Task.Warn("mark order confirming failed:", err)
 						continue
 					}
 
 					// 从内存 map 中移除已匹配订单，防止同批次其他 transfer 重复匹配
 					orders[key] = append(orderList[:i], orderList[i+1:]...)
-
-					// 订单匹配 进入确认流程
-					o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount)
 					matched = true
 					break
 				}
@@ -129,6 +126,20 @@ func orderTransferHandle(ctx context.Context) {
 			batch = batch[:0]
 		}
 	}
+}
+
+func orderTransferMatch(o model.Order, t transfer) bool {
+	if o.TradeType != t.TradeType || o.Address != t.RecvAddress {
+		return false
+	}
+	if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
+		return false
+	}
+	if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
+		return false
+	}
+
+	return true
 }
 
 func notOrderTransferHandle(ctx context.Context) {
@@ -260,10 +271,12 @@ func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
 
 	for _, order := range orders {
 		if time.Now().Unix() >= order.ExpiredAt.Unix() {
-			order.SetFailed()
-			notify.Bepusdt(order)
+			if order.ConfirmedAt == nil || order.ConfirmedAt.IsZero() || !order.ConfirmedAt.Before(order.ExpiredAt) {
+				order.SetFailed()
+				notify.Bepusdt(order)
 
-			continue
+				continue
+			}
 		}
 
 		data = append(data, order)

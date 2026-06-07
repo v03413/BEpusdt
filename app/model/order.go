@@ -103,7 +103,7 @@ func (o *Order) SetFailed() {
 	Db.Save(o)
 }
 
-func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time, amount decimal.Decimal) {
+func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time, amount decimal.Decimal) error {
 	o.FromAddress = from
 	o.ConfirmedAt = &at
 	o.RefHash = hash
@@ -115,7 +115,7 @@ func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time, am
 		o.Money = rate.Mul(amount).String()
 	}
 
-	Db.Save(o)
+	return Db.Save(o).Error
 }
 
 func (o *Order) SetNotifyState(state int) error {
