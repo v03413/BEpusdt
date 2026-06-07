@@ -305,7 +305,7 @@ func (e *evm) getBlockByNumber(a any) {
 		return
 	}
 
-	conf.RecordSuccess(e.Network)
+	conf.RecordSuccess(e.Network, cast.ToString(b.To))
 
 	nativeTransfers := make([]transfer, 0)
 	blockTimestamp := make(map[string]time.Time)

@@ -61,15 +61,10 @@ func (Wallet) Add(ctx *gin.Context) {
 		OtherNotify: req.OtherNotify,
 	}
 
-	if !wallet.IsValid() {
-		base.BadRequest(ctx, "钱包地址格式不合法，请检查")
+	if err := wallet.Validate(); err != nil {
+		base.BadRequest(ctx, err.Error())
 
 		return
-	}
-
-	// 非大小写敏感的地址，统一转为小写存储
-	if !model.AddrCaseSens(model.TradeType(wallet.TradeType)) {
-		wallet.MatchAddr = strings.ToLower(wallet.MatchAddr)
 	}
 
 	if err := model.Db.Create(&wallet).Error; err != nil {
@@ -158,15 +153,10 @@ func (Wallet) Mod(ctx *gin.Context) {
 		w.OtherNotify = *req.OtherNotify
 	}
 
-	if !w.IsValid() {
-		base.BadRequest(ctx, "钱包地址格式不合法，请检查")
+	if err := w.Validate(); err != nil {
+		base.BadRequest(ctx, err.Error())
 
 		return
-	}
-
-	// 非大小写敏感的地址，统一转为小写存储
-	if !model.AddrCaseSens(model.TradeType(w.TradeType)) {
-		w.MatchAddr = strings.ToLower(w.Address)
 	}
 
 	if err := model.Db.Save(&w).Error; err != nil {

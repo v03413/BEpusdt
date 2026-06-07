@@ -9,6 +9,7 @@ func adminInit(e *gin.Engine) {
 	var confRtr = e.Group("/api/conf")
 	var confHdr = new(admin.Conf)
 	{
+		GetRegister(confRtr, "/rpc", true, confHdr.Rpc)
 		PostRegister(confRtr, "/set", true, confHdr.Set)
 		PostRegister(confRtr, "/get", true, confHdr.Get)
 		PostRegister(confRtr, "/del", true, confHdr.Del)

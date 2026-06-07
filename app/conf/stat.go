@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 const maxRecords = 1000
@@ -15,8 +16,15 @@ type stat struct {
 	succ    int // 成功记录数
 }
 
+type info struct {
+	Block string `json:"block"`
+	Succ  string `json:"succ"`
+	Time  int64  `json:"time"`
+}
+
 var (
 	data sync.Map // map[string]*stat
+	last sync.Map
 )
 
 func getStat(net string) *stat {
@@ -26,7 +34,8 @@ func getStat(net string) *stat {
 	return val.(*stat)
 }
 
-func RecordSuccess(net string) {
+func RecordSuccess(net, block string) {
+	last.Store(net, info{Block: block, Succ: GetSuccessRate(net), Time: time.Now().Unix()})
 	s := getStat(net)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -58,6 +67,17 @@ func RecordFailure(net string) {
 	if s.total < maxRecords {
 		s.total++
 	}
+}
+
+func GetStats() map[string]info {
+	var m = make(map[string]info)
+	last.Range(func(k, v interface{}) bool {
+		m[k.(string)] = v.(info)
+
+		return true
+	})
+
+	return m
 }
 
 func GetSuccessRate(net string) string {

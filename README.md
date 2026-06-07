@@ -64,7 +64,7 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 
 - 安装：[Docker](docs/docker/docker.md) [Linux](docs/linux/install.md) [1Panel](./docs/1panel/README.md) [宝塔](./docs/bt_panel/README.md)
 - 开发：[API对接](docs/api/api.md) [订单回调](docs/notify/readme.md) [Python](https://github.com/luoyanglang/bepusdt-python-sdk) [PHP](https://github.com/v03413/bepusdt-php-sdk)
-- 对接：[独角Next](docs/api/dujiao-next/dujiao-next.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [whmcs](https://github.com/v03413/whmcs-gateway-epusdt) [EdgeKey](docs/api/edge-key/edge-key.md) [其它](docs/api/other.md)
+- 对接：[独角Next](docs/api/dujiao-next/dujiao-next.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [whmcs](https://github.com/v03413/whmcs-gateway-epusdt) [其它](docs/api/other.md)
 - 其它：[https 配置](./docs/ssl.md) [时钟同步](docs/linux/systemd-timesyncd.md) [收银台修改](docs/payment-template/README.md)
 
 ## 🖼 功能截图
@@ -79,8 +79,7 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 - [服务器流量消耗说明解释](./docs/faq/bandwidth.md)
 - [后台入口账密忘记重置教程](./docs/faq/login-reset.md)
 - [Telegram 通知 Chat ID 获取教程](docs/faq/telegram-chat-id.md)
-- [推荐配置提高 Tron 扫块稳定性‼️](./docs/tron-grid/readme.md)
-- [EVM RPC 节点稳定性说明指南‼️](./docs/faq/evm-rpc-endpoint.md)
+- [区块 RPC 节点稳定性说明指南‼️](./docs/faq/rpc-endpoint.md)
 
 ## ⚠️ 重要提示
 

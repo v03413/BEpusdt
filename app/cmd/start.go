@@ -83,6 +83,7 @@ func start(ctx context.Context, cmd *cli.Command) error {
 
 	notifier.Welcome()
 
+	fmt.Println(fmt.Sprintf("日志保存路径：%s", log.GetPath()))
 	fmt.Println(fmt.Sprintf("BEpusdt 启动成功(%s)，当前版本：%s", listen, app.Version))
 
 	// 等待中断信号

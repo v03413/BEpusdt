@@ -8,6 +8,7 @@ const (
 const Debug = false
 
 const (
+	Ton      = "ton" // The Open Network
 	Bsc      = "bsc" // Binance Smart Chain
 	Tron     = "tron"
 	Aptos    = "aptos"
@@ -21,6 +22,7 @@ const (
 )
 
 const (
+	UsdtTon      = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
 	UsdtErc20    = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 	UsdtBep20    = "0x55d398326f99059ff775485246999027b3197955"
 	UsdtXlayer   = "0x779ded0c9e1022225f8e0630b35a9b54be713736"
@@ -50,6 +52,7 @@ const (
 	UsdtArbitrumDecimals = -6  // USDT Arbitrum小数位数
 	UsdtAptosDecimals    = -6  // USDT Aptos小数位数
 	UsdtSolanaDecimals   = -6  // USDT Solana小数位数
+	UsdtTonDecimals      = -6  // USDT Ton小数位数
 
 	UsdcEthDecimals      = -6  // USDC ERC20小数位数
 	UsdcPolygonDecimals  = -6  // USDC Polygon小数位数
@@ -61,6 +64,7 @@ const (
 	UsdcAptosDecimals    = -6  // USDC Aptos小数位数
 	UsdcSolanaDecimals   = -6  // USDC Solana小数位数
 
+	TonTonDecimals      = -9  // TON Ton小数位数
 	BscBnbDecimals      = -18 // BSC BNB 小数位数
 	EthereumEthDecimals = -18 // Ethereum ETH 小数位数
 )

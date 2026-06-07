@@ -14,6 +14,7 @@ var (
 	Task    *logrus.Logger
 	be      *logrus.Logger
 	loggers []*lumberjack.Logger
+	logPath string
 )
 
 func newLogger(file string) (*logrus.Logger, error) {
@@ -42,7 +43,6 @@ func newLogger(file string) (*logrus.Logger, error) {
 
 func Init(dir string) error {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-
 		return fmt.Errorf("创建日志目录失败：%w", err)
 	}
 
@@ -57,6 +57,8 @@ func Init(dir string) error {
 	if err != nil {
 		return err
 	}
+
+	logPath = dir
 
 	return nil
 }
@@ -80,6 +82,10 @@ func Warn(args ...interface{}) {
 func GetWriter() *io.PipeWriter {
 
 	return be.Writer()
+}
+
+func GetPath() string {
+	return logPath
 }
 
 func Close() {

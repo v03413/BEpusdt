@@ -135,7 +135,7 @@ func orderTransferHandle(ctx context.Context) {
 }
 
 func orderTransferMatch(o model.Order, t transfer) bool {
-	if o.TradeType != t.TradeType || o.Address != t.RecvAddress {
+	if o.TradeType != t.TradeType || orderMatchAddress(o) != t.RecvAddress {
 		return false
 	}
 	if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
@@ -146,6 +146,14 @@ func orderTransferMatch(o model.Order, t transfer) bool {
 	}
 
 	return true
+}
+
+func orderMatchAddress(o model.Order) string {
+	if o.MatchAddress != "" {
+		return o.MatchAddress
+	}
+
+	return o.Address
 }
 
 func notOrderTransferHandle(ctx context.Context) {
@@ -300,7 +308,7 @@ func getReceivableOrders() map[string][]model.Order {
 	var tradeOrders = getRecoverableOrders(nil)
 	var data = make(map[string][]model.Order)
 	for _, t := range tradeOrders {
-		key := t.Address + string(t.TradeType)
+		key := orderMatchAddress(t) + string(t.TradeType)
 		data[key] = append(data[key], t)
 	}
 

@@ -224,7 +224,7 @@ func (t *tron) blockParse(n any) {
 		return
 	}
 
-	conf.RecordSuccess(conf.Tron)
+	conf.RecordSuccess(conf.Tron, cast.ToString(num))
 	t.resetBlockRetry(num)
 
 	var resources = make([]resource, 0)
@@ -378,7 +378,6 @@ func (t *tron) blockParse(n any) {
 	if len(transfers) > 0 {
 		transferQueue.In <- transfers
 	}
-
 	if len(resources) > 0 {
 		resourceQueue.In <- resources
 	}

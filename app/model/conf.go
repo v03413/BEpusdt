@@ -23,6 +23,7 @@ var defaultConf = map[ConfKey]string{
 	AtomTRX:                 "0.01",
 	AtomBNB:                 "0.00001",
 	AtomETH:                 "0.000001",
+	AtomGRAM:                "0.01",
 	MonitorMinAmount:        "0.01",
 	PaymentMinAmount:        "0.01",
 	PaymentMaxAmount:        "99999",
@@ -36,6 +37,7 @@ var defaultConf = map[ConfKey]string{
 	RpcEndpointBase:         "https://base-public.nodies.app/",
 	RpcEndpointAptos:        "https://aptos-rest.publicnode.com/",
 	RpcEndpointPlasma:       "https://rpc.plasma.to/",
+	RpcGlobalConfigUrlTon:   "https://ton.org/global-config.json",
 	NotifyMaxRetry:          "10",
 	BlockHeightMaxDiff:      "1000",
 	BlockOffsetConfirm:      "0",
@@ -45,6 +47,7 @@ var defaultConf = map[ConfKey]string{
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
 	MqttTopicPrefix:         "bepusdt",
+	HomeRedirectUrl:         "",
 }
 
 type Conf struct {

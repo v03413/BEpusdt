@@ -302,7 +302,7 @@ func (Auth) Menu(ctx *gin.Context) {
 				Disable:   false,
 				KeepAlive: true,
 				Affix:     false,
-				Link:      "https://github.com/v03413/BEpusdt/blob/main/docs/api/api.md",
+				Link:      "",
 				Iframe:    false,
 				IsFull:    false,
 				Roles:     []string{"admin"},

@@ -14,6 +14,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
+	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
@@ -248,7 +249,7 @@ func (a *aptos) versionParse(n any) {
 	var net = conf.Aptos
 	var url = fmt.Sprintf("%sv1/transactions?start=%d&limit=%d", model.Endpoint(conf.Aptos), p.Start, p.Limit)
 
-	conf.RecordSuccess(net)
+	conf.RecordSuccess(net, cast.ToString(p.Start+p.Limit))
 	resp, err := a.client.Get(url)
 	if err != nil {
 		conf.RecordFailure(net)
