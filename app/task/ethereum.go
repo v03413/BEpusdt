@@ -29,4 +29,5 @@ func ethInit() {
 	Register(Task{Callback: eth.blockDispatch})
 	Register(Task{Callback: eth.syncBlocksForward, Duration: time.Second * 12})
 	Register(Task{Callback: eth.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: eth.reconcileRecoverableOrders, Duration: time.Second * 20})
 }

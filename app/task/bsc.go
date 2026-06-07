@@ -29,4 +29,5 @@ func bscInit() {
 	Register(Task{Callback: bsc.blockDispatch})
 	Register(Task{Callback: bsc.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: bsc.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: bsc.reconcileRecoverableOrders, Duration: time.Second * 15})
 }

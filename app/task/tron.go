@@ -40,6 +40,8 @@ type tron struct {
 	retryMu              sync.Mutex
 	retryAttempts        map[int]int
 	retryScheduled       map[int]*time.Timer
+	reconcileCursor      int
+	reconcileEnd         int
 }
 
 var tr tron
@@ -49,6 +51,7 @@ func init() {
 	Register(Task{Duration: time.Second, Callback: tr.blockDispatch})
 	Register(Task{Duration: time.Second * 3, Callback: tr.syncBlocksForward})
 	Register(Task{Duration: time.Second * 5, Callback: tr.tradeConfirmHandle})
+	Register(Task{Duration: time.Second * 15, Callback: tr.reconcileRecoverableOrders})
 }
 
 func newTron() tron {
@@ -111,10 +114,8 @@ func (t *tron) syncBlocksForward(context.Context) {
 
 // syncBlocksBackward 反向同步区块，针对程序启动前就已经存在待支付订单时，补齐之前的区块数据，自适应偏移数量
 func (t *tron) syncBlocksBackward(now int) {
-	var o model.Order
-	trade := model.GetNetworkTrades(conf.Tron)
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
-	if o.ID == 0 {
+	o, ok := getOldestRecoverableOrder(conf.Tron)
+	if !ok {
 
 		return
 	}
@@ -141,6 +142,37 @@ func (t *tron) syncBlocksBackward(now int) {
 			<-ticker.C
 		}
 	}()
+}
+
+func (t *tron) reconcileRecoverableOrders(context.Context) {
+	if t.syncBreak() {
+		return
+	}
+
+	if t.lastBlockNum <= 0 {
+		return
+	}
+
+	if t.reconcileCursor <= 0 || t.reconcileCursor > t.reconcileEnd {
+		o, ok := getOldestRecoverableOrder(conf.Tron)
+		if !ok {
+			t.reconcileCursor = 0
+			t.reconcileEnd = 0
+			return
+		}
+
+		num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) / 3
+		t.reconcileCursor = t.lastBlockNum - int(num) - 5
+		if t.reconcileCursor < 1 {
+			t.reconcileCursor = 1
+		}
+		t.reconcileEnd = t.lastBlockNum
+	}
+
+	for i := 0; i < 10 && t.reconcileCursor <= t.reconcileEnd; i++ {
+		t.blockScanQueue.In <- t.reconcileCursor
+		t.reconcileCursor++
+	}
 }
 
 func (t *tron) blockDispatch(ctx context.Context) {
@@ -492,14 +524,13 @@ func (t *tron) syncBreak() bool {
 		return false
 	}
 
-	var count int64 = 0
 	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
-	if count > 0 {
+	if hasRecoverableOrders(trade) {
 
 		return false
 	}
 
+	var count int64 = 0
 	model.Db.Model(&model.Wallet{}).Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, trade).Count(&count)
 	if count > 0 {
 

@@ -28,6 +28,8 @@ type aptos struct {
 	versionQueue           *chanx.UnboundedChan[version]
 	client                 *http.Client
 	earliestBlockTs        atomic.Int64
+	reconcileCursor        int
+	reconcileStart         int64
 }
 
 type version struct {
@@ -54,6 +56,7 @@ func init() {
 	Register(Task{Callback: apt.versionDispatch})
 	Register(Task{Callback: apt.syncVersionForward, Duration: time.Second * 3})
 	Register(Task{Callback: apt.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: apt.reconcileRecoverableOrders, Duration: time.Second * 15})
 }
 
 func newAptos() aptos {
@@ -134,11 +137,8 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 }
 
 func (a *aptos) syncVersionBackward(ctx context.Context, now int) {
-	var o model.Order
-	trade := model.GetNetworkTrades(conf.Aptos)
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)",
-		model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
-	if o.ID == 0 {
+	o, ok := getOldestRecoverableOrder(conf.Aptos)
+	if !ok {
 		return
 	}
 
@@ -170,6 +170,47 @@ func (a *aptos) syncVersionBackward(ctx context.Context, now int) {
 			}
 		}
 	}()
+}
+
+func (a *aptos) reconcileRecoverableOrders(ctx context.Context) {
+	if syncBreak(conf.Aptos, a.versionQueue.Len()) {
+		return
+	}
+
+	if a.lastVersion <= 0 {
+		return
+	}
+
+	if a.reconcileCursor <= 0 || (a.reconcileStart > 0 && a.earliestBlockTs.Load() < a.reconcileStart) {
+		o, ok := getOldestRecoverableOrder(conf.Aptos)
+		if !ok {
+			a.reconcileCursor = 0
+			a.reconcileStart = 0
+			return
+		}
+
+		a.reconcileCursor = a.lastVersion - a.versionChunkSize
+		if a.reconcileCursor < 0 {
+			a.reconcileCursor = 0
+		}
+		a.reconcileStart = o.CreatedAt.Time().Unix()
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	a.versionQueue.In <- version{
+		Start: a.reconcileCursor,
+		Limit: a.versionChunkSize,
+	}
+
+	a.reconcileCursor -= a.versionChunkSize
+	if a.reconcileCursor < 0 {
+		a.reconcileCursor = 0
+	}
 }
 
 func (a *aptos) versionDispatch(ctx context.Context) {

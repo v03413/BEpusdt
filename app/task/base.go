@@ -23,4 +23,5 @@ func baseInit() {
 	Register(Task{Callback: base.blockDispatch})
 	Register(Task{Callback: base.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: base.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: base.reconcileRecoverableOrders, Duration: time.Second * 15})
 }

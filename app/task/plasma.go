@@ -23,4 +23,5 @@ func plasmaInit() {
 	Register(Task{Callback: xpl.blockDispatch})
 	Register(Task{Callback: xpl.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: xpl.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: xpl.reconcileRecoverableOrders, Duration: time.Second * 15})
 }

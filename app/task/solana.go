@@ -125,10 +125,8 @@ func (s *solana) syncSlotBackward(now int) {
 		return
 	}
 
-	var o model.Order
-	trade := model.GetNetworkTrades(conf.Solana)
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
-	if o.ID == 0 {
+	o, ok := getOldestRecoverableOrder(conf.Solana)
+	if !ok {
 
 		return
 	}
@@ -422,17 +420,12 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 }
 
 func (s *solana) reconcileWaitingOrders(ctx context.Context) {
-	var orders []model.Order
 	trades := model.GetNetworkTrades(conf.Solana)
 	if len(trades) == 0 {
 		return
 	}
 
-	status := []int{model.OrderStatusWaiting, model.OrderStatusExpired, model.OrderStatusFailed}
-	model.Db.Where("status in (?) and trade_type in (?)", status, trades).
-		Where("expired_at > ?", time.Now().Add(-24*time.Hour)).
-		Find(&orders)
-
+	orders := getRecoverableOrders(trades)
 	if len(orders) == 0 {
 		return
 	}
