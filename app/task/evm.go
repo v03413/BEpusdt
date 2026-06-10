@@ -42,12 +42,13 @@ type evmNative struct {
 }
 
 type evm struct {
-	Network        string
-	Block          block
-	Native         evmNative
-	Client         *http.Client
-	AvgBlockTime   int64 // 平均出块时间，单位秒；一个大概值，用于计算首次启动时需要回溯的区块数量，尽量准确设置，默认1秒一个区块
-	blockScanQueue *chanx.UnboundedChan[evmBlock]
+	Network         string
+	Block           block
+	Native          evmNative
+	Client          *http.Client
+	AvgBlockTime    int64 // 平均出块时间，单位秒；一个大概值，用于计算首次启动时需要回溯的区块数量，尽量准确设置，默认1秒一个区块
+	blockScanQueue  *chanx.UnboundedChan[evmBlock]
+	reconcileCursor int64
 }
 
 type evmBlock struct {
@@ -133,10 +134,8 @@ func (e *evm) syncBlocksBackward(now int64) {
 		e.AvgBlockTime = 1
 	}
 
-	var o model.Order
-	trade := model.GetNetworkTrades(model.Network(e.Network))
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
-	if o.ID == 0 {
+	o, ok := getOldestRecoverableOrder(model.Network(e.Network))
+	if !ok {
 
 		return
 	}
@@ -164,6 +163,78 @@ func (e *evm) syncBlocksBackward(now int64) {
 			<-ticker.C
 		}
 	}()
+}
+
+func (e *evm) reconcileRecoverableOrders(ctx context.Context) {
+	if syncBreak(e.Network, e.blockScanQueue.Len()) {
+		return
+	}
+
+	now, err := e.latestBlockNumber(ctx)
+	if err != nil {
+		log.Task.Warn(fmt.Sprintf("%s reconcile latest block Error: %v", e.Network, err))
+		return
+	}
+	if now <= 0 {
+		return
+	}
+
+	if e.reconcileCursor <= 0 {
+		o, ok := getOldestRecoverableOrder(model.Network(e.Network))
+		if !ok {
+			return
+		}
+		avgBlockTime := e.AvgBlockTime
+		if avgBlockTime <= 0 {
+			avgBlockTime = 1
+		}
+
+		sub := ((time.Now().Unix() - o.CreatedAt.Time().Unix()) / avgBlockTime) + 30
+		e.reconcileCursor = now - sub
+		if e.reconcileCursor < 1 {
+			e.reconcileCursor = 1
+		}
+	}
+
+	if e.reconcileCursor > now {
+		e.reconcileCursor = 0
+		return
+	}
+
+	to := e.reconcileCursor + blockParseMaxNum - 1
+	if to > now {
+		to = now
+	}
+
+	e.blockScanQueue.In <- evmBlock{From: e.reconcileCursor, To: to}
+	e.reconcileCursor = to + 1
+}
+
+func (e *evm) latestBlockNumber(ctx context.Context) (int64, error) {
+	post := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
+	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
+	if err != nil {
+		return 0, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := e.Client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	res := gjson.ParseBytes(body)
+	if data := res.Get("error"); data.Exists() {
+		return 0, errors.New(data.String())
+	}
+
+	return utils.HexStr2Int(res.Get("result").String()).Int64() - e.Block.RollDelayOffset, nil
 }
 
 func (e *evm) blockDispatch(ctx context.Context) {
@@ -480,9 +551,5 @@ func syncBreak(network string, num int) bool {
 		return false
 	}
 
-	model.Db.Model(&model.Order{}).
-		Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trades).
-		Count(&count)
-
-	return count == 0
+	return !hasRecoverableOrders(trades)
 }

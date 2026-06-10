@@ -24,4 +24,5 @@ func xlayerInit() {
 	Register(Task{Callback: xlayer.blockDispatch})
 	Register(Task{Callback: xlayer.syncBlocksForward, Duration: time.Second * 3})
 	Register(Task{Callback: xlayer.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: xlayer.reconcileRecoverableOrders, Duration: time.Second * 15})
 }

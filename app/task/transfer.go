@@ -43,6 +43,7 @@ var transferQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30)
 
 const batchInterval = time.Second * 1       // 批处理缓解数据库读取压力
 const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
+const orderRecoveryLookback = 24 * time.Hour
 
 func init() {
 	Register(Task{Callback: orderTransferHandle})
@@ -68,19 +69,20 @@ func orderTransferHandle(ctx context.Context) {
 		case <-ticker.C:
 			// 每10秒强制检查一次过期订单，即使没有交易，防止无交易时订单不过期
 			var shouldCheck = time.Since(lastCheckTime) >= orderCheckInterval
-			if len(batch) == 0 && !shouldCheck {
-				continue
-			}
-
 			if shouldCheck {
 				lastCheckTime = time.Now()
 			}
 
-			var other = make([]transfer, 0)
-			var orders = getAllWaitingOrders() // 内部包含过期检查逻辑
 			if len(batch) == 0 {
+				if shouldCheck {
+					expireWaitingOrders()
+				}
+
 				continue
 			}
+
+			var other = make([]transfer, 0)
+			var orders = getReceivableOrders()
 			for _, t := range batch {
 				// 判断数额是否在允许范围内
 				if !model.IsAmountValid(t.TradeType, t.Amount) {
@@ -98,21 +100,18 @@ func orderTransferHandle(ctx context.Context) {
 
 				var matched bool
 				for i, o := range orderList {
-					// 金额匹配
-					if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
+					if !orderTransferMatch(o, t) {
 						continue
 					}
 
-					// 有效期检测
-					if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
+					// 订单匹配 进入确认流程
+					if err := o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
+						log.Task.Warn("mark order confirming failed:", err)
 						continue
 					}
 
 					// 从内存 map 中移除已匹配订单，防止同批次其他 transfer 重复匹配
 					orders[key] = append(orderList[:i], orderList[i+1:]...)
-
-					// 订单匹配 进入确认流程
-					o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount)
 					matched = true
 					break
 				}
@@ -127,8 +126,34 @@ func orderTransferHandle(ctx context.Context) {
 			}
 
 			batch = batch[:0]
+
+			if shouldCheck {
+				expireWaitingOrders()
+			}
 		}
 	}
+}
+
+func orderTransferMatch(o model.Order, t transfer) bool {
+	if o.TradeType != t.TradeType || orderMatchAddress(o) != t.RecvAddress {
+		return false
+	}
+	if !o.AddressLocked && !amountMatch(t.Amount, o.Amount, string(o.TradeType)) {
+		return false
+	}
+	if !o.CreatedAt.Before(t.Timestamp) || !o.ExpiredAt.After(t.Timestamp) {
+		return false
+	}
+
+	return true
+}
+
+func orderMatchAddress(o model.Order) string {
+	if o.MatchAddress != "" {
+		return o.MatchAddress
+	}
+
+	return o.Address
 }
 
 func notOrderTransferHandle(ctx context.Context) {
@@ -230,22 +255,75 @@ func markFinalConfirmed(o model.Order) {
 	notifyOrderSuccess(o)
 }
 
-func getAllWaitingOrders() map[string][]model.Order {
-	var orders = model.GetOrderByStatus(model.OrderStatusWaiting)
+func recoverableOrderStatuses() []int {
+	return []int{model.OrderStatusWaiting, model.OrderStatusExpired, model.OrderStatusFailed}
+}
+
+func getRecoverableOrders(tradeType []model.TradeType) []model.Order {
+	orders := make([]model.Order, 0)
+	db := model.Db.Where("status in (?)", recoverableOrderStatuses()).
+		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback)).
+		Order("created_at asc")
+	if len(tradeType) > 0 {
+		db = db.Where("trade_type in (?)", tradeType)
+	}
+
+	db.Find(&orders)
+
+	return orders
+}
+
+func hasRecoverableOrders(tradeType []model.TradeType) bool {
+	var count int64
+	db := model.Db.Model(&model.Order{}).
+		Where("status in (?)", recoverableOrderStatuses()).
+		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback))
+	if len(tradeType) > 0 {
+		db = db.Where("trade_type in (?)", tradeType)
+	}
+
+	db.Count(&count)
+
+	return count > 0
+}
+
+func getOldestRecoverableOrder(network model.Network) (model.Order, bool) {
+	var order model.Order
+	trade := model.GetNetworkTrades(network)
+	if len(trade) == 0 {
+		return order, false
+	}
+
+	model.Db.Model(&model.Order{}).
+		Where("status in (?) and trade_type in (?)", recoverableOrderStatuses(), trade).
+		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback)).
+		Order("created_at asc").
+		Limit(1).
+		Find(&order)
+
+	return order, order.ID != 0
+}
+
+func getReceivableOrders() map[string][]model.Order {
+	var tradeOrders = getRecoverableOrders(nil)
 	var data = make(map[string][]model.Order)
-	for _, itm := range orders {
-		if time.Now().Unix() >= itm.ExpiredAt.Unix() { // 订单过期
-			itm.SetExpired()
-			notify.Bepusdt(itm)
-
-			continue
-		}
-
-		key := itm.MatchAddress + string(itm.TradeType)
-		data[key] = append(data[key], itm)
+	for _, t := range tradeOrders {
+		key := orderMatchAddress(t) + string(t.TradeType)
+		data[key] = append(data[key], t)
 	}
 
 	return data
+}
+
+func expireWaitingOrders() {
+	for _, t := range model.GetOrderByStatus(model.OrderStatusWaiting) {
+		if time.Now().Unix() < t.ExpiredAt.Unix() {
+			continue
+		}
+
+		t.SetExpired()
+		notify.Bepusdt(t)
+	}
 }
 
 func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
@@ -260,10 +338,12 @@ func getConfirmingOrders(tradeType []model.TradeType) []model.Order {
 
 	for _, order := range orders {
 		if time.Now().Unix() >= order.ExpiredAt.Unix() {
-			order.SetFailed()
-			notify.Bepusdt(order)
+			if order.ConfirmedAt == nil || order.ConfirmedAt.IsZero() || !order.ConfirmedAt.Before(order.ExpiredAt) {
+				order.SetFailed()
+				notify.Bepusdt(order)
 
-			continue
+				continue
+			}
 		}
 
 		data = append(data, order)

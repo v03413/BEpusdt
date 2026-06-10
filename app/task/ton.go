@@ -61,7 +61,7 @@ func (t *ton) syncMBSeqnoForward(ctx context.Context) {
 		if t.lastBlockSeqno == 0 {
 			mb, err := t.client().CurrentMasterchainInfo(ctx)
 			if err != nil {
-				log.Task.Warn("get current masterchain info: %v", err)
+				log.Task.Warn(fmt.Sprintf("get current masterchain info: %v", err))
 				time.Sleep(time.Second)
 				continue
 			}
@@ -79,7 +79,7 @@ func (t *ton) syncMBSeqnoForward(ctx context.Context) {
 				return
 			}
 
-			log.Task.Warn("WaitForBlock GetMasterchainInfo err: %v", err)
+			log.Task.Warn(fmt.Sprintf("WaitForBlock GetMasterchainInfo err: %v", err))
 			time.Sleep(time.Second)
 			continue
 		}
