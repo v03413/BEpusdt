@@ -19,6 +19,38 @@
           </a-form-item>
 
           <a-form-item
+            field="payment_template"
+            label="收银台模板"
+            extra="官方默认保持原有付款页；狼哥设计使用内置 LangGe design；自定义模板使用下方静态资源路径【修改重启生效】"
+          >
+            <a-select v-model="form.payment_template" placeholder="请选择收银台模板" :fallback-option="false">
+              <a-option value="official">官方默认</a-option>
+              <a-option value="wolf">狼哥设计</a-option>
+              <a-option value="custom">自定义模板</a-option>
+            </a-select>
+          </a-form-item>
+
+          <a-form-item
+            v-if="form.payment_template === 'wolf'"
+            field="payment_template_language"
+            label="默认语言"
+            extra="仅狼哥设计模板生效；用户手动切换后会优先使用用户选择"
+          >
+            <a-select v-model="form.payment_template_language" placeholder="请选择默认语言" :fallback-option="false">
+              <a-option value="auto">跟随浏览器</a-option>
+              <a-option value="zh">简体中文</a-option>
+              <a-option value="zh-Hant">繁體中文</a-option>
+              <a-option value="en">English</a-option>
+              <a-option value="ru">Русский</a-option>
+              <a-option value="vi">Tiếng Việt</a-option>
+              <a-option value="tr">Türkçe</a-option>
+              <a-option value="ja">日本語</a-option>
+              <a-option value="ko">한국어</a-option>
+            </a-select>
+          </a-form-item>
+
+          <a-form-item
+            v-if="form.payment_template === 'custom'"
             field="payment_static_path"
             label="收银台静态资源"
             extra="收银台静态资源路径,可通过此功能自定义前端收银台样式;不懂请勿修改,否则可能导致收银台异常!【修改重启生效】"
@@ -48,8 +80,32 @@ const data = defineModel() as any;
 const { isMobile } = useDevicesSize();
 const layoutMode = computed(() => (isMobile.value ? "vertical" : "horizontal"));
 
-const form = ref({ api_auth_token: "", api_app_uri: "", payment_static_path: "" });
+const form = ref({
+  api_auth_token: "",
+  api_app_uri: "",
+  payment_template: "official",
+  payment_template_language: "auto",
+  payment_static_path: ""
+});
 const rules = {};
+const paymentTemplateModes = ["official", "wolf", "custom"];
+const paymentTemplateLanguages = ["auto", "zh", "zh-Hant", "en", "ru", "vi", "tr", "ja", "ko"];
+
+const normalizePaymentTemplate = (value: string, staticPath: string) => {
+  if (paymentTemplateModes.includes(value)) {
+    return value;
+  }
+
+  return staticPath ? "custom" : "official";
+};
+
+const normalizePaymentTemplateLanguage = (value: string) => {
+  if (paymentTemplateLanguages.includes(value)) {
+    return value;
+  }
+
+  return "auto";
+};
 
 const handleResetToken = async () => {
   try {
@@ -70,6 +126,14 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
       value: form.value.api_app_uri
     },
     {
+      key: "payment_template",
+      value: form.value.payment_template
+    },
+    {
+      key: "payment_template_language",
+      value: form.value.payment_template_language
+    },
+    {
       key: "payment_static_path",
       value: form.value.payment_static_path
     }
@@ -86,6 +150,8 @@ watch(
     form.value.api_auth_token = data.value.api_auth_token;
     form.value.api_app_uri = data.value.api_app_uri;
     form.value.payment_static_path = data.value.payment_static_path;
+    form.value.payment_template = normalizePaymentTemplate(data.value.payment_template, form.value.payment_static_path);
+    form.value.payment_template_language = normalizePaymentTemplateLanguage(data.value.payment_template_language);
   }
 );
 </script>

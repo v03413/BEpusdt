@@ -8,6 +8,8 @@ type CoinId string
 type Crypto string
 type TradeType string
 type MatchMode string
+type PaymentTemplateMode string
+type PaymentTemplateLanguageMode string
 type Network string
 type Range struct {
 	MinAmount decimal.Decimal
@@ -45,12 +47,14 @@ const (
 	AtomETH  ConfKey = "atom_eth"
 	AtomGRAM ConfKey = "atom_gram"
 
-	MonitorMinAmount  ConfKey = "monitor_min_amount" // 监控最小金额，低于此金额的入账不进行通知
-	PaymentMinAmount  ConfKey = "payment_min_amount"
-	PaymentMaxAmount  ConfKey = "payment_max_amount"
-	PaymentTimeout    ConfKey = "payment_timeout"     // 订单支付超时时间，单位秒
-	PaymentStaticPath ConfKey = "payment_static_path" // 收银台静态资源路径
-	PaymentMatchMode  ConfKey = "payment_match_mode"  // 订单金额匹配模式
+	MonitorMinAmount        ConfKey = "monitor_min_amount" // 监控最小金额，低于此金额的入账不进行通知
+	PaymentMinAmount        ConfKey = "payment_min_amount"
+	PaymentMaxAmount        ConfKey = "payment_max_amount"
+	PaymentTimeout          ConfKey = "payment_timeout"           // 订单支付超时时间，单位秒
+	PaymentStaticPath       ConfKey = "payment_static_path"       // 收银台静态资源路径
+	PaymentTemplate         ConfKey = "payment_template"          // 收银台模板模式
+	PaymentTemplateLanguage ConfKey = "payment_template_language" // 收银台模板默认语言
+	PaymentMatchMode        ConfKey = "payment_match_mode"        // 订单金额匹配模式
 
 	RpcEndpointPlasma         ConfKey = "rpc_endpoint_plasma"            // Plasma RPC节点
 	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点
@@ -107,6 +111,22 @@ const (
 	Classic   MatchMode = "classic"    // 经典模式，精确匹配
 	HasPrefix MatchMode = "has_prefix" // 前缀匹配，允许多付
 	RoundOff  MatchMode = "round_off"  // 数值修约，四舍五入，允许容错
+)
+const (
+	PaymentTemplateOfficial PaymentTemplateMode = "official" // 官方默认模板
+	PaymentTemplateWolf     PaymentTemplateMode = "wolf"     // 狼哥设计模板
+	PaymentTemplateCustom   PaymentTemplateMode = "custom"   // 自定义静态模板
+)
+const (
+	PaymentTemplateLanguageAuto   PaymentTemplateLanguageMode = "auto"    // 跟随浏览器
+	PaymentTemplateLanguageZh     PaymentTemplateLanguageMode = "zh"      // 简体中文
+	PaymentTemplateLanguageZhHant PaymentTemplateLanguageMode = "zh-Hant" // 繁体中文
+	PaymentTemplateLanguageEn     PaymentTemplateLanguageMode = "en"
+	PaymentTemplateLanguageRu     PaymentTemplateLanguageMode = "ru"
+	PaymentTemplateLanguageVi     PaymentTemplateLanguageMode = "vi"
+	PaymentTemplateLanguageTr     PaymentTemplateLanguageMode = "tr"
+	PaymentTemplateLanguageJa     PaymentTemplateLanguageMode = "ja"
+	PaymentTemplateLanguageKo     PaymentTemplateLanguageMode = "ko"
 )
 
 // USD 交易类型常见扫描范围

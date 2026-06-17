@@ -103,6 +103,8 @@ const getConf = async () => {
         "payment_max_amount",
         "payment_min_amount",
         "payment_static_path",
+        "payment_template",
+        "payment_template_language",
         "payment_timeout",
         "notifier_params",
         "notifier_channel",

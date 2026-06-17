@@ -15,7 +15,7 @@ import (
 
 func staticInit(e *gin.Engine) {
 	customPath := model.GetK(model.PaymentStaticPath)
-	if customPath != "" && utils.IsExist(customPath) {
+	if model.UseCustomPaymentAssets() && utils.IsExist(customPath) {
 		initCustomPayment(e, customPath)
 
 		return

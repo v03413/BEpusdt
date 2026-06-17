@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -107,17 +108,10 @@ func (Conf) Sets(ctx *gin.Context) {
 		data = append(data, model.Conf{K: model.ConfKey(k), V: v})
 	}
 
-	for _, v := range data {
-		if v.K == model.PaymentStaticPath && v.V != "" && !utils.IsExist(v.V) {
-			base.BadRequest(ctx, "静态资源路径不存在，请确认后重新配置："+v.V)
+	if err := validateConfSets(data); err != nil {
+		base.BadRequest(ctx, err.Error())
 
-			return
-		}
-		if v.K == model.ApiAuthToken {
-			base.BadRequest(ctx, "安全考虑，不允许自定义修改 API 对接令牌")
-
-			return
-		}
+		return
 	}
 
 	model.Db.Where("k IN ?", keys).Delete(&model.Conf{})
@@ -126,6 +120,25 @@ func (Conf) Sets(ctx *gin.Context) {
 	defer model.RefreshC()
 
 	base.Ok(ctx, "配置成功")
+}
+
+func validateConfSets(data []model.Conf) error {
+	for _, v := range data {
+		if v.K == model.PaymentStaticPath && v.V != "" && !utils.IsExist(v.V) {
+			return fmt.Errorf("静态资源路径不存在，请确认后重新配置：%s", v.V)
+		}
+		if v.K == model.PaymentTemplate && !model.IsValidPaymentTemplateMode(v.V) {
+			return fmt.Errorf("收银台模板模式不支持：%s", v.V)
+		}
+		if v.K == model.PaymentTemplateLanguage && !model.IsValidPaymentTemplateLanguage(v.V) {
+			return fmt.Errorf("收银台默认语言不支持：%s", v.V)
+		}
+		if v.K == model.ApiAuthToken {
+			return fmt.Errorf("安全考虑，不允许自定义修改 API 对接令牌")
+		}
+	}
+
+	return nil
 }
 
 func (Conf) Rpc(ctx *gin.Context) {
