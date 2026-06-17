@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"net/url"
 	"sort"
@@ -374,18 +375,22 @@ func (Epusdt) CheckoutCounter(ctx *gin.Context) {
 		return
 	}
 
-	ctx.HTML(200, string(order.TradeType+".html"), gin.H{
-		"http_host":  uri.Host,
-		"amount":     order.Amount,
-		"address":    order.Address,
-		"expire":     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"return_url": order.ReturnUrl,
-		"usdt_rate":  order.Rate,
-		"trade_id":   tradeId,
-		"order_id":   order.OrderId,
-		"trade_type": order.TradeType,
-		"money":      order.Money,
-		"fiat":       order.Fiat,
+	ctx.HTML(200, checkoutCounterTemplateName(model.GetPaymentTemplateMode(), order.TradeType), gin.H{
+		"http_host":        uri.Host,
+		"amount":           order.Amount,
+		"address":          order.Address,
+		"expire":           int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
+		"return_url":       order.ReturnUrl,
+		"usdt_rate":        order.Rate,
+		"trade_id":         tradeId,
+		"order_id":         order.OrderId,
+		"trade_type":       order.TradeType,
+		"name":             order.Name,
+		"money":            order.Money,
+		"fiat":             order.Fiat,
+		"default_language": string(model.GetPaymentTemplateLanguage()),
+		"network":          jsonScript(GetPaymentItem("", order)),
+		"selected_payment": jsonScript(GetSelectedPayment(order)),
 	})
 }
 
@@ -406,18 +411,65 @@ func (Epusdt) CheckoutCashier(ctx *gin.Context) {
 		return
 	}
 
-	ctx.HTML(200, "cashier.html", gin.H{
-		"http_host":  uri.Host,
-		"amount":     order.Amount,
-		"expire":     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"return_url": order.ReturnUrl,
-		"trade_id":   tradeId,
-		"order_id":   order.OrderId,
-		"name":       order.Name,
-		"money":      order.Money,
-		"fiat":       order.Fiat,
-		"network":    GetPaymentItem("", order),
+	ctx.HTML(200, checkoutCashierTemplateName(model.GetPaymentTemplateMode()), gin.H{
+		"http_host":        uri.Host,
+		"amount":           order.Amount,
+		"expire":           int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
+		"return_url":       order.ReturnUrl,
+		"trade_id":         tradeId,
+		"order_id":         order.OrderId,
+		"name":             order.Name,
+		"money":            order.Money,
+		"fiat":             order.Fiat,
+		"default_language": string(model.GetPaymentTemplateLanguage()),
+		"network":          jsonScript(GetPaymentItem("", order)),
+		"selected_payment": jsonScript(GetSelectedPayment(order)),
 	})
+}
+
+func checkoutCashierTemplateName(mode model.PaymentTemplateMode) string {
+	if mode == model.PaymentTemplateWolf {
+		return "wolf.cashier.html"
+	}
+
+	return "cashier.html"
+}
+
+func checkoutCounterTemplateName(mode model.PaymentTemplateMode, tradeType model.TradeType) string {
+	if mode == model.PaymentTemplateWolf {
+		return "wolf.checkout.html"
+	}
+
+	return string(tradeType + ".html")
+}
+
+func GetSelectedPayment(order model.Order) gin.H {
+	if order.TradeType == "" || order.Address == "" {
+		return nil
+	}
+
+	conf, ok := model.GetAllTradeConfig()[string(order.TradeType)]
+	if !ok {
+		return nil
+	}
+
+	return gin.H{
+		"actual_amount":  order.Amount,
+		"currency":       string(conf.Crypto),
+		"network":        string(conf.Network),
+		"token_net_name": conf.NetworkName,
+		"address":        order.Address,
+		"token":          order.Address,
+	}
+}
+
+func jsonScript(value any) template.JS {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return template.JS("null")
+	}
+
+	return template.JS(data)
 }
 
 func (Epusdt) CheckStatus(ctx *gin.Context) {

@@ -42,6 +42,8 @@ var defaultConf = map[ConfKey]string{
 	BlockHeightMaxDiff:      "1000",
 	BlockOffsetConfirm:      "0",
 	PaymentTimeout:          "1200", // 20分钟
+	PaymentTemplate:         string(PaymentTemplateOfficial),
+	PaymentTemplateLanguage: string(PaymentTemplateLanguageAuto),
 	PaymentMatchMode:        string(Classic),
 	SystemInstallLock:       "0",
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
@@ -146,6 +148,86 @@ func CheckoutCashier(host, id string) string {
 	}
 
 	return fmt.Sprintf("%s/pay/cashier/%s", uri, id)
+}
+
+func NormalizePaymentTemplateMode(value string) PaymentTemplateMode {
+	switch PaymentTemplateMode(strings.ToLower(strings.TrimSpace(value))) {
+	case PaymentTemplateWolf:
+		return PaymentTemplateWolf
+	case PaymentTemplateCustom:
+		return PaymentTemplateCustom
+	case PaymentTemplateOfficial:
+		return PaymentTemplateOfficial
+	default:
+		return PaymentTemplateOfficial
+	}
+}
+
+func IsValidPaymentTemplateMode(value string) bool {
+	switch PaymentTemplateMode(strings.ToLower(strings.TrimSpace(value))) {
+	case "", PaymentTemplateOfficial, PaymentTemplateWolf, PaymentTemplateCustom:
+		return true
+	default:
+		return false
+	}
+}
+
+func GetPaymentTemplateMode() PaymentTemplateMode {
+	return NormalizePaymentTemplateMode(GetK(PaymentTemplate))
+}
+
+func NormalizePaymentTemplateLanguage(value string) PaymentTemplateLanguageMode {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(PaymentTemplateLanguageZh):
+		return PaymentTemplateLanguageZh
+	case "zh-hant":
+		return PaymentTemplateLanguageZhHant
+	case string(PaymentTemplateLanguageEn):
+		return PaymentTemplateLanguageEn
+	case string(PaymentTemplateLanguageRu):
+		return PaymentTemplateLanguageRu
+	case string(PaymentTemplateLanguageVi):
+		return PaymentTemplateLanguageVi
+	case string(PaymentTemplateLanguageTr):
+		return PaymentTemplateLanguageTr
+	case string(PaymentTemplateLanguageJa):
+		return PaymentTemplateLanguageJa
+	case string(PaymentTemplateLanguageKo):
+		return PaymentTemplateLanguageKo
+	case "", string(PaymentTemplateLanguageAuto):
+		return PaymentTemplateLanguageAuto
+	default:
+		return PaymentTemplateLanguageAuto
+	}
+}
+
+func IsValidPaymentTemplateLanguage(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", string(PaymentTemplateLanguageAuto), string(PaymentTemplateLanguageZh), "zh-hant",
+		string(PaymentTemplateLanguageEn), string(PaymentTemplateLanguageRu), string(PaymentTemplateLanguageVi),
+		string(PaymentTemplateLanguageTr), string(PaymentTemplateLanguageJa), string(PaymentTemplateLanguageKo):
+		return true
+	default:
+		return false
+	}
+}
+
+func GetPaymentTemplateLanguage() PaymentTemplateLanguageMode {
+	return NormalizePaymentTemplateLanguage(GetK(PaymentTemplateLanguage))
+}
+
+func UseCustomPaymentAssets() bool {
+	customPath := strings.TrimSpace(GetK(PaymentStaticPath))
+	if customPath == "" {
+		return false
+	}
+
+	rawMode := strings.TrimSpace(GetK(PaymentTemplate))
+	if rawMode == "" {
+		return true
+	}
+
+	return NormalizePaymentTemplateMode(rawMode) == PaymentTemplateCustom
 }
 
 func ConfInit() {
