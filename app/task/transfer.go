@@ -256,7 +256,7 @@ func markFinalConfirmed(o model.Order) {
 }
 
 func recoverableOrderStatuses() []int {
-	return []int{model.OrderStatusWaiting, model.OrderStatusExpired, model.OrderStatusFailed}
+	return []int{model.OrderStatusWaiting, model.OrderStatusExpired}
 }
 
 func getRecoverableOrders(tradeType []model.TradeType) []model.Order {
