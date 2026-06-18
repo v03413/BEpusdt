@@ -13,7 +13,8 @@ import (
 func ethInit() {
 	ctx := context.Background()
 	eth := evm{
-		Network: conf.Ethereum,
+		Network:          conf.Ethereum,
+		LookbackInterval: time.Second * 2,
 		Block: block{
 			ConfirmedOffset: 12,
 		},
@@ -29,5 +30,5 @@ func ethInit() {
 	Register(Task{Callback: eth.blockDispatch})
 	Register(Task{Callback: eth.syncBlocksForward, Duration: time.Second * 12})
 	Register(Task{Callback: eth.tradeConfirmHandle, Duration: time.Second * 5})
-	Register(Task{Callback: eth.reconcileRecoverableOrders, Duration: time.Second * 20})
+	Register(Task{Callback: eth.lookbackBlocks, Duration: time.Second * 20})
 }

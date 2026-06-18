@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
@@ -16,6 +15,7 @@ import (
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
+	blockapi "github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
@@ -28,9 +28,6 @@ type aptos struct {
 	lastVersion            int
 	versionQueue           *chanx.UnboundedChan[version]
 	client                 *http.Client
-	earliestBlockTs        atomic.Int64
-	reconcileCursor        int
-	reconcileStart         int64
 }
 
 type version struct {
@@ -57,17 +54,16 @@ func init() {
 	Register(Task{Callback: apt.versionDispatch})
 	Register(Task{Callback: apt.syncVersionForward, Duration: time.Second * 3})
 	Register(Task{Callback: apt.tradeConfirmHandle, Duration: time.Second * 5})
-	Register(Task{Callback: apt.reconcileRecoverableOrders, Duration: time.Second * 15})
+	Register(Task{Callback: apt.lookbackVersion, Duration: time.Second * 15})
 }
 
 func newAptos() aptos {
 	return aptos{
-		versionChunkSize:       100, // 目前好像最大就只能100
+		versionChunkSize:       100,
 		versionConfirmedOffset: 1000,
 		lastVersion:            0,
 		versionQueue:           chanx.NewUnboundedChan[version](context.Background(), 30),
 		client:                 utils.NewHttpClient(),
-		earliestBlockTs:        atomic.Int64{},
 	}
 }
 
@@ -107,10 +103,6 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 		return
 	}
 
-	if a.lastVersion == 0 {
-		a.syncVersionBackward(ctx, now)
-	}
-
 	if now-a.lastVersion > 10000 {
 		a.lastVersion = now - a.versionChunkSize
 	}
@@ -137,80 +129,32 @@ func (a *aptos) syncVersionForward(ctx context.Context) {
 	a.lastVersion = now
 }
 
-func (a *aptos) syncVersionBackward(ctx context.Context, now int) {
-	o, ok := getOldestRecoverableOrder(conf.Aptos)
-	if !ok {
-		return
-	}
-
-	start := o.CreatedAt.Time().Unix()
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if syncBreak(conf.Aptos, a.versionQueue.Len()) {
-					return
-				}
-
-				if a.earliestBlockTs.Load() != 0 && a.earliestBlockTs.Load() < start {
-					return
-				}
-
-				a.versionQueue.In <- version{
-					Start: now - a.versionChunkSize,
-					Limit: a.versionChunkSize,
-				}
-
-				now = now - a.versionChunkSize
-			}
-		}
-	}()
-}
-
-func (a *aptos) reconcileRecoverableOrders(ctx context.Context) {
+func (a *aptos) lookbackVersion(ctx context.Context) {
 	if syncBreak(conf.Aptos, a.versionQueue.Len()) {
 		return
 	}
 
-	if a.lastVersion <= 0 {
+	startAt, endAt, ok := getLookbackUnix(conf.Aptos)
+	if !ok {
 		return
 	}
 
-	if a.reconcileCursor <= 0 || (a.reconcileStart > 0 && a.earliestBlockTs.Load() < a.reconcileStart) {
-		o, ok := getOldestRecoverableOrder(conf.Aptos)
-		if !ok {
-			a.reconcileCursor = 0
-			a.reconcileStart = 0
+	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, conf.Aptos)
+	for i := int(start); i <= int(end); i += a.versionChunkSize {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if syncBreak(conf.Aptos, a.versionQueue.Len()) {
 			return
 		}
-
-		a.reconcileCursor = a.lastVersion - a.versionChunkSize
-		if a.reconcileCursor < 0 {
-			a.reconcileCursor = 0
+		limit := a.versionChunkSize
+		if i+limit > int(end) {
+			limit = int(end) - i + 1
 		}
-		a.reconcileStart = o.CreatedAt.Time().Unix()
-	}
-
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
-
-	a.versionQueue.In <- version{
-		Start: a.reconcileCursor,
-		Limit: a.versionChunkSize,
-	}
-
-	a.reconcileCursor -= a.versionChunkSize
-	if a.reconcileCursor < 0 {
-		a.reconcileCursor = 0
+		a.versionQueue.In <- version{Start: i, Limit: limit}
+		time.Sleep(time.Millisecond * 200) // 速率控制
 	}
 }
 
@@ -287,7 +231,6 @@ func (a *aptos) versionParse(n any) {
 	for _, trans := range gjson.ParseBytes(body).Array() {
 		tsNano := trans.Get("timestamp").Int() * 1000
 		timestamp := time.Unix(tsNano/1e9, tsNano%1e9)
-		a.recordEarliestBlockTs(timestamp.Unix())
 
 		ver := int(trans.Get("version").Int())
 		hash := trans.Get("hash").String()
@@ -507,16 +450,4 @@ func (a *aptos) tradeConfirmHandle(ctx context.Context) {
 	}
 
 	wg.Wait()
-}
-
-func (a *aptos) recordEarliestBlockTs(unix int64) {
-	for {
-		current := a.earliestBlockTs.Load()
-		if current != 0 && unix >= current {
-			return
-		}
-		if a.earliestBlockTs.CompareAndSwap(current, unix) {
-			return
-		}
-	}
 }

@@ -23,5 +23,5 @@ func arbitrumInit() {
 	Register(Task{Callback: arb.blockDispatch})
 	Register(Task{Callback: arb.syncBlocksForward, Duration: time.Second * 5})
 	Register(Task{Callback: arb.tradeConfirmHandle, Duration: time.Second * 5})
-	Register(Task{Callback: arb.reconcileRecoverableOrders, Duration: time.Second * 15})
+	Register(Task{Callback: arb.lookbackBlocks, Duration: time.Second * 15})
 }

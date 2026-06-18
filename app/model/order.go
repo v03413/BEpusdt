@@ -8,6 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
+	"github.com/v03413/bepusdt/app/api"
 )
 
 const (
@@ -83,6 +84,7 @@ type Order struct {
 }
 
 func (o *Order) SetCanceled() error {
+	api.New()
 	o.Status = OrderStatusCanceled
 
 	return Db.Save(o).Error

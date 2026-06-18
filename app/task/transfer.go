@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -40,6 +41,9 @@ type resource struct {
 var resourceQueue = chanx.NewUnboundedChan[[]resource](context.Background(), 30) // 资源队列
 var notOrderQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30) // 非订单队列
 var transferQueue = chanx.NewUnboundedChan[[]transfer](context.Background(), 30) // 交易转账队列
+
+// lookbackDone 记录已触发过回溯的订单 ID，每个订单只回溯一次。
+var lookbackDone sync.Map // key: int64 order ID, value: struct{}
 
 const batchInterval = time.Second * 1       // 批处理缓解数据库读取压力
 const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
@@ -83,6 +87,7 @@ func orderTransferHandle(ctx context.Context) {
 
 			var other = make([]transfer, 0)
 			var orders = getReceivableOrders()
+
 			for _, t := range batch {
 				// 判断数额是否在允许范围内
 				if !model.IsAmountValid(t.TradeType, t.Amount) {
@@ -255,28 +260,30 @@ func markFinalConfirmed(o model.Order) {
 	notifyOrderSuccess(o)
 }
 
-func recoverableOrderStatuses() []int {
+func receivableOrderStatuses() []int {
 	return []int{model.OrderStatusWaiting, model.OrderStatusExpired}
 }
 
-func getRecoverableOrders(tradeType []model.TradeType) []model.Order {
-	orders := make([]model.Order, 0)
-	db := model.Db.Where("status in (?)", recoverableOrderStatuses()).
+func getReceivableOrders() map[string][]model.Order {
+	var orders []model.Order
+	db := model.Db.Where("status in (?)", receivableOrderStatuses()).
 		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback)).
 		Order("created_at asc")
-	if len(tradeType) > 0 {
-		db = db.Where("trade_type in (?)", tradeType)
-	}
-
 	db.Find(&orders)
 
-	return orders
+	data := make(map[string][]model.Order)
+	for _, t := range orders {
+		key := orderMatchAddress(t) + string(t.TradeType)
+		data[key] = append(data[key], t)
+	}
+
+	return data
 }
 
-func hasRecoverableOrders(tradeType []model.TradeType) bool {
+func hasLookbackOrders(tradeType []model.TradeType) bool {
 	var count int64
 	db := model.Db.Model(&model.Order{}).
-		Where("status in (?)", recoverableOrderStatuses()).
+		Where("status in (?)", receivableOrderStatuses()).
 		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback))
 	if len(tradeType) > 0 {
 		db = db.Where("trade_type in (?)", tradeType)
@@ -287,32 +294,50 @@ func hasRecoverableOrders(tradeType []model.TradeType) bool {
 	return count > 0
 }
 
-func getOldestRecoverableOrder(network model.Network) (model.Order, bool) {
-	var order model.Order
+func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
 	trade := model.GetNetworkTrades(network)
 	if len(trade) == 0 {
-		return order, false
+		return
 	}
 
+	lookback := time.Now().Add(-orderRecoveryLookback)
+	var all []model.Order
 	model.Db.Model(&model.Order{}).
-		Where("status in (?) and trade_type in (?)", recoverableOrderStatuses(), trade).
-		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback)).
+		Where("status in (?) and trade_type in (?)", receivableOrderStatuses(), trade).
+		Where("expired_at > ?", lookback).
 		Order("created_at asc").
-		Limit(1).
-		Find(&order)
+		Find(&all)
 
-	return order, order.ID != 0
-}
-
-func getReceivableOrders() map[string][]model.Order {
-	var tradeOrders = getRecoverableOrders(nil)
-	var data = make(map[string][]model.Order)
-	for _, t := range tradeOrders {
-		key := orderMatchAddress(t) + string(t.TradeType)
-		data[key] = append(data[key], t)
+	// 过滤掉已经回溯过的订单
+	pending := make([]model.Order, 0, len(all))
+	for _, o := range all {
+		if _, done := lookbackDone.Load(o.ID); !done {
+			pending = append(pending, o)
+		}
+	}
+	if len(pending) == 0 {
+		return
 	}
 
-	return data
+	// 起点：最早的创建时间（已按 created_at asc 排序）
+	startAt = pending[0].CreatedAt.Time().Unix()
+
+	// 终点：最晚的已过期 expired_at；若全部尚未过期则用当前时间
+	endAt = time.Now().Unix()
+	for _, o := range pending {
+		if o.ExpiredAt.Before(time.Now()) && o.ExpiredAt.Unix() > startAt {
+			endAt = o.ExpiredAt.Unix()
+		}
+	}
+
+	ok = true
+
+	// 标记这批订单已回溯，后续不再重复触发
+	for _, o := range pending {
+		lookbackDone.Store(o.ID, struct{}{})
+	}
+
+	return
 }
 
 func expireWaitingOrders() {

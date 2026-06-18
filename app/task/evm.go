@@ -17,6 +17,7 @@ import (
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
+	blockapi "github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
@@ -42,13 +43,12 @@ type evmNative struct {
 }
 
 type evm struct {
-	Network         string
-	Block           block
-	Native          evmNative
-	Client          *http.Client
-	AvgBlockTime    int64 // 平均出块时间，单位秒；一个大概值，用于计算首次启动时需要回溯的区块数量，尽量准确设置，默认1秒一个区块
-	blockScanQueue  *chanx.UnboundedChan[evmBlock]
-	reconcileCursor int64
+	Network          string
+	Block            block
+	Native           evmNative
+	Client           *http.Client
+	blockScanQueue   *chanx.UnboundedChan[evmBlock]
+	LookbackInterval time.Duration // 回溯时每批入队的间隔，控制 RPC 调用速率；默认 500ms
 }
 
 type evmBlock struct {
@@ -102,10 +102,7 @@ func (e *evm) syncBlocksForward(ctx context.Context) {
 
 	var lastBlockNumber int64
 	if v, ok := chainBlockNum.Load(e.Network); ok {
-
 		lastBlockNumber = v.(int64)
-	} else {
-		e.syncBlocksBackward(now) // 不存在，说明是第一次启动
 	}
 
 	if now-lastBlockNumber > cast.ToInt64(model.GetC(model.BlockHeightMaxDiff)) {
@@ -129,112 +126,38 @@ func (e *evm) syncBlocksForward(ctx context.Context) {
 	}
 }
 
-func (e *evm) syncBlocksBackward(now int64) {
-	if e.AvgBlockTime <= 0 { // 未设置平均出块时间，默认1秒一个
-		e.AvgBlockTime = 1
-	}
-
-	o, ok := getOldestRecoverableOrder(model.Network(e.Network))
-	if !ok {
-
-		return
-	}
-
-	sub := ((time.Now().Unix() - o.CreatedAt.Time().Unix()) / e.AvgBlockTime) + 30 //计算需要回溯的区块数量，同时冗余30个区块
-	start := now - sub
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for from := start; from <= now; from += blockParseMaxNum {
-			if syncBreak(e.Network, e.blockScanQueue.Len()) {
-
-				return
-			}
-
-			to := from + blockParseMaxNum - 1
-			if to > now {
-				to = now
-			}
-
-			e.blockScanQueue.In <- evmBlock{From: from, To: to}
-
-			<-ticker.C
-		}
-	}()
-}
-
-func (e *evm) reconcileRecoverableOrders(ctx context.Context) {
+func (e *evm) lookbackBlocks(ctx context.Context) {
 	if syncBreak(e.Network, e.blockScanQueue.Len()) {
 		return
 	}
 
-	now, err := e.latestBlockNumber(ctx)
-	if err != nil {
-		log.Task.Warn(fmt.Sprintf("%s reconcile latest block Error: %v", e.Network, err))
-		return
-	}
-	if now <= 0 {
+	startAt, endAt, ok := getLookbackUnix(model.Network(e.Network))
+	if !ok {
 		return
 	}
 
-	if e.reconcileCursor <= 0 {
-		o, ok := getOldestRecoverableOrder(model.Network(e.Network))
-		if !ok {
+	interval := e.LookbackInterval
+	if interval <= 0 {
+		interval = time.Millisecond * 300
+	}
+
+	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, e.Network)
+	for i := start; i <= end; i += blockParseMaxNum {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if syncBreak(e.Network, e.blockScanQueue.Len()) {
 			return
 		}
-		avgBlockTime := e.AvgBlockTime
-		if avgBlockTime <= 0 {
-			avgBlockTime = 1
+		to := i + blockParseMaxNum - 1
+		if to > end {
+			to = end
 		}
-
-		sub := ((time.Now().Unix() - o.CreatedAt.Time().Unix()) / avgBlockTime) + 30
-		e.reconcileCursor = now - sub
-		if e.reconcileCursor < 1 {
-			e.reconcileCursor = 1
-		}
+		e.blockScanQueue.In <- evmBlock{From: i, To: to}
+		time.Sleep(interval)
 	}
-
-	if e.reconcileCursor > now {
-		e.reconcileCursor = 0
-		return
-	}
-
-	to := e.reconcileCursor + blockParseMaxNum - 1
-	if to > now {
-		to = now
-	}
-
-	e.blockScanQueue.In <- evmBlock{From: e.reconcileCursor, To: to}
-	e.reconcileCursor = to + 1
-}
-
-func (e *evm) latestBlockNumber(ctx context.Context) (int64, error) {
-	post := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
-	req, err := http.NewRequestWithContext(ctx, "POST", e.rpcEndpoint(), bytes.NewBuffer(post))
-	if err != nil {
-		return 0, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := e.Client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	res := gjson.ParseBytes(body)
-	if data := res.Get("error"); data.Exists() {
-		return 0, errors.New(data.String())
-	}
-
-	return utils.HexStr2Int(res.Get("result").String()).Int64() - e.Block.RollDelayOffset, nil
 }
 
 func (e *evm) blockDispatch(ctx context.Context) {
@@ -551,5 +474,5 @@ func syncBreak(network string, num int) bool {
 		return false
 	}
 
-	return !hasRecoverableOrders(trades)
+	return !hasLookbackOrders(trades)
 }

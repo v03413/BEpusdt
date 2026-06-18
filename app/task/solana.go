@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -18,6 +17,7 @@ import (
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
+	blockapi "github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
@@ -47,7 +47,7 @@ func init() {
 	Register(Task{Callback: sol.slotDispatch})
 	Register(Task{Callback: sol.syncSlotForward, Duration: time.Second * 5})
 	Register(Task{Callback: sol.tradeConfirmHandle, Duration: time.Second * 5})
-	Register(Task{Callback: sol.reconcileWaitingOrders, Duration: time.Second * 15})
+	Register(Task{Callback: sol.lookbackSlots, Duration: time.Second * 15})
 }
 
 func newSolana() solana {
@@ -97,10 +97,6 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 		return
 	}
 
-	if s.lastSlotNum == 0 { // 首次启动，往后追溯
-		s.syncSlotBackward(now)
-	}
-
 	if now-s.lastSlotNum > cast.ToInt(model.GetC(model.BlockHeightMaxDiff)) { // 区块高度变化过大，强制丢块重扫
 		s.lastSlotNum = now
 	}
@@ -117,38 +113,6 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 	}
 
 	s.lastSlotNum = now
-}
-
-func (s *solana) syncSlotBackward(now int) {
-	if now == 0 || s.lastSlotNum != 0 {
-
-		return
-	}
-
-	o, ok := getOldestRecoverableOrder(conf.Solana)
-	if !ok {
-
-		return
-	}
-
-	// Solana 大概1秒3个区块（大概值，实际存在波动）
-	num := int((time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) * 3) // 计算需要反向扫描的区块数量
-
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 125)
-		defer ticker.Stop()
-
-		for i := 0; i < num; i++ {
-			if syncBreak(conf.Solana, s.slotQueue.Len()) {
-
-				return
-			}
-
-			s.slotQueue.In <- now - i
-
-			<-ticker.C
-		}
-	}()
 }
 
 func (s *solana) slotDispatch(ctx context.Context) {
@@ -419,260 +383,27 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	wg.Wait()
 }
 
-func (s *solana) reconcileWaitingOrders(ctx context.Context) {
-	trades := model.GetNetworkTrades(conf.Solana)
-	if len(trades) == 0 {
+func (s *solana) lookbackSlots(ctx context.Context) {
+	if syncBreak(conf.Solana, s.slotQueue.Len()) {
 		return
 	}
 
-	orders := getRecoverableOrders(trades)
-	if len(orders) == 0 {
+	startAt, endAt, ok := getLookbackUnix(conf.Solana)
+	if !ok {
 		return
 	}
 
-	tokenAccounts := make(map[string][]string)
-	for _, order := range orders {
-		if ctx.Err() != nil {
+	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, conf.Solana)
+	for i := int(start); i <= int(end); i++ {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if syncBreak(conf.Solana, s.slotQueue.Len()) {
 			return
 		}
-
-		key := fmt.Sprintf("%s%s", order.Address, order.TradeType)
-		accounts, ok := tokenAccounts[key]
-		if !ok {
-			var err error
-			accounts, err = s.getTokenAccountsByOwner(ctx, order.Address, order.TradeType)
-			if err != nil {
-				log.Task.Warn("solana reconcile getTokenAccountsByOwner Error:", err)
-				continue
-			}
-			tokenAccounts[key] = accounts
-		}
-
-		for _, account := range accounts {
-			if s.reconcileOrderTokenAccount(ctx, order, account) {
-				break
-			}
-		}
+		s.slotQueue.In <- i
+		time.Sleep(time.Millisecond * 200)
 	}
-}
-
-func (s *solana) getTokenAccountsByOwner(ctx context.Context, owner string, tradeType model.TradeType) ([]string, error) {
-	contract := ""
-	if c, ok := model.GetAllTradeConfig()[string(tradeType)]; ok {
-		contract = c.Contract
-	}
-	if contract == "" {
-		return nil, nil
-	}
-
-	result, err := s.rpc(ctx, "getTokenAccountsByOwner", []any{
-		owner,
-		map[string]any{"mint": contract},
-		map[string]any{"encoding": "jsonParsed"},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	accounts := make([]string, 0)
-	for _, item := range result.Get("value").Array() {
-		pubkey := item.Get("pubkey").String()
-		if pubkey != "" {
-			accounts = append(accounts, pubkey)
-		}
-	}
-
-	return accounts, nil
-}
-
-func (s *solana) reconcileOrderTokenAccount(ctx context.Context, order model.Order, account string) bool {
-	result, err := s.rpc(ctx, "getSignaturesForAddress", []any{
-		account,
-		map[string]any{"limit": 50},
-	})
-	if err != nil {
-		log.Task.Warn("solana reconcile getSignaturesForAddress Error:", err)
-		return false
-	}
-
-	for _, sig := range result.Array() {
-		if sig.Get("err").Exists() && sig.Get("err").Raw != "null" {
-			continue
-		}
-
-		blockTime := sig.Get("blockTime").Int()
-		if blockTime > 0 {
-			ts := time.Unix(blockTime, 0)
-			if !order.CreatedAt.Before(ts) || !order.ExpiredAt.After(ts) {
-				continue
-			}
-		}
-
-		hash := sig.Get("signature").String()
-		if hash == "" {
-			continue
-		}
-
-		result, err := s.rpc(ctx, "getTransaction", []any{
-			hash,
-			map[string]any{"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0},
-		})
-		if err != nil {
-			log.Task.Warn("solana reconcile getTransaction Error:", err)
-			continue
-		}
-		if result.Get("meta.err").Exists() && result.Get("meta.err").Raw != "null" {
-			continue
-		}
-
-		for _, t := range parseSolanaParsedTransfers(result) {
-			t.TxHash = hash
-			if t.BlockNum == 0 {
-				t.BlockNum = int(result.Get("slot").Int())
-			}
-			if t.Timestamp.IsZero() {
-				t.Timestamp = time.Unix(result.Get("blockTime").Int(), 0)
-			}
-			if !orderTransferMatch(order, t) {
-				continue
-			}
-
-			if err := order.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
-				log.Task.Warn("solana reconcile mark order confirming failed:", err)
-				return false
-			}
-
-			log.Task.Info(fmt.Sprintf("Solana 订单回查确认成功：%s %s", order.TradeId, t.TxHash))
-			return true
-		}
-	}
-
-	return false
-}
-
-func (s *solana) rpc(ctx context.Context, method string, params any) (gjson.Result, error) {
-	post, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  method,
-		"params":  params,
-	})
-	if err != nil {
-		return gjson.Result{}, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
-	if err != nil {
-		return gjson.Result{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return gjson.Result{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return gjson.Result{}, fmt.Errorf("response status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return gjson.Result{}, err
-	}
-
-	data := gjson.ParseBytes(body)
-	if data.Get("error").Exists() {
-		return gjson.Result{}, fmt.Errorf("%s", data.Get("error").String())
-	}
-
-	return data.Get("result"), nil
-}
-
-func parseSolanaParsedTransfers(tx gjson.Result) []transfer {
-	tokenAccountMap := make(map[string]solanaTokenOwner)
-	for _, v := range []string{"postTokenBalances", "preTokenBalances"} {
-		for _, item := range tx.Get("meta." + v).Array() {
-			tradeType, ok := model.GetContractTrade(item.Get("mint").String())
-			if !ok || item.Get("programId").String() != conf.SolSplToken {
-				continue
-			}
-
-			tokenAccountMap[item.Get("accountIndex").String()] = solanaTokenOwner{
-				TradeType: tradeType,
-				Address:   item.Get("owner").String(),
-			}
-		}
-	}
-
-	transfers := make([]transfer, 0)
-	instructions := tx.Get("transaction.message.instructions").Array()
-	for _, inner := range tx.Get("meta.innerInstructions").Array() {
-		instructions = append(instructions, inner.Get("instructions").Array()...)
-	}
-
-	for _, instr := range instructions {
-		if instr.Get("programId").String() != conf.SolSplToken {
-			continue
-		}
-
-		parsed := instr.Get("parsed")
-		if !parsed.Exists() {
-			continue
-		}
-
-		typ := parsed.Get("type").String()
-		if typ != "transfer" && typ != "transferChecked" {
-			continue
-		}
-
-		info := parsed.Get("info")
-		source := info.Get("source").String()
-		destination := info.Get("destination").String()
-		from, ok := tokenAccountOwnerByPubkey(tx, tokenAccountMap, source)
-		if !ok {
-			continue
-		}
-		to, ok := tokenAccountOwnerByPubkey(tx, tokenAccountMap, destination)
-		if !ok {
-			continue
-		}
-
-		amountRaw := info.Get("tokenAmount.amount").String()
-		decimals := info.Get("tokenAmount.decimals").Int()
-		if amountRaw == "" {
-			amountRaw = info.Get("amount").String()
-			decimals = 6
-		}
-
-		amountInt, ok := new(big.Int).SetString(amountRaw, 10)
-		if !ok {
-			continue
-		}
-
-		transfers = append(transfers, transfer{
-			Network:     conf.Solana,
-			Amount:      decimal.NewFromBigInt(amountInt, -int32(decimals)),
-			FromAddress: from.Address,
-			RecvAddress: to.Address,
-			Timestamp:   time.Unix(tx.Get("blockTime").Int(), 0),
-			TradeType:   from.TradeType,
-			BlockNum:    int(tx.Get("slot").Int()),
-		})
-	}
-
-	return transfers
-}
-
-func tokenAccountOwnerByPubkey(tx gjson.Result, tokenAccountMap map[string]solanaTokenOwner, pubkey string) (solanaTokenOwner, bool) {
-	accountKeys := tx.Get("transaction.message.accountKeys").Array()
-	for i, key := range accountKeys {
-		if key.Get("pubkey").String() == pubkey || key.String() == pubkey {
-			owner, ok := tokenAccountMap[fmt.Sprintf("%d", i)]
-			return owner, ok
-		}
-	}
-
-	return solanaTokenOwner{}, false
 }

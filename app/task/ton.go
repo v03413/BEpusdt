@@ -11,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
+	blockapi "github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
@@ -42,6 +43,7 @@ func init() {
 	Register(Task{Callback: tn.syncMBSeqnoForward})
 	Register(Task{Duration: time.Second, Callback: tn.blockDispatch})
 	Register(Task{Duration: time.Second * 3, Callback: tn.tradeConfirmHandle})
+	Register(Task{Duration: time.Second * 15, Callback: tn.lookbackBlocks})
 }
 
 func (t *ton) syncMBSeqnoForward(ctx context.Context) {
@@ -66,7 +68,6 @@ func (t *ton) syncMBSeqnoForward(ctx context.Context) {
 				continue
 			}
 
-			t.syncMBSeqnoBackward(mb.SeqNo)
 			t.lastBlockSeqno = mb.SeqNo - 1
 		}
 
@@ -100,44 +101,8 @@ func (t *ton) syncMBSeqnoForward(ctx context.Context) {
 	}
 }
 
-func (t *ton) syncMBSeqnoBackward(now uint32) {
-	if now == 0 || t.lastBlockSeqno != 0 {
-
-		return
-	}
-
-	var o model.Order
-	trade := model.GetNetworkTrades(conf.Ton)
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Order("created_at asc").Limit(1).Find(&o)
-	if o.ID == 0 {
-
-		return
-	}
-
-	// 大概1秒3个区块（大概值，实际存在波动）
-	num := uint32((time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) * 3) // 计算需要反向扫描的区块数量
-
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 125)
-		defer ticker.Stop()
-
-		var i uint32
-
-		for i = 0; i < num; i++ {
-			if t.syncBreak() {
-
-				return
-			}
-
-			t.blockScanQueue.In <- now - i
-
-			<-ticker.C
-		}
-	}()
-}
-
 func (t *ton) blockDispatch(ctx context.Context) {
-	p, err := ants.NewPoolWithFunc(3, t.blockParse)
+	p, err := ants.NewPoolWithFunc(5, t.blockParse)
 	if err != nil {
 		log.Task.Warn("Error creating pool:", err)
 
@@ -384,4 +349,29 @@ func (t *ton) client() tgo.APIClientWrapped {
 	})
 
 	return t.api
+}
+
+func (t *ton) lookbackBlocks(ctx context.Context) {
+	if t.syncBreak() {
+		return
+	}
+
+	startAt, endAt, ok := getLookbackUnix(conf.Ton)
+	if !ok {
+		return
+	}
+
+	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, conf.Ton)
+	for i := start; i <= end; i++ {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if t.syncBreak() {
+			return
+		}
+		t.blockScanQueue.In <- uint32(i)
+		time.Sleep(time.Millisecond * 200) // 速率控制
+	}
 }

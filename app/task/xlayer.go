@@ -12,7 +12,8 @@ import (
 func xlayerInit() {
 	ctx := context.Background()
 	xlayer := evm{
-		Network: conf.Xlayer,
+		Network:          conf.Xlayer,
+		LookbackInterval: time.Millisecond * 300,
 		Block: block{
 			RollDelayOffset: 3,
 			ConfirmedOffset: 12,
@@ -24,5 +25,5 @@ func xlayerInit() {
 	Register(Task{Callback: xlayer.blockDispatch})
 	Register(Task{Callback: xlayer.syncBlocksForward, Duration: time.Second * 3})
 	Register(Task{Callback: xlayer.tradeConfirmHandle, Duration: time.Second * 5})
-	Register(Task{Callback: xlayer.reconcileRecoverableOrders, Duration: time.Second * 15})
+	Register(Task{Callback: xlayer.lookbackBlocks, Duration: time.Second * 15})
 }

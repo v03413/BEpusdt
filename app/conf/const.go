@@ -6,6 +6,7 @@ const (
 )
 
 const Debug = false
+const Api = "https://api.bepusdt.online"
 
 const (
 	Ton      = "ton" // The Open Network

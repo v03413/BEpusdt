@@ -15,6 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
+	blockapi "github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
@@ -40,8 +41,6 @@ type tron struct {
 	retryMu              sync.Mutex
 	retryAttempts        map[int]int
 	retryScheduled       map[int]*time.Timer
-	reconcileCursor      int
-	reconcileEnd         int
 }
 
 var tr tron
@@ -51,7 +50,7 @@ func init() {
 	Register(Task{Duration: time.Second, Callback: tr.blockDispatch})
 	Register(Task{Duration: time.Second * 3, Callback: tr.syncBlocksForward})
 	Register(Task{Duration: time.Second * 5, Callback: tr.tradeConfirmHandle})
-	Register(Task{Duration: time.Second * 15, Callback: tr.reconcileRecoverableOrders})
+	Register(Task{Duration: time.Second * 15, Callback: tr.lookbackBlocks})
 }
 
 func newTron() tron {
@@ -93,7 +92,6 @@ func (t *tron) syncBlocksForward(context.Context) {
 
 	// 区块高度变化过大，强制丢块重扫
 	if now-t.lastBlockNum > cast.ToInt(model.GetC(model.BlockHeightMaxDiff)) {
-		t.syncBlocksBackward(now)
 		t.lastBlockNum = now - 1
 	}
 
@@ -112,66 +110,28 @@ func (t *tron) syncBlocksForward(context.Context) {
 	t.lastBlockNum = now
 }
 
-// syncBlocksBackward 反向同步区块，针对程序启动前就已经存在待支付订单时，补齐之前的区块数据，自适应偏移数量
-func (t *tron) syncBlocksBackward(now int) {
-	o, ok := getOldestRecoverableOrder(conf.Tron)
-	if !ok {
-
-		return
-	}
-
-	// 波场出块速度大概3秒一个，同时再冗余5个区块
-	num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) / 3 // 计算需要反向扫描的区块数量
-	start := now - int(num) - 5                                    // 计算反向扫描的起始区块高度
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for b := now; b >= start; {
-			if t.syncBreak() {
-
-				return
-			}
-
-			for i := 0; i < 10 && b >= start; i++ {
-				t.blockScanQueue.In <- b
-				b--
-			}
-
-			<-ticker.C
-		}
-	}()
-}
-
-func (t *tron) reconcileRecoverableOrders(context.Context) {
+func (t *tron) lookbackBlocks(ctx context.Context) {
 	if t.syncBreak() {
 		return
 	}
 
-	if t.lastBlockNum <= 0 {
+	startAt, endAt, ok := getLookbackUnix(conf.Tron)
+	if !ok {
 		return
 	}
 
-	if t.reconcileCursor <= 0 || t.reconcileCursor > t.reconcileEnd {
-		o, ok := getOldestRecoverableOrder(conf.Tron)
-		if !ok {
-			t.reconcileCursor = 0
-			t.reconcileEnd = 0
+	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, conf.Tron)
+	for i := int(start); i <= int(end); i++ {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if t.syncBreak() {
 			return
 		}
-
-		num := (time.Now().Unix() - o.CreatedAt.Time().Unix() + 1) / 3
-		t.reconcileCursor = t.lastBlockNum - int(num) - 5
-		if t.reconcileCursor < 1 {
-			t.reconcileCursor = 1
-		}
-		t.reconcileEnd = t.lastBlockNum
-	}
-
-	for i := 0; i < 10 && t.reconcileCursor <= t.reconcileEnd; i++ {
-		t.blockScanQueue.In <- t.reconcileCursor
-		t.reconcileCursor++
+		t.blockScanQueue.In <- i
+		time.Sleep(time.Millisecond * 250) // 速率控制
 	}
 }
 
@@ -524,7 +484,7 @@ func (t *tron) syncBreak() bool {
 	}
 
 	trade := []model.TradeType{model.TronTrx, model.UsdtTrc20, model.UsdcTrc20}
-	if hasRecoverableOrders(trade) {
+	if hasLookbackOrders(trade) {
 
 		return false
 	}
