@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
+	"github.com/v03413/bepusdt/app"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/utils"
 	"gorm.io/gorm"
@@ -67,6 +68,7 @@ func CoingeckoRate() error {
 	}
 
 	req.Header.Set("x-cg-demo-api-key", GetC(RateSyncCoingeckoApiKey))
+	req.Header.Set("User-Agent", fmt.Sprintf("BEpusdt/%s", app.Version))
 
 	resp, err := client.Do(req)
 	if err != nil {
