@@ -7,7 +7,7 @@
 # BEpusdt (Better Easy Payment USDT)
 
 <p align="center">
-<img src="./static/payment/assets/img/tether.svg" width="15%" alt="tether">
+<img src="./static/checkout/official/assets/img/bepusdt.svg" width="15%" alt="tether">
 </p>
 <p align="center">
 <a href="https://www.gnu.org/licenses/gpl-3.0.html">
@@ -31,6 +31,8 @@
 
 缘起于`Epusdt`，但不仅限于此，加入了一些新特性，致力于成为一款更好用的个人`加密货币`收款网关。
 
+> 请须知：原始 EPusdt 项目已被转手，与本项目没任何联系、两个项目完全独立运营，[具体说明](./docs/faq/epusdt.md)。
+
 ## 🎉 新特性
 
 ### 🌟 目前支持收款网络
@@ -42,13 +44,8 @@
 - ️✅ 支持主流区块网络 不仅限于`USDT`
 - ✅ 支持主流法定货币 汇率自动更新
 - ✅ 轻依赖 单体二进制文件 部署便捷
-- ✅ 支持非订单交易监控 余额变动通知
-- ✅ 支持自定义支付精度与递增颗粒度
 - ✅ 底层区块扫描 安全确认 速度稳定
-- ✅ 支持波场能量代理 回收实时监控
 - ✅ 原生兼容`易支付`收单 接入便捷
-- ✅ 完整独立WEB后台 方便配置管理
-- ✅ 收银台支持多语言适配 助力出海需求
 - ✅ 地址独占模式 底层支持不定额收款
 - ✅ 支持MQTT消息发布 交易信息即时广播
 - ✅ 快速迭代期 超多实用特性功能等你发现
@@ -65,13 +62,13 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 - 安装：[Docker](docs/docker/docker.md) [Linux](docs/linux/install.md) [1Panel](./docs/1panel/README.md) [宝塔](./docs/bt_panel/README.md)
 - 开发：[API对接](docs/api/api.md) [订单回调](docs/notify/readme.md) [Python](https://github.com/luoyanglang/bepusdt-python-sdk) [PHP](https://github.com/v03413/bepusdt-php-sdk)
 - 对接：[独角Next](docs/api/dujiao-next/dujiao-next.md) [彩虹易支付](https://github.com/v03413/Epay-BEpusdt) [whmcs](https://github.com/v03413/whmcs-gateway-epusdt) [其它](docs/api/other.md)
-- 其它：[https 配置](./docs/ssl.md) [时钟同步](docs/linux/systemd-timesyncd.md) [收银台修改](docs/payment-template/README.md)
+- 其它：[https 配置](./docs/ssl.md) [时钟同步](docs/linux/systemd-timesyncd.md) [收银台修改](docs/checkout/README.md)
 
 ## 🖼 功能截图
 
-| 前台收银                                            | 后台订单                                             | Telegram 通知                                            |
-|-------------------------------------------------|--------------------------------------------------|--------------------------------------------------------|
-| <img src=./docs/images/1.png alt=收银台 width=300> | <img src=./docs/images/2.png alt=后台订单 width=300> | <img src=./docs/images/3.png alt=Telegram通知 width=300> |
+| 前台收银                                                   | 后台订单                                                 | 订单通知                                                          |
+|--------------------------------------------------------|------------------------------------------------------|---------------------------------------------------------------|
+| <img src=./docs/images/checkout.png alt=收银台 width=300> | <img src=./docs/images/admin.png alt=后台订单 width=300> | <img src=./docs/images/telegram.png alt=Telegram通知 width=300> |
 
 ## ❓ 常见问题
 

@@ -71,7 +71,7 @@ func (Order) Create(ctx *gin.Context) {
 	}
 
 	// NotifyURL RedirectURL 同为付款链接
-	url := model.CheckoutCashier(host, order.TradeId)
+	url := model.CheckoutUrl(host, order.TradeId)
 
 	// Update order with generated URLs
 	hostUri := model.GetK(model.ApiAppUri)

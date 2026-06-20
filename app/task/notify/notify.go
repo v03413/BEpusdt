@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app"
-	epay2 "github.com/v03413/bepusdt/app/handler/epay"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/notifier"
@@ -60,7 +59,7 @@ func Handle(order model.Order) error {
 
 func epay(ctx context.Context, order model.Order) error {
 	var client = http.Client{Timeout: time.Second * 5}
-	var notifyUrl = fmt.Sprintf("%s?%s", order.NotifyUrl, epay2.BuildNotifyParams(order))
+	var notifyUrl = fmt.Sprintf("%s?%s", order.NotifyUrl, order.BuildNotifyParams())
 
 	postReq, err2 := http.NewRequestWithContext(ctx, "GET", notifyUrl, nil)
 	if err2 != nil {

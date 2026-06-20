@@ -4,11 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/api"
+	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/log"
+	"github.com/v03413/bepusdt/app/utils"
 )
 
 const (
@@ -81,6 +87,18 @@ type Order struct {
 	ExpiredAt     time.Time  `gorm:"column:expired_at;not null;comment:失效时间" json:"expired_at"`
 	ConfirmedAt   *time.Time `gorm:"column:confirmed_at;not null;comment:交易确认时间" json:"confirmed_at"`
 	AutoTimeAt
+}
+
+type MethodItem struct {
+	Amount          string `json:"amount"`
+	ActualAmount    string `json:"actual_amount"`
+	Fiat            string `json:"fiat"`
+	ExchangeRate    string `json:"exchange_rate"`
+	Currency        string `json:"currency"`
+	Network         string `json:"network"`
+	TokenNetName    string `json:"token_net_name"`
+	TokenCustomName string `json:"token_custom_name"`
+	IsPopular       bool   `json:"is_popular"`
 }
 
 func (o *Order) SetCanceled() error {
@@ -162,6 +180,137 @@ func (o *Order) GetStatusEmoji() string {
 
 func (o *Order) GetTxUrl() string {
 	return GetTxUrl(o.TradeType, o.RefHash)
+}
+
+func (o *Order) RedirectUrl() string {
+	var redirect = o.ReturnUrl
+	if o.Status == OrderStatusSuccess && o.ApiType == OrderApiTypeEpay {
+		redirect = fmt.Sprintf("%s?%s", redirect, o.BuildNotifyParams())
+	}
+
+	return redirect
+}
+
+func (o *Order) BuildNotifyParams() string {
+	var signStr = utils.Md5String(fmt.Sprintf("money=%s&name=%s&out_trade_no=%s&pid=%s&trade_no=%s&trade_status=TRADE_SUCCESS&type=%s",
+		cast.ToString(o.Money), o.Name, o.OrderId, conf.Pid, o.TradeId, o.TradeType) + AuthToken())
+	var params = fmt.Sprintf("money=%s&name=%s&out_trade_no=%s&pid=%s&trade_no=%s&trade_status=TRADE_SUCCESS&type=%s",
+		cast.ToString(o.Money), url.QueryEscape(o.Name), url.QueryEscape(o.OrderId), conf.Pid, o.TradeId, o.TradeType)
+
+	return fmt.Sprintf("%s&sign=%s", params, signStr)
+}
+
+func (o *Order) GetMethods(crypto Crypto) []MethodItem {
+	var items = make([]MethodItem, 0)
+	if o.TradeType != "" {
+		// 已经选好了付款网络，没必要再给出可选项
+
+		return items
+	}
+
+	allTrades := GetAllTradeConfig()
+
+	// 解析限定币种
+	var whitelist = make(map[string]bool)
+	var blacklist = make(map[string]bool)
+	if o.CurrencyLimit != "" {
+		for _, c := range strings.Split(o.CurrencyLimit, ",") {
+			c = strings.TrimSpace(c)
+			if strings.HasPrefix(c, "-") {
+				blacklist[strings.ToUpper(strings.TrimPrefix(c, "-"))] = true
+			} else {
+				whitelist[strings.ToUpper(c)] = true
+			}
+		}
+	}
+
+	for tradeTypeStr, typeConf := range allTrades {
+		// 如果指定了货币，则进行过滤
+		if crypto != "" && typeConf.Crypto != crypto {
+			continue
+		}
+
+		// Check blacklist
+		if len(blacklist) > 0 && blacklist[string(typeConf.Crypto)] {
+			continue
+		}
+
+		// Check whitelist
+		if len(whitelist) > 0 && !whitelist[string(typeConf.Crypto)] {
+			continue
+		}
+
+		// 检查是否有可用钱包
+		count := len(GetAvailableWallets(TradeType(tradeTypeStr)))
+		if count == 0 {
+			continue
+		}
+
+		// 获取汇率配置的浮动语法
+		syntax := GetK(ConfKey(fmt.Sprintf("rate_float_%s_%s", typeConf.Crypto, o.Fiat)))
+
+		// 获取汇率
+		rate, err := GetOrderRate(typeConf.Crypto, o.Fiat, syntax)
+		if err != nil {
+			log.Error(fmt.Sprintf("GetPaymentMethods: get order rate error: %s", err.Error()))
+			continue
+		}
+
+		// 计算实际支付金额 (加密货币)
+		// Money 是法币金额
+		moneyDecimal, _ := decimal.NewFromString(o.Money)
+
+		// 计算精度
+		atom, precision := GetAtomicity(TradeType(tradeTypeStr))
+		actualAmount := moneyDecimal.DivRound(rate, precision)
+		if actualAmount.LessThan(atom) {
+			actualAmount = atom
+		}
+
+		items = append(items, MethodItem{
+			Amount:          o.Money,
+			ActualAmount:    actualAmount.String(),
+			Fiat:            string(o.Fiat),
+			ExchangeRate:    rate.String(),
+			Currency:        string(typeConf.Crypto),
+			Network:         string(typeConf.Network),
+			TokenNetName:    typeConf.NetworkName,
+			TokenCustomName: "",    // 暂为空
+			IsPopular:       false, // 暂为 false
+		})
+	}
+
+	// Sort by Currency A-Z
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Currency != items[j].Currency {
+			return items[i].Currency < items[j].Currency
+		}
+		return items[i].Network < items[j].Network
+	})
+
+	return items
+}
+
+func (o *Order) Network() any {
+	type network struct {
+		Alias   string  `json:"alias"`
+		Name    string  `json:"name"`
+		Crypto  Crypto  `json:"crypto"`
+		Network Network `json:"network"`
+	}
+
+	var net = network{}
+	info, ok := registry[o.TradeType]
+	if !ok {
+		return net
+	}
+
+	net.Name = info.NetworkName
+	net.Alias = info.Alias
+	net.Crypto = info.Crypto
+	net.Network = info.Network
+
+	return net
 }
 
 func (o *Order) TableName() string {

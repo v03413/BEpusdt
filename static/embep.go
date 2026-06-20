@@ -9,3 +9,6 @@ var Secure embed.FS
 
 //go:embed payment/*
 var Payment embed.FS
+
+//go:embed checkout
+var Checkout embed.FS

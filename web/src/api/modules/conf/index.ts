@@ -63,4 +63,22 @@ const getRpcConfAPI = () => {
   });
 };
 
-export {setConfAPI, getConfAPI, getsConfAPI, setsConfAPI, notifierAPI, notifierTestAPI, resetApiAuthToken, getRpcConfAPI};
+const checkoutListAPI = (data: any) => {
+  return axios({
+    url: "/api/conf/checkout_list",
+    method: "post",
+    data
+  });
+};
+
+export {
+  setConfAPI,
+  getConfAPI,
+  getsConfAPI,
+  setsConfAPI,
+  notifierAPI,
+  notifierTestAPI,
+  resetApiAuthToken,
+  getRpcConfAPI,
+  checkoutListAPI
+};

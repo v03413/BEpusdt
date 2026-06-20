@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
 
 	"github.com/gin-gonic/gin"
@@ -112,7 +111,7 @@ func (e Epay) Submit(ctx *gin.Context) {
 		host = "https://" + ctx.Request.Host
 	}
 
-	ctx.Redirect(http.StatusFound, model.CheckoutCounter(host, order.TradeId))
+	ctx.Redirect(http.StatusFound, model.CheckoutUrl(host, order.TradeId))
 }
 
 // verify 验证请求参数
@@ -185,13 +184,4 @@ func (e Epay) sign(data map[string]string, token string) string {
 	md5sum := hex.EncodeToString(hash.Sum(nil))
 
 	return md5sum
-}
-
-func BuildNotifyParams(order model.Order) string {
-	var signStr = utils.Md5String(fmt.Sprintf("money=%s&name=%s&out_trade_no=%s&pid=%s&trade_no=%s&trade_status=TRADE_SUCCESS&type=%s",
-		cast.ToString(order.Money), order.Name, order.OrderId, Pid, order.TradeId, order.TradeType) + model.AuthToken())
-	var params = fmt.Sprintf("money=%s&name=%s&out_trade_no=%s&pid=%s&trade_no=%s&trade_status=TRADE_SUCCESS&type=%s",
-		cast.ToString(order.Money), url.QueryEscape(order.Name), url.QueryEscape(order.OrderId), Pid, order.TradeId, order.TradeType)
-
-	return fmt.Sprintf("%s&sign=%s", params, signStr)
 }

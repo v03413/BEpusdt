@@ -54,7 +54,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtTrc20: {
 		Alias:        "USDT・TRC20",
-		NetworkName:  "TRC20",
+		NetworkName:  "Tron",
 		Network:      conf.Tron,
 		Crypto:       USDT,
 		Contract:     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // 占位，目前实际没使用
@@ -66,7 +66,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtErc20: {
 		Alias:       "USDT・ERC20",
-		NetworkName: "ERC20",
+		NetworkName: "Ethereum",
 		Network:     conf.Ethereum,
 		Crypto:      USDT,
 		Contract:    conf.UsdtErc20,
@@ -77,7 +77,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdtBep20: {
 		Alias:       "USDT・BEP20",
-		NetworkName: "BEP20",
+		NetworkName: "Bsc",
 		Network:     conf.Bsc,
 		Crypto:      USDT,
 		Contract:    conf.UsdtBep20,
@@ -144,7 +144,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcErc20: {
 		Alias:       "USDC・ERC20",
-		NetworkName: "ERC20",
+		NetworkName: "Ethereum",
 		Network:     conf.Ethereum,
 		Crypto:      USDC,
 		Contract:    conf.UsdcErc20,
@@ -155,7 +155,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcBep20: {
 		Alias:       "USDC・BEP20",
-		NetworkName: "BEP20",
+		NetworkName: "Bsc",
 		Network:     conf.Bsc,
 		Crypto:      USDC,
 		Contract:    conf.UsdcBep20,
@@ -210,7 +210,7 @@ var registry = map[TradeType]TradeTypeConf{
 	},
 	UsdcTrc20: {
 		Alias:        "USDC・TRC20",
-		NetworkName:  "TRC20",
+		NetworkName:  "Tron",
 		Network:      conf.Tron,
 		Crypto:       USDC,
 		Contract:     "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", // 占位，目前实际没使用

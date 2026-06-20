@@ -6,7 +6,11 @@ const (
 )
 
 const Debug = false
-const Api = "https://api.bepusdt.online"
+
+const (
+	Pid = "1000" // 暂时固定易支付商户ID
+	Api = "https://api.bepusdt.online"
+)
 
 const (
 	Ton      = "ton" // The Open Network

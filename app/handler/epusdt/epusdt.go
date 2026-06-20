@@ -4,16 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
-	"net/url"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
-	"github.com/v03413/bepusdt/app/handler/epay"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/model"
 	"github.com/v03413/bepusdt/app/utils"
@@ -58,57 +53,13 @@ type cancelReq struct {
 	Signature string `json:"signature" binding:"required"`
 }
 
+type infoReq struct {
+	TradeID string `json:"trade_id" binding:"required"`
+}
+
 type methodsReq struct {
 	TradeID  string `json:"trade_id" binding:"required"`
 	Currency string `json:"currency"`
-}
-
-type PaymentItem struct {
-	Amount          string `json:"amount"`
-	ActualAmount    string `json:"actual_amount"`
-	Fiat            string `json:"fiat"`
-	ExchangeRate    string `json:"exchange_rate"`
-	Currency        string `json:"currency"`
-	Network         string `json:"network"`
-	TokenNetName    string `json:"token_net_name"`
-	TokenCustomName string `json:"token_custom_name"`
-	IsPopular       bool   `json:"is_popular"`
-}
-
-func (Epusdt) SignVerify(ctx *gin.Context) {
-	rawData, err := ctx.GetRawData()
-	if err != nil {
-		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据读取错误 %s", err.Error())))
-		ctx.Abort()
-
-		return
-	}
-
-	m := make(map[string]any)
-	if err = json.Unmarshal(rawData, &m); err != nil {
-		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据解析错误 %s", err.Error())))
-		ctx.Abort()
-
-		return
-	}
-
-	sign, ok := m["signature"]
-	if !ok {
-		ctx.JSON(200, respFailJson("签名丢失"))
-		ctx.Abort()
-
-		return
-	}
-
-	if utils.EpusdtSign(m, model.AuthToken()) != sign {
-		ctx.JSON(200, respFailJson("签名错误"))
-		ctx.Abort()
-
-		return
-	}
-
-	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(rawData)) // 回写数据
-	ctx.Next()
 }
 
 func (Epusdt) Notify(ctx *gin.Context) {
@@ -138,7 +89,6 @@ func (Epusdt) Notify(ctx *gin.Context) {
 	ctx.String(200, "ok")
 }
 
-// CreateOrder Order creation API
 func (Epusdt) CreateOrder(ctx *gin.Context) {
 	var req createOrderReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -196,12 +146,11 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"status":          order.Status,
 		"amount":          order.Money,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"payment_url":     model.CheckoutCashier(host, order.TradeId),
-		"network":         GetPaymentItem("", order),
+		"payment_url":     model.CheckoutUrl(host, order.TradeId),
+		"network":         order.GetMethods(""),
 	}))
 }
 
-// UpdateOrder 更新订单，返回付款链接。更新订单不需要签名，因为创建订单时已经验证，只需要提交参数更新订单即可。
 func (Epusdt) UpdateOrder(ctx *gin.Context) {
 	// 接收 trade_id, currency, network 三个参数
 	var req updateOrderReq
@@ -261,7 +210,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		"actual_amount":   newOrder.Amount,
 		"token":           newOrder.Address,
 		"expiration_time": uint64(newOrder.ExpiredAt.Sub(time.Now()).Seconds()),
-		"payment_url":     model.CheckoutCounter(host, newOrder.TradeId),
+		"payment_url":     model.CheckoutUrl(host, newOrder.TradeId),
 	}))
 }
 
@@ -324,7 +273,7 @@ func (Epusdt) CreateTransaction(ctx *gin.Context) {
 		"actual_amount":   order.Amount,
 		"token":           order.Address,
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"payment_url":     model.CheckoutCounter(utils.GetRequestHost(ctx.Request), order.TradeId),
+		"payment_url":     model.CheckoutUrl(utils.GetRequestHost(ctx.Request), order.TradeId),
 	}))
 }
 
@@ -358,255 +307,109 @@ func (Epusdt) CancelTransaction(ctx *gin.Context) {
 	ctx.JSON(200, respSuccJson(gin.H{"trade_id": req.TradeID}))
 }
 
-func (Epusdt) CheckoutCounter(ctx *gin.Context) {
+func (Epusdt) Checkout(ctx *gin.Context) {
 	tradeId := ctx.Param("trade_id")
-	order, ok := model.GetTradeOrder(tradeId)
-	if !ok {
-		ctx.String(200, "订单不存在")
-
-		return
-	}
-
-	uri, err := url.ParseRequestURI(order.ReturnUrl)
-	if err != nil {
-		ctx.String(200, "同步地址错误")
-		log.Error("同步地址解析错误", err.Error())
-
-		return
-	}
-
-	ctx.HTML(200, checkoutCounterTemplateName(model.GetPaymentTemplateMode(), order.TradeType), gin.H{
-		"http_host":        uri.Host,
-		"amount":           order.Amount,
-		"address":          order.Address,
-		"expire":           int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"return_url":       order.ReturnUrl,
-		"usdt_rate":        order.Rate,
-		"trade_id":         tradeId,
-		"order_id":         order.OrderId,
-		"trade_type":       order.TradeType,
-		"name":             order.Name,
-		"money":            order.Money,
-		"fiat":             order.Fiat,
-		"default_language": string(model.GetPaymentTemplateLanguage()),
-		"network":          jsonScript(GetPaymentItem("", order)),
-		"selected_payment": jsonScript(GetSelectedPayment(order)),
-	})
-}
-
-func (Epusdt) CheckoutCashier(ctx *gin.Context) {
-	tradeId := ctx.Param("trade_id")
-	order, ok := model.GetTradeOrder(tradeId)
-	if !ok {
+	if _, ok := model.GetTradeOrder(tradeId); !ok {
 		ctx.String(200, "order not found")
 
 		return
 	}
 
-	uri, err := url.ParseRequestURI(order.ReturnUrl)
-	if err != nil {
-		ctx.String(200, "sync address error")
-		log.Error("CheckoutCashier: sync address error: ", err.Error())
+	// 收银台模板
+	tmpl := model.GetC(model.PaymentCheckout) + "/checkout.html"
 
-		return
-	}
-
-	ctx.HTML(200, checkoutCashierTemplateName(model.GetPaymentTemplateMode()), gin.H{
-		"http_host":        uri.Host,
-		"amount":           order.Amount,
-		"expire":           int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		"return_url":       order.ReturnUrl,
-		"trade_id":         tradeId,
-		"order_id":         order.OrderId,
-		"name":             order.Name,
-		"money":            order.Money,
-		"fiat":             order.Fiat,
-		"default_language": string(model.GetPaymentTemplateLanguage()),
-		"network":          jsonScript(GetPaymentItem("", order)),
-		"selected_payment": jsonScript(GetSelectedPayment(order)),
-	})
+	ctx.HTML(200, tmpl, gin.H{"trade_id": tradeId})
 }
 
-func checkoutCashierTemplateName(mode model.PaymentTemplateMode) string {
-	if mode == model.PaymentTemplateWolf {
-		return "wolf.cashier.html"
-	}
-
-	return "cashier.html"
-}
-
-func checkoutCounterTemplateName(mode model.PaymentTemplateMode, tradeType model.TradeType) string {
-	if mode == model.PaymentTemplateWolf {
-		return "wolf.checkout.html"
-	}
-
-	return string(tradeType + ".html")
-}
-
-func GetSelectedPayment(order model.Order) gin.H {
-	if order.TradeType == "" || order.Address == "" {
-		return nil
-	}
-
-	conf, ok := model.GetAllTradeConfig()[string(order.TradeType)]
-	if !ok {
-		return nil
-	}
-
-	return gin.H{
-		"actual_amount":  order.Amount,
-		"currency":       string(conf.Crypto),
-		"network":        string(conf.Network),
-		"token_net_name": conf.NetworkName,
-		"address":        order.Address,
-		"token":          order.Address,
-	}
-}
-
-func jsonScript(value any) template.JS {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return template.JS("null")
-	}
-
-	return template.JS(data)
-}
-
-func (Epusdt) CheckStatus(ctx *gin.Context) {
-	tradeId := ctx.Param("trade_id")
-	order, ok := model.GetTradeOrder(tradeId)
-	if !ok {
-		ctx.JSON(200, respFailJson("订单不存在"))
-
-		return
-	}
-
-	var returnUrl string
-	if order.Status == model.OrderStatusSuccess {
-		returnUrl = order.ReturnUrl
-		if order.ApiType == model.OrderApiTypeEpay {
-			// 易支付兼容
-			returnUrl = fmt.Sprintf("%s?%s", returnUrl, epay.BuildNotifyParams(order))
-		}
-	}
-
-	// 返回响应数据
-	ctx.JSON(200, gin.H{
-		"trade_id":   tradeId,
-		"trade_hash": order.RefHash,
-		"status":     order.Status,
-		"return_url": returnUrl,
-	})
-}
-
-func (Epusdt) GetPaymentMethods(ctx *gin.Context) {
+func (Epusdt) GetMethods(ctx *gin.Context) {
 	var req methodsReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(500, respFailJson(fmt.Sprintf("request error: %s", err.Error())))
+		ctx.JSON(200, respFailJson(fmt.Sprintf("request error: %s", err.Error())))
 		return
 	}
 
 	order, ok := model.GetTradeOrder(req.TradeID)
 	if !ok {
-		ctx.JSON(400, respFailJson("order not found"))
+		ctx.JSON(200, respFailJson("order not found"))
 		return
 	}
 
 	if order.Status == model.OrderStatusExpired {
-		ctx.JSON(400, respFailJson("order expired"))
+		ctx.JSON(200, respFailJson("order expired"))
 		return
 	}
 
 	ctx.JSON(200, respSuccJson(gin.H{
-		"methods": GetPaymentItem(model.Crypto(req.Currency), order),
+		"methods": order.GetMethods(model.Crypto(req.Currency)),
 	}))
 }
 
-func GetPaymentItem(crypto model.Crypto, order model.Order) []PaymentItem {
-	fiat := order.Fiat
-
-	var methods = make([]PaymentItem, 0)
-	allTrades := model.GetAllTradeConfig()
-
-	// 解析限定币种
-	var whitelist = make(map[string]bool)
-	var blacklist = make(map[string]bool)
-	if order.CurrencyLimit != "" {
-		for _, c := range strings.Split(order.CurrencyLimit, ",") {
-			c = strings.TrimSpace(c)
-			if strings.HasPrefix(c, "-") {
-				blacklist[strings.ToUpper(strings.TrimPrefix(c, "-"))] = true
-			} else {
-				whitelist[strings.ToUpper(c)] = true
-			}
-		}
+func (Epusdt) Info(ctx *gin.Context) {
+	var req infoReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("参数错误：%s", err.Error())))
+		return
 	}
 
-	for tradeTypeStr, conf := range allTrades {
-		// 如果指定了货币，则进行过滤
-		if crypto != "" && conf.Crypto != crypto {
-			continue
-		}
-
-		// Check blacklist
-		if len(blacklist) > 0 && blacklist[string(conf.Crypto)] {
-			continue
-		}
-
-		// Check whitelist
-		if len(whitelist) > 0 && !whitelist[string(conf.Crypto)] {
-			continue
-		}
-
-		// 检查是否有可用钱包
-		count := len(model.GetAvailableWallets(model.TradeType(tradeTypeStr)))
-		if count == 0 {
-			continue
-		}
-
-		// 获取汇率配置的浮动语法
-		syntax := model.GetK(model.ConfKey(fmt.Sprintf("rate_float_%s_%s", conf.Crypto, fiat)))
-
-		// 获取汇率
-		rate, err := model.GetOrderRate(conf.Crypto, fiat, syntax)
-		if err != nil {
-			log.Error(fmt.Sprintf("GetPaymentMethods: get order rate error: %s", err.Error()))
-			continue
-		}
-
-		// 计算实际支付金额 (加密货币)
-		// Money 是法币金额
-		moneyDecimal, _ := decimal.NewFromString(order.Money)
-
-		// 计算精度
-		atom, precision := model.GetAtomicity(model.TradeType(tradeTypeStr))
-		actualAmount := moneyDecimal.DivRound(rate, precision)
-		if actualAmount.LessThan(atom) {
-			actualAmount = atom
-		}
-
-		methods = append(methods, PaymentItem{
-			Amount:          order.Money,
-			ActualAmount:    actualAmount.String(),
-			Fiat:            string(fiat),
-			ExchangeRate:    rate.String(),
-			Currency:        string(conf.Crypto),
-			Network:         string(conf.Network),
-			TokenNetName:    conf.NetworkName,
-			TokenCustomName: "",    // 暂为空
-			IsPopular:       false, // 暂为 false
-		})
+	order, ok := model.GetTradeOrder(req.TradeID)
+	if !ok {
+		ctx.JSON(200, respFailJson("订单不存在"))
+		return
 	}
 
-	// Sort by Currency A-Z
-	sort.Slice(methods, func(i, j int) bool {
-		if methods[i].Currency != methods[j].Currency {
-			return methods[i].Currency < methods[j].Currency
-		}
-		return methods[i].Network < methods[j].Network
-	})
+	ctx.JSON(200, respSuccJson(gin.H{
+		"network":       order.Network(),                     // 网络信息
+		"trade_id":      order.TradeId,                       // 交易编号
+		"order_id":      order.OrderId,                       // 商户订单
+		"trade_type":    order.TradeType,                     // 交易类型
+		"status":        order.Status,                        // 订单状态
+		"money":         order.Money,                         // 订单金额
+		"actual_amount": order.Amount,                        // 实付数额
+		"token":         order.Address,                       // 收款地址
+		"fiat":          order.Fiat,                          // 法币类型
+		"name":          order.Name,                          // 商品名称
+		"expired_at":    order.ExpiredAt.Unix(),              // 截止时间
+		"created_at":    order.CreatedAt.Time().Unix(),       // 创建时间
+		"trade_url":     order.GetTxUrl(),                    // 链上详情
+		"support_url":   model.GetC(model.PaymentSupportUrl), // 客服链接
+		"redirect_url":  order.RedirectUrl(),                 // 跳转地址
+	}))
+}
 
-	return methods
+func (Epusdt) SignVerify(ctx *gin.Context) {
+	rawData, err := ctx.GetRawData()
+	if err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据读取错误 %s", err.Error())))
+		ctx.Abort()
+
+		return
+	}
+
+	m := make(map[string]any)
+	if err = json.Unmarshal(rawData, &m); err != nil {
+		ctx.JSON(200, respFailJson(fmt.Sprintf("json 数据解析错误 %s", err.Error())))
+		ctx.Abort()
+
+		return
+	}
+
+	sign, ok := m["signature"]
+	if !ok {
+		ctx.JSON(200, respFailJson("签名丢失"))
+		ctx.Abort()
+
+		return
+	}
+
+	if utils.EpusdtSign(m, model.AuthToken()) != sign {
+		ctx.JSON(200, respFailJson("签名错误"))
+		ctx.Abort()
+
+		return
+	}
+
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(rawData)) // 回写数据
+	ctx.Next()
 }
 
 func respFailJson(message string) gin.H {
@@ -615,6 +418,5 @@ func respFailJson(message string) gin.H {
 }
 
 func respSuccJson(data interface{}) gin.H {
-
 	return gin.H{"status_code": 200, "message": "success", "data": data, "request_id": ""}
 }
