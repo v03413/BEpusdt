@@ -31,7 +31,7 @@
 
 缘起于`Epusdt`，但不仅限于此，加入了一些新特性，致力于成为一款更好用的个人`加密货币`收款网关。
 
-> 请须知：原始 EPusdt 项目已被转手，与本项目没任何联系、两个项目完全独立运营，[具体说明](./docs/faq/epusdt.md)。
+> 原始 EPusdt 项目已被转手，现与本项目再没任何联系、两个项目完全独立运营，[具体说明](./docs/faq/epusdt.md)。
 
 ## 🎉 新特性
 
@@ -77,11 +77,6 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 - [后台入口账密忘记重置教程](./docs/faq/login-reset.md)
 - [Telegram 通知 Chat ID 获取教程](docs/faq/telegram-chat-id.md)
 - [区块 RPC 节点稳定性说明指南‼️](./docs/faq/rpc-endpoint.md)
-
-## ⚠️ 重要提示
-
-- **订单交易强依赖时间**：请确保服务器时间准确，否则可能导致订单异常
-- **网络环境要求**：请确保服务器网络环境稳定，否则可能影响功能正常运行
 
 ## 🏝️ 社区交流
 
