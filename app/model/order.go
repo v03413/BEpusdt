@@ -11,8 +11,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
-	"github.com/v03413/bepusdt/app/api"
 	"github.com/v03413/bepusdt/app/conf"
+	"github.com/v03413/bepusdt/app/core"
 	"github.com/v03413/bepusdt/app/log"
 	"github.com/v03413/bepusdt/app/utils"
 )
@@ -102,7 +102,7 @@ type MethodItem struct {
 }
 
 func (o *Order) SetCanceled() error {
-	api.New()
+	core.New()
 	o.Status = OrderStatusCanceled
 
 	return Db.Save(o).Error

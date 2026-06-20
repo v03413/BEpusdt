@@ -47,7 +47,7 @@ var lookbackDone sync.Map // key: int64 order ID, value: struct{}
 
 const batchInterval = time.Second * 1       // 批处理缓解数据库读取压力
 const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
-const orderRecoveryLookback = 24 * time.Hour
+const orderRecoveryLookback = 3 * time.Hour // 订单回溯时间窗口
 
 func init() {
 	Register(Task{Callback: orderTransferHandle})
