@@ -105,6 +105,7 @@ const getConf = async () => {
         "payment_support_url",
         "payment_checkout",
         "payment_timeout",
+        "payment_lookback_hour",
         "notifier_params",
         "notifier_channel",
         "mqtt_host",

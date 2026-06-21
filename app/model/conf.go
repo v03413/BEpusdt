@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/cast"
 	"github.com/v03413/bepusdt/app/utils"
 	"github.com/v03413/go-cache"
 	"golang.org/x/crypto/bcrypt"
@@ -45,6 +46,7 @@ var defaultConf = map[ConfKey]string{
 	PaymentCheckout:         "official", // 官方模板
 	PaymentMatchMode:        string(Classic),
 	PaymentSupportUrl:       "",
+	PaymentLookbackHour:     "3",
 	SystemInstallLock:       "0",
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
@@ -244,4 +246,11 @@ func FillDefaultConf() {
 	if len(rows) > 0 {
 		Db.Create(&rows)
 	}
+}
+
+func GetLookbackHour() time.Duration {
+	var hour = time.Hour * -1
+	var num = cast.ToInt(GetC(PaymentLookbackHour))
+
+	return time.Duration(num) * hour
 }

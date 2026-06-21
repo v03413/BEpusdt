@@ -54,6 +54,14 @@
             <a-input v-model="form.payment_timeout" placeholder="推荐 1200" />
           </a-form-item>
 
+          <a-form-item
+            field="payment_lookback_hour"
+            label="订单回溯时间"
+            extra="扫块回溯时间，单位小时；可解决异常重启时导致的漏单问题"
+          >
+            <a-input v-model="form.payment_lookback_hour" placeholder="请输入正整数" />
+          </a-form-item>
+
           <a-form-item field="payment_match_mode" label="金额匹配模式">
             <template #extra>
               订单交易在金额确认时，使用不同算法的算法进行比对；详细区别请看
@@ -109,7 +117,8 @@ const form = ref({
   payment_max_amount: "",
   payment_min_amount: "",
   payment_match_mode: "classic",
-  home_redirect_url: ""
+  home_redirect_url: "",
+  payment_lookback_hour: ""
 });
 const rules = {
   block_height_max_diff: [
@@ -165,6 +174,22 @@ const rules = {
       required: true,
       message: "金额匹配模式不能为空"
     }
+  ],
+  payment_lookback_hour: [
+    {
+      required: true,
+      message: "订单回溯时间不能为空"
+    },
+    {
+      validator: (value: string, callback: (error?: string) => void) => {
+        const num = Number(value);
+        if (!Number.isInteger(num) || num <= 0) {
+          callback("订单回溯时间必须为正整数");
+        } else {
+          callback();
+        }
+      }
+    }
   ]
 };
 
@@ -179,7 +204,8 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
     { key: "payment_min_amount", value: form.value.payment_min_amount },
     { key: "payment_timeout", value: form.value.payment_timeout },
     { key: "payment_match_mode", value: form.value.payment_match_mode },
-    { key: "home_redirect_url", value: form.value.home_redirect_url }
+    { key: "home_redirect_url", value: form.value.home_redirect_url },
+    { key: "payment_lookback_hour", value: form.value.payment_lookback_hour }
   ]);
 
   Message.success("保存成功");
@@ -198,6 +224,7 @@ watch(
     form.value.payment_timeout = data.value.payment_timeout;
     form.value.payment_match_mode = data.value.payment_match_mode || "classic";
     form.value.home_redirect_url = data.value.home_redirect_url || "";
+    form.value.payment_lookback_hour = data.value.payment_lookback_hour || "";
   }
 );
 </script>

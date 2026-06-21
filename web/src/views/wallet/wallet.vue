@@ -109,6 +109,9 @@
           <a-option :value="0">关闭</a-option>
           <a-option :value="1">启用</a-option>
         </a-select>
+        <template #help>
+          <span style="color: var(--color-danger-6, #f53f3f)">⚠ 如无必要不推荐开启，关闭可以极大降低 RPC 调用次数</span>
+        </template>
       </a-form-item>
       <a-form-item field="remark" label="备注信息" validate-trigger="blur">
         <a-textarea v-model="addFrom.remark" placeholder="请输入备注信息" allow-clear />
@@ -144,6 +147,9 @@
           <a-option :value="0">关闭</a-option>
           <a-option :value="1">开启</a-option>
         </a-select>
+        <template #help>
+          <span style="color: var(--color-danger-6, #f53f3f)">⚠ 如无必要不推荐开启，关闭可以极大降低 RPC 调用次数</span>
+        </template>
       </a-form-item>
       <a-form-item field="remark" label="备注信息" validate-trigger="blur">
         <a-textarea v-model="modFrom.remark" placeholder="请输入备注信息" allow-clear />

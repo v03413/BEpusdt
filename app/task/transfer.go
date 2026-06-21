@@ -47,7 +47,6 @@ var lookbackDone sync.Map // key: int64 order ID, value: struct{}
 
 const batchInterval = time.Second * 1       // 批处理缓解数据库读取压力
 const orderCheckInterval = time.Second * 10 // 订单过期检查间隔
-const orderRecoveryLookback = 3 * time.Hour // 订单回溯时间窗口
 
 func init() {
 	Register(Task{Callback: orderTransferHandle})
@@ -267,7 +266,7 @@ func receivableOrderStatuses() []int {
 func getReceivableOrders() map[string][]model.Order {
 	var orders []model.Order
 	db := model.Db.Where("status in (?)", receivableOrderStatuses()).
-		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback)).
+		Where("expired_at > ?", time.Now().Add(model.GetLookbackHour())).
 		Order("created_at asc")
 	db.Find(&orders)
 
@@ -284,7 +283,7 @@ func hasLookbackOrders(tradeType []model.TradeType) bool {
 	var count int64
 	db := model.Db.Model(&model.Order{}).
 		Where("status in (?)", receivableOrderStatuses()).
-		Where("expired_at > ?", time.Now().Add(-orderRecoveryLookback))
+		Where("expired_at > ?", time.Now().Add(model.GetLookbackHour()))
 	if len(tradeType) > 0 {
 		db = db.Where("trade_type in (?)", tradeType)
 	}
@@ -300,7 +299,7 @@ func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
 		return
 	}
 
-	lookback := time.Now().Add(-orderRecoveryLookback)
+	lookback := time.Now().Add(model.GetLookbackHour())
 	var all []model.Order
 	model.Db.Model(&model.Order{}).
 		Where("status in (?) and trade_type in (?)", receivableOrderStatuses(), trade).
