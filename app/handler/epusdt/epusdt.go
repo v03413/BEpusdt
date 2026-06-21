@@ -172,6 +172,11 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		return
 	}
 
+	if order.TradeType != "" {
+		ctx.JSON(200, respFailJson("update order failed: order already has trade type"))
+		return
+	}
+
 	// 根据 currency 和 network 解析出 TradeType
 	tradeType, err := model.GetTradeTypeByCurrencyAndNetwork(req.Currency, req.Network)
 	if err != nil {
