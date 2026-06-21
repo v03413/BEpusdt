@@ -201,6 +201,12 @@ func (Order) Paid(ctx *gin.Context) {
 		return
 	}
 
+	if order.Status == model.OrderStatusCanceled {
+		base.BadRequest(ctx, "交易已取消，无法补单")
+
+		return
+	}
+
 	confirmedAt := time.Now()
 	var update = map[string]interface{}{
 		"ref_hash":     req.RefHash,
@@ -253,6 +259,37 @@ func (Order) ManualNotify(ctx *gin.Context) {
 	}
 
 	base.Ok(ctx, "订单回调成功！")
+}
+
+func (Order) Cancel(ctx *gin.Context) {
+	var req base.IDRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, err.Error())
+
+		return
+	}
+
+	var order model.Order
+	model.Db.Where("id = ?", req.ID).Find(&order)
+	if order.ID == 0 {
+		base.BadRequest(ctx, "订单不存在")
+
+		return
+	}
+
+	if order.Status != model.OrderStatusWaiting {
+		base.BadRequest(ctx, "仅允许取消未支付订单")
+
+		return
+	}
+
+	if err := order.SetCanceled(); err != nil {
+		base.Error(ctx, err)
+
+		return
+	}
+
+	base.Ok(ctx, "订单取消成功")
 }
 
 func (Order) Del(ctx *gin.Context) {

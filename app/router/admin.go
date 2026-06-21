@@ -38,6 +38,7 @@ func adminInit(e *gin.Engine) {
 		PostRegister(orderRtr, "/detail", true, orderHdr.Detail)
 		PostRegister(orderRtr, "/paid", true, orderHdr.Paid)
 		PostRegister(orderRtr, "/manual_notify", true, orderHdr.ManualNotify)
+		PostRegister(orderRtr, "/cancel", true, orderHdr.Cancel)
 		PostRegister(orderRtr, "/del", true, orderHdr.Del)
 	}
 

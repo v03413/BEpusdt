@@ -19,6 +19,17 @@
           <template #icon><icon-notification /></template>
           回调
         </a-button>
+        <a-popconfirm
+          v-if="detailData.status === 1"
+          content="确定取消该订单吗？取消后用户将无法继续支付。"
+          type="warning"
+          @ok="handleCancelOrder"
+        >
+          <a-button type="primary" status="warning">
+            <template #icon><icon-close-circle /></template>
+            取消订单
+          </a-button>
+        </a-popconfirm>
         <a-popconfirm content="确定删除该订单吗？删除后将无法恢复！" type="error" @ok="handleDelete">
           <a-button type="primary" status="danger">
             <template #icon><icon-delete /></template>
@@ -258,9 +269,8 @@
 
 <script setup lang="ts">
 import { getCryptoColor } from "@/views/rate/common";
-import { delOrderApi } from "@/api/modules/order/index";
+import { cancelOrderAPI, delOrderApi, manualNotifyAPI } from "@/api/modules/order/index";
 import { Notification, Modal } from "@arco-design/web-vue";
-import { manualNotifyAPI } from "@/api/modules/order/index";
 import { useLayoutModel } from "@/hooks/useLayoutModel";
 
 const props = defineProps({
@@ -305,6 +315,17 @@ const handleDelete = async () => {
   try {
     await delOrderApi({ ids: [props.detailData.id] });
     Notification.success("删除成功");
+    emits("refresh");
+    onClose();
+  } catch (error) {
+    Notification.error(error);
+  }
+};
+
+const handleCancelOrder = async () => {
+  try {
+    await cancelOrderAPI({ id: props.detailData.id });
+    Notification.success("订单已取消");
     emits("refresh");
     onClose();
   } catch (error) {

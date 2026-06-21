@@ -123,7 +123,7 @@
         <template #optional="{ record }">
           <a-space wrap>
             <a-button size="mini" type="primary" @click="showDetail(record)">详情</a-button>
-            <a-button size="mini" type="primary" status="warning" :disabled="record.status === 2" @click="showPaidModal(record)">
+            <a-button size="mini" type="primary" status="warning" :disabled="!canManualPaid(record)" @click="showPaidModal(record)">
               补单
             </a-button>
           </a-space>
@@ -132,7 +132,7 @@
     </div>
   </div>
 
-  <DetailModal :visible="detailVisible" :detailData="detailData" @close="closeDetail" />
+  <DetailModal :visible="detailVisible" :detailData="detailData" @close="closeDetail" @refresh="getOrderList" />
 
   <!-- 补单弹窗 -->
   <a-modal
@@ -314,7 +314,11 @@ const paidForm = reactive({
   recordId: 0
 });
 
+const canManualPaid = (record: List) => record.status !== 2 && record.status !== 4;
+
 const showPaidModal = (record: List) => {
+  if (!canManualPaid(record)) return;
+
   paidForm.recordId = record.id;
   paidForm.ref_hash = "";
   paidModalVisible.value = true;
