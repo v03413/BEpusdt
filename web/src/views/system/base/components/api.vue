@@ -69,6 +69,30 @@ const rules = {};
 const checkoutList = ref<Array<{ label: string; value: string; author: string; desc: string; link: string }>>([]);
 const checkoutListLoading = ref(false);
 
+const normalizePaymentCheckout = (value?: string) => {
+  const rawValue = value || "";
+  const validValues = checkoutList.value.map(item => item.value);
+  if (validValues.length === 0) {
+    return rawValue;
+  }
+  if (validValues.includes(rawValue)) {
+    return rawValue;
+  }
+  if (validValues.includes("official")) {
+    return "official";
+  }
+  return validValues[0] || "";
+};
+
+const syncFormFromConfig = () => {
+  if (!data.value) return;
+
+  form.value.api_auth_token = data.value.api_auth_token || "";
+  form.value.api_app_uri = data.value.api_app_uri || "";
+  form.value.payment_checkout = normalizePaymentCheckout(data.value.payment_checkout || data.value.payment_template);
+  form.value.payment_support_url = data.value.payment_support_url || "";
+};
+
 // 获取收银台模板列表
 const fetchCheckoutList = async () => {
   try {
@@ -82,20 +106,13 @@ const fetchCheckoutList = async () => {
         desc: template.desc,
         link: template.link
       }));
+      syncFormFromConfig();
     }
   } catch (error) {
     Message.error("获取收银台模板列表失败");
   } finally {
     checkoutListLoading.value = false;
   }
-};
-
-const normalizePaymentCheckout = (value: string) => {
-  const validValues = checkoutList.value.map(item => item.value);
-  if (validValues.includes(value)) {
-    return value;
-  }
-  return validValues.length > 0 ? validValues[0] : "";
 };
 
 // 获取当前选中模板的详细信息
@@ -124,6 +141,8 @@ const handleResetToken = async () => {
 const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
   if (errors) return;
 
+  form.value.payment_checkout = normalizePaymentCheckout(form.value.payment_checkout);
+
   await setsConfAPI([
     {
       key: "api_app_uri",
@@ -146,12 +165,8 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
 
 watch(
   () => data.value,
-  () => {
-    form.value.api_auth_token = data.value.api_auth_token;
-    form.value.api_app_uri = data.value.api_app_uri;
-    form.value.payment_checkout = normalizePaymentCheckout(data.value.payment_checkout || data.value.payment_template);
-    form.value.payment_support_url = data.value.payment_support_url || "";
-  }
+  syncFormFromConfig,
+  { immediate: true }
 );
 
 // 组件挂载时获取模板列表
