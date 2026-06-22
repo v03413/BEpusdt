@@ -32,6 +32,14 @@ export const paidAPI = (data: any) => {
   });
 };
 
+export const cancelOrderAPI = (data: any) => {
+  return axios({
+    url: "/api/order/cancel",
+    method: "post",
+    data
+  });
+};
+
 export const delOrderApi = (data: any) => {
   return axios({
     url: "/api/order/del",

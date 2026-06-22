@@ -309,13 +309,32 @@
                 var d = res.data;
                 if (d.status === 5) showConfirming();
                 else if (d.status === 2) {
-                    clearInterval(stTimer);
-                    if (cdTimer) clearInterval(cdTimer);
+                    stopTimers();
                     hideConfirming();
                     showSuccess(d);
+                } else if (d.status === 4) {
+                    showCanceled(d);
                 }
             })
             .catch(function (e) { console.error(e); });
+    }
+
+    function stopTimers() {
+        if (stTimer) {
+            clearInterval(stTimer);
+            stTimer = null;
+        }
+        if (cdTimer) {
+            clearInterval(cdTimer);
+            cdTimer = null;
+        }
+    }
+
+    function hideCheckoutStages() {
+        var selection = document.getElementById('selectionStage');
+        var payment = document.getElementById('paymentStage');
+        if (selection) selection.style.display = 'none';
+        if (payment) payment.style.display = 'none';
     }
 
     function startCountdown(timerEl, expiredAt, createdAt, onExpire) {
@@ -383,6 +402,35 @@
         showToast(t('paymentSuccessToast', '支付成功'), 'success');
     }
 
+    function showCanceled(data) {
+        stopTimers();
+        hideConfirming();
+        hideCheckoutStages();
+        var modal = document.getElementById('canceledModal');
+        if (!modal) {
+            var ret = (data && data.redirect_url) || (cfg && cfg.return_url) || '/';
+            modal = document.createElement('div');
+            modal.id = 'canceledModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML =
+                '<div class="modal-card"><div class="modal-body">' +
+                '<div style="margin-bottom:16px;display:flex;justify-content:center;">' +
+                    '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                        '<circle cx="12" cy="12" r="10"/>' +
+                        '<path d="M15 9l-6 6"/>' +
+                        '<path d="M9 9l6 6"/>' +
+                    '</svg>' +
+                '</div>' +
+                '<div class="modal-title" style="color:#475569;">' + t('canceledTitle', '订单已取消') + '</div>' +
+                '<p class="modal-subtitle">' + t('canceledMessage', '该订单已取消，不能继续付款。<br>如需支付，请重新发起订单。') + '</p>' +
+                '<a href="' + ret + '" class="return-btn">' + t('returnBtn', '返回商户平台') + '</a>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        showToast(t('orderCanceledToast', '订单已取消'), 'error');
+    }
+
     function showTimeout() {
         if (document.getElementById('timeoutModal')) return;
         var ret = cfg.return_url || '/';
@@ -405,6 +453,10 @@
     }
 
     function createTransaction() {
+        if (cfg && cfg.status && cfg.status !== 1) {
+            showToast(t('toastOrderNotPayable', '当前订单状态不允许继续付款'), 'error');
+            return;
+        }
         if (!selMethod) return;
         fetch('/api/v1/pay/update-order', {
             method: 'POST',
@@ -431,7 +483,10 @@
             startCountdown(document.getElementById('timerDisplay'), parseInt(cfg.expired_at) || 0, parseInt(cfg.created_at) || 0, showTimeout);
             startStatusCheck();
             var payBtn = document.getElementById('payBtn');
-            if (payBtn) payBtn.addEventListener('click', createTransaction);
+            if (payBtn && !payBtn.dataset.bound) {
+                payBtn.dataset.bound = '1';
+                payBtn.addEventListener('click', createTransaction);
+            }
             var caBtn = document.getElementById('copyAmountBtn');
             var caIcon = document.getElementById('copyAmountIcon');
             if (caBtn) caBtn.addEventListener('click', function () {
@@ -474,6 +529,7 @@
         initI18n: initI18n,
         applyI18n: applyI18n,
         t: t,
+        showCanceled: showCanceled,
         switchLang: switchLang
     };
 })();
@@ -496,7 +552,8 @@
             expired_at: d.expired_at,
             created_at: d.created_at,
             trade_id: d.trade_id,
-            return_url: d.redirect_url
+            return_url: d.redirect_url,
+            status: d.status
         });
     }
 
@@ -522,7 +579,8 @@
             expired_at: d.expired_at,
             created_at: d.created_at,
             trade_id: d.trade_id,
-            return_url: d.redirect_url
+            return_url: d.redirect_url,
+            status: d.status
         });
     }
 
@@ -559,6 +617,10 @@
                     return;
                 }
                 orderData = res.data;
+                if (orderData.status === 4) {
+                    if (window.Payment && Payment.showCanceled) Payment.showCanceled(orderData);
+                    return;
+                }
                 if (!orderData.trade_type || !orderData.token) showSelection();
                 else showPayment();
             })
@@ -579,7 +641,3 @@
         ready.then(loadOrder);
     });
 })();
-
-
-
-
