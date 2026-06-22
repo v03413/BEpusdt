@@ -83,25 +83,25 @@
         </a-col>
       </a-row>
 
-      <a-form-item label="语法类型">
+      <a-form-item label="汇率规则">
         <a-radio-group v-model="syntaxType" @change="handleSyntaxTypeChange">
-          <a-radio value="">固定数值</a-radio>
-          <a-radio value="+">固定增加</a-radio>
-          <a-radio value="-">固定减少</a-radio>
-          <a-radio value="~">百分比浮动</a-radio>
+          <a-radio value="market">市场汇率</a-radio>
+          <a-radio value="">固定汇率</a-radio>
+          <a-radio value="fixed">固定浮动</a-radio>
+          <a-radio value="~">比例浮动</a-radio>
         </a-radio-group>
       </a-form-item>
 
-      <a-form-item label="数值">
+      <a-form-item label="数值" v-if="syntaxType !== 'market'">
         <a-input-number
           v-model="syntaxValue"
           :placeholder="getSyntaxPlaceholder()"
-          :min="syntaxType === '~' ? 0.000001 : 0"
+          :min="syntaxType === '~' ? 0.000001 : syntaxType === 'fixed' ? -999999 : 0"
           :max="syntaxType === '~' ? 10 : 999999"
           :step="syntaxType === '~' ? 0.000001 : 0.01"
           style="width: 100%"
         >
-          <template #prefix v-if="syntaxType">
+          <template #prefix v-if="syntaxType && syntaxType !== 'fixed'">
             <span class="syntax-prefix">{{ syntaxType }}</span>
           </template>
         </a-input-number>
@@ -353,15 +353,17 @@ const columns = [
 ];
 
 const parseSyntax = (syntax: string) => {
-  if (!syntax) return { type: "", value: undefined };
+  if (syntax === "" || syntax === null || syntax === undefined) return { type: "market", value: undefined };
 
   if (syntax.startsWith("~")) return { type: "~", value: parseFloat(syntax.substring(1)) };
-  if (syntax.startsWith("+")) return { type: "+", value: parseFloat(syntax.substring(1)) };
-  if (syntax.startsWith("-")) return { type: "-", value: parseFloat(syntax.substring(1)) };
+  if (syntax.startsWith("+")) return { type: "fixed", value: parseFloat(syntax.substring(1)) };
+  if (syntax.startsWith("-")) return { type: "fixed", value: -parseFloat(syntax.substring(1)) };
   return { type: "", value: parseFloat(syntax) };
 };
 
 const generateSyntax = () => {
+  if (syntaxType.value === "market") return "";
+
   if (syntaxValue.value === undefined || syntaxValue.value === null) return "";
 
   // 格式化数值,去除末尾的0
@@ -369,27 +371,25 @@ const generateSyntax = () => {
     return parseFloat(val.toFixed(6)).toString();
   };
 
-  // 百分比浮动
-  if (syntaxType.value === "~") {
-    return syntaxType.value + formatValue(syntaxValue.value);
+  if (syntaxType.value === "fixed") {
+    return syntaxValue.value >= 0 ? "+" + formatValue(syntaxValue.value) : "-" + formatValue(Math.abs(syntaxValue.value));
   }
 
-  // 其他类型
   return syntaxType.value + formatValue(syntaxValue.value);
 };
 
 const getSyntaxPlaceholder = () => {
-  const placeholders = {
-    "+": "如：0.3",
-    "-": "如：0.2",
+  const placeholders: Record<string, string> = {
+    fixed: "如：0.3 或 -0.2",
     "~": "如：1.020000 或 0.970000",
-    "": "如：7.4"
+    "": "如：7.4",
+    market: ""
   };
-  return placeholders[syntaxType.value as keyof typeof placeholders];
+  return placeholders[syntaxType.value] ?? "";
 };
 
 const getTableSyntaxDescription = (syntax: string) => {
-  if (!syntax) return "";
+  if (syntax === "" || syntax === null || syntax === undefined) return "汇率随市场自由波动";
 
   const parsed = parseSyntax(syntax);
   if (parsed.value === undefined || parsed.value === null) return "";
@@ -400,39 +400,50 @@ const getTableSyntaxDescription = (syntax: string) => {
   };
 
   switch (parsed.type) {
-    case "+":
-      return `订单汇率 = 基准汇率 + ${formatValue(parsed.value)}`;
-    case "-":
-      return `订单汇率 = 基准汇率 - ${formatValue(parsed.value)}`;
+    case "fixed":
+      if (parsed.value > 0) return `订单汇率 = 基准汇率 + ${formatValue(parsed.value)}`;
+      if (parsed.value < 0) return `订单汇率 = 基准汇率 - ${formatValue(Math.abs(parsed.value))}`;
+      return `订单汇率 = 基准汇率`;
     case "~":
       return parsed.value != 1 ? `订单汇率 = 基准汇率 * ${formatValue(parsed.value)}` : `订单汇率 = 基准汇率`;
     default:
-      return `订单汇率强制固定 ${formatValue(parsed.value)}`;
+      return `订单汇率强制固定 ${formatValue(parsed.value)}，不随市场变化`;
   }
 };
 
 const getFormSyntaxDescription = () => {
-  if (!syntaxType.value || syntaxValue.value === undefined || syntaxValue.value === null) return "";
-
   // 格式化数值,去除末尾的0
   const formatValue = (val: number) => {
     return parseFloat(val.toFixed(6)).toString();
   };
 
+  const hasValue = syntaxValue.value !== undefined && syntaxValue.value !== null;
+
   switch (syntaxType.value) {
-    case "+":
-      return `订单汇率 = 基准汇率 + ${formatValue(syntaxValue.value)}`;
-    case "-":
-      return `订单汇率 = 基准汇率 - ${formatValue(syntaxValue.value)}`;
+    case "market":
+      return "订单汇率 = 基准汇率，实时跟随市场波动";
+    case "fixed":
+      if (!hasValue) return `订单汇率 = 基准汇率 ± 数值（正数增加，负数减少）`;
+      if ((syntaxValue.value as number) > 0) return `订单汇率 = 基准汇率 + ${formatValue(syntaxValue.value as number)}`;
+      if ((syntaxValue.value as number) < 0) return `订单汇率 = 基准汇率 - ${formatValue(Math.abs(syntaxValue.value as number))}`;
+      return `订单汇率 = 基准汇率`;
     case "~":
-      return syntaxValue.value != 1 ? `订单汇率 = 基准汇率 * ${formatValue(syntaxValue.value)}` : `订单汇率 = 基准汇率`;
+      if (!hasValue) return `订单汇率 = 基准汇率 * 数值`;
+      return syntaxValue.value != 1 ? `订单汇率 = 基准汇率 * ${formatValue(syntaxValue.value as number)}` : `订单汇率 = 基准汇率`;
     default:
-      return `订单汇率强制固定 ${formatValue(syntaxValue.value)}`;
+      return hasValue
+        ? `订单汇率强制固定 ${formatValue(syntaxValue.value as number)}，固定汇率不会变化`
+        : `订单汇率强制固定为指定数值，固定汇率不会变化`;
   }
 };
 
 const handleSyntaxTypeChange = () => {
-  if (syntaxType.value === "~" && (syntaxValue.value === undefined || syntaxValue.value === null || syntaxValue.value === 0)) {
+  if (syntaxType.value === "market") {
+    syntaxValue.value = undefined;
+  } else if (
+    syntaxType.value === "~" &&
+    (syntaxValue.value === undefined || syntaxValue.value === null || syntaxValue.value === 0)
+  ) {
     syntaxValue.value = 1.0;
   } else if (syntaxType.value !== "~" && syntaxValue.value === 1) {
     syntaxValue.value = 0;
@@ -468,19 +479,21 @@ const handleEditSubmit = async () => {
       return;
     }
 
-    if (syntaxValue.value === undefined || syntaxValue.value === null) {
-      Message.error("请输入有效的数值");
-      return;
-    }
-
-    if (syntaxType.value === "~") {
-      if (syntaxValue.value <= 0) {
-        Message.error("百分比浮动数值必须大于 0");
+    if (syntaxType.value !== "market") {
+      if (syntaxValue.value === undefined || syntaxValue.value === null) {
+        Message.error("请输入有效的数值");
         return;
       }
-    } else if (syntaxValue.value < 0) {
-      Message.error("数值不能为负数");
-      return;
+
+      if (syntaxType.value === "~") {
+        if (syntaxValue.value <= 0) {
+          Message.error("比例浮动数值必须大于 0");
+          return;
+        }
+      } else if (syntaxType.value === "" && syntaxValue.value < 0) {
+        Message.error("固定汇率不能为负数");
+        return;
+      }
     }
 
     editLoading.value = true;
