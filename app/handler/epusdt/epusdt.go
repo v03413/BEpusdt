@@ -40,6 +40,7 @@ type createOrderReq struct {
 	Fiat        model.Fiat `json:"fiat"`
 	Currencies  string     `json:"currencies"`
 	Timeout     int64      `json:"timeout"`
+	Reselect    *bool      `json:"reselect"`
 }
 
 type updateOrderReq struct {
@@ -60,6 +61,15 @@ type infoReq struct {
 type methodsReq struct {
 	TradeID  string `json:"trade_id" binding:"required"`
 	Currency string `json:"currency"`
+}
+
+// tradeTypeReselect 返回本次 create-order 是否允许确认交易类型后再次重选；未传 reselect 时使用后台全局配置。
+func (r createOrderReq) tradeTypeReselect() bool {
+	if r.Reselect == nil {
+		return model.OrderTradeTypeReselectEnabled()
+	}
+
+	return *r.Reselect
 }
 
 func (Epusdt) Notify(ctx *gin.Context) {
@@ -120,15 +130,16 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 
 	// 创建待付款订单
 	order, err := model.BuildPendingOrder(model.OrderParams{
-		Money:         decimal.NewFromFloat(req.Amount),
-		ApiType:       model.OrderApiTypeEpusdt,
-		OrderId:       req.OrderID,
-		RedirectUrl:   req.RedirectURL,
-		NotifyUrl:     req.NotifyURL,
-		Name:          req.Name,
-		Timeout:       req.Timeout,
-		Fiat:          req.Fiat,
-		CurrencyLimit: req.Currencies,
+		Money:             decimal.NewFromFloat(req.Amount),
+		ApiType:           model.OrderApiTypeEpusdtOrder,
+		OrderId:           req.OrderID,
+		RedirectUrl:       req.RedirectURL,
+		NotifyUrl:         req.NotifyURL,
+		Name:              req.Name,
+		Timeout:           req.Timeout,
+		Fiat:              req.Fiat,
+		CurrencyLimit:     req.Currencies,
+		TradeTypeReselect: req.tradeTypeReselect(),
 	})
 	if err != nil {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: order create failed: %s", err.Error())))
@@ -148,6 +159,7 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		"expiration_time": uint64(order.ExpiredAt.Sub(time.Now()).Seconds()),
 		"payment_url":     model.CheckoutUrl(host, order.TradeId),
 		"network":         order.GetMethods(""),
+		"reselect":        order.CanReselectPayment(),
 	}))
 }
 
@@ -172,8 +184,21 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		return
 	}
 
-	if order.TradeType != "" {
-		ctx.JSON(200, respFailJson("update order failed: order already has trade type"))
+	// 仅待付订单才可更新订单
+	if order.Status != model.OrderStatusWaiting {
+		ctx.JSON(200, respFailJson("update order failed: order status does not allow payment updates"))
+		return
+	}
+
+	if order.TradeType != "" && !order.CanReselectPayment() {
+		ctx.JSON(200, respFailJson("update order failed: order status does not allow payment updates"))
+		return
+	}
+
+	// 拒绝任务未及时改成 expired，实际订单已过期时更新订单
+	remaining := time.Until(order.ExpiredAt)
+	if remaining <= 0 {
+		ctx.JSON(200, respFailJson("update order failed: order expired"))
 		return
 	}
 
@@ -188,14 +213,15 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 	// 注意：RebuildOrder 需要 OrderParams，我们需要从现有订单构造参数
 	money, _ := decimal.NewFromString(order.Money)
 	params := model.OrderParams{
-		Money:       money,
-		OrderId:     order.OrderId,
-		TradeType:   tradeType, // 新的交易类型
-		RedirectUrl: order.ReturnUrl,
-		NotifyUrl:   order.NotifyUrl,
-		Name:        order.Name,
-		Timeout:     int64(order.ExpiredAt.Sub(time.Now()).Seconds()),
-		Fiat:        order.Fiat,
+		Money:             money,
+		OrderId:           order.OrderId,
+		TradeType:         tradeType, // 新的交易类型
+		RedirectUrl:       order.ReturnUrl,
+		NotifyUrl:         order.NotifyUrl,
+		Name:              order.Name,
+		Timeout:           int64(math.Ceil(remaining.Seconds())),
+		Fiat:              order.Fiat,
+		TradeTypeReselect: order.TradeTypeReselect,
 	}
 
 	newOrder, err := model.RebuildOrder(order, params)
@@ -339,8 +365,13 @@ func (Epusdt) GetMethods(ctx *gin.Context) {
 		return
 	}
 
-	if order.Status == model.OrderStatusExpired {
-		ctx.JSON(200, respFailJson("order expired"))
+	if order.Status != model.OrderStatusWaiting {
+		ctx.JSON(200, respFailJson("error: Invalid order status"))
+		return
+	}
+
+	if order.TradeType != "" && !order.CanReselectPayment() {
+		ctx.JSON(200, respFailJson("error: The order status does not allow retrieving the payment method"))
 		return
 	}
 
@@ -378,6 +409,7 @@ func (Epusdt) Info(ctx *gin.Context) {
 		"trade_url":     order.GetTxUrl(),                    // 链上详情
 		"support_url":   model.GetC(model.PaymentSupportUrl), // 客服链接
 		"redirect_url":  order.RedirectUrl(),                 // 跳转地址
+		"reselect":      order.CanReselectPayment(),          // 是否允许确认交易类型后重选
 	}))
 }
 

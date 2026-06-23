@@ -557,6 +557,18 @@
         });
     }
 
+    function updateReselectButton() {
+        var btn = document.getElementById('reselectPaymentBtn');
+        if (!btn) return;
+        btn.style.display = orderData && orderData.reselect ? 'inline-flex' : 'none';
+        if (!btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', function () {
+                showSelection();
+            });
+        }
+    }
+
     function showPayment() {
         document.getElementById('selectionStage').style.display = 'none';
         document.getElementById('paymentStage').style.display = 'block';
@@ -574,6 +586,7 @@
         var addr = document.getElementById('addressLabelQ');
         if (addr) addr.textContent = _t('receivingAddress', '收款地址');
         $('#qrcode').empty().qrcode({ text: d.token || d.address || '', width: 200, height: 200 });
+        updateReselectButton();
         bindHelp('helpBtnQ', d.support_url);
         Payment.initQrPage({
             expired_at: d.expired_at,

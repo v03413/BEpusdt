@@ -47,6 +47,7 @@ var defaultConf = map[ConfKey]string{
 	PaymentMatchMode:        string(Classic),
 	PaymentSupportUrl:       "",
 	PaymentLookbackHour:     "3",
+	OrderTradeTypeReselect:  "1",
 	SystemInstallLock:       "0",
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
@@ -205,6 +206,10 @@ func ConfInit() {
 func AuthToken() string {
 
 	return GetK(ApiAuthToken)
+}
+
+func OrderTradeTypeReselectEnabled() bool {
+	return cast.ToBool(GetC(OrderTradeTypeReselect))
 }
 
 func IsInstalled() bool {
