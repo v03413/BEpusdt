@@ -104,6 +104,7 @@ const getConf = async () => {
         "payment_min_amount",
         "payment_support_url",
         "payment_checkout",
+        "order_trade_type_reselect",
         "payment_timeout",
         "payment_lookback_hour",
         "notifier_params",

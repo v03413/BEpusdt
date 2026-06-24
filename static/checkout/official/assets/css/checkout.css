@@ -423,6 +423,28 @@ body {
     word-break: break-all;
     line-height: 1.5;
 }
+.reselect-btn {
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 10px 12px;
+    margin: -6px 0 16px;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s, transform .15s;
+}
+.reselect-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: rgba(0, 178, 106, .05);
+}
+.reselect-btn:active { transform: translateY(1px); }
 
 .toast {
     position: fixed;
@@ -621,4 +643,3 @@ body {
 @media (max-width: 360px) {
     .amount-fiat { font-size: 22px; }
 }
-

@@ -161,7 +161,7 @@ func epusdt(ctx context.Context, order model.Order) error {
 }
 
 func Bepusdt(o model.Order) {
-	if o.ApiType != model.OrderApiTypeEpusdt {
+	if o.ApiType != model.OrderApiTypeEpusdt && o.ApiType != model.OrderApiTypeEpusdtOrder {
 
 		return
 	}

@@ -108,6 +108,10 @@ button {
     display: flex;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 .brand-mark {
     align-items: center;
     gap: 12px;

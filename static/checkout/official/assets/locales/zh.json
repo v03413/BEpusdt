@@ -17,6 +17,7 @@
   "networkPrefix": "区块网络 · ",
   "receivingAddress": "收款地址",
   "copyAddressTitle": "复制地址",
+  "reselectPayment": "选错了付款方式？返回重选",
   "toastCopied": "已复制",
   "toastAmountCopied": "金额已复制",
   "toastAddressCopied": "地址已复制",

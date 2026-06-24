@@ -182,6 +182,9 @@ POST /api/v1/order/create-order
 | fiat         | string | ❌  | 法币类型，默认 `CNY`<br/>可选：`CNY`、`USD`、`EUR`、`GBP`、`JPY`                                                                                       |
 | name         | string | ❌  | 商品名称                                                                                                                                     |
 | timeout      | number | ❌  | 订单超时时间（秒），最低 180 秒<br/>留空则使用配置 `payment_timeout`，默认 600 秒                                                                                |
+| reselect     | boolean | ❌  | 是否允许用户确认付款币种/网络后再次返回重选。<br/>仅对 `create-order` 创建的收银台订单生效；不传则使用后台“订单交易类型重选”全局开关，默认开启                                             |
+
+> 传入 `reselect` 时，该参数需要参与签名计算。boolean 值按 JSON 布尔值传递，并按 `true` / `false` 小写字符串参与签名拼接。
 
 #### 请求示例
 
@@ -195,6 +198,7 @@ POST /api/v1/order/create-order
   "notify_url": "https://example.com/notify",
   "redirect_url": "https://example.com/success",
   "timeout": 1200,
+  "reselect": true,
   "signature": "1cd4b52df5587cfb1968b0c0c6e156cd"
 }
 ```
@@ -212,6 +216,7 @@ POST /api/v1/order/create-order
 | data.status          | string | 订单状态，1 表示待付款 |
 | data.expiration_time | number | 订单有效期（秒）     |
 | data.payment_url     | string | 收银台订单链接      |
+| data.reselect        | boolean | 当前订单是否允许用户确认付款币种/网络后再次返回重选。该值与 `/api/v1/pay/info` 的 `reselect` 语义一致，取自订单当前状态与订单自身配置 |
 
 #### 响应示例
 
@@ -225,11 +230,14 @@ POST /api/v1/order/create-order
     "order_id": "20250120001",
     "amount": "28.88",
     "expiration_time": 1200,
+    "reselect": true,
     "payment_url": "https://example.com/pay/cashier/b3d2477c-d945-41da-96b7-f925bbd1b415"
   },
   "request_id": ""
 }
 ```
+
+> `reselect` 为 `true` 时，收银台可在用户选定付款币种/网络后提供“返回重选”入口；为 `false` 时，用户确认付款方式后不能再次切换。普通 `create-transaction` 创建的订单不支持交易类型重选。
 
 </details>
 
@@ -238,7 +246,7 @@ POST /api/v1/order/create-order
 <details>
 <summary><strong>4. 更新订单付款方式</strong>　为收银台订单选定支付链，获取具体收款地址与金额。</summary>
 
-> **注意**：使用相同 `trade_id` 更新订单时，系统会根据最新交易类型更新订单付款方式。
+> **注意**：使用相同 `trade_id` 更新订单时，系统会根据最新交易类型更新订单付款方式。若订单已选定付款方式，则只有 `reselect` 为 `true` 且订单仍处于待支付状态时，才允许再次调用本接口切换付款币种/网络。
 
 #### 请求地址
 
@@ -486,10 +494,11 @@ MD5(amount=42&notify_url=http://example.com/notify&order_id=20220201030210321&re
 
 ### 2. 订单重建机制是什么？
 
-当使用相同 `order_id` 创建订单时：
+当使用相同 `order_id` 创建订单时，不同接口的处理方式不同：
 
-- ✅ 更新订单金额、交易类型、收款地址、法币类型
-- ✅ **会** 重置超时时间
+- `create-transaction`：如果旧订单仍处于待支付状态，会按新参数重建订单，并重新计算超时时间
+- `create-order`：如果旧订单仍处于待支付状态，会返回已有订单，不会重置超时时间；后续调用 `update-order` 选择或重选付款币种/网络时，也会保留订单剩余有效期
+- 已支付成功或确认中的订单不会被重建
 
 ### 3. 支持哪些交易类型？
 

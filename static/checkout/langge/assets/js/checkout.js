@@ -15,6 +15,7 @@
     var currentLang = 'zh';
     var currentStatusKey = 'status.waitingPayment';
     var orderData = null;
+    var reselectingPayment = false;
 
     var translations = {
         zh: {
@@ -804,6 +805,21 @@
         setText('#orderAmount', moneyLabel(orderData.money, orderData.fiat));
         bindSupportLink(orderData.support_url);
         startCountdown();
+        updateReselectControls();
+    }
+
+    function canReselectPayment() {
+        return !!(orderData && orderData.reselect);
+    }
+
+    function updateReselectControls() {
+        var button = $('#backToMethodButton');
+        if (button) {
+            var visible = canReselectPayment();
+            button.hidden = !visible;
+            button.style.display = visible ? '' : 'none';
+            button.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        }
     }
 
     function iconMarkup(src, label, className) {
@@ -1019,6 +1035,13 @@
         };
     }
 
+    function syncSelectedMethodFromPaymentDetail() {
+        if (!paymentDetail) return;
+        selectedMethod = selectedPaymentMethod(paymentDetail);
+        selectedCurrency = selectedMethod ? selectedMethod.currency : '';
+        selectedNetworkId = selectedMethod ? networkIdentity(selectedMethod) : '';
+    }
+
     function bindDropdownButtons() {
         var currencyButton = $('#currencySelectButton');
         var networkButton = $('#networkSelectButton');
@@ -1075,7 +1098,7 @@
         renderNetworkOptions(networkId);
 
         var candidates = methodsForNetwork(networkId);
-        var nextMethod = preferredMethod && sameNetwork(preferredMethod, networkId) ? preferredMethod : candidates[0];
+        var nextMethod = preferredMethod && candidates.indexOf(preferredMethod) !== -1 ? preferredMethod : candidates[0];
         selectedCurrency = nextMethod ? nextMethod.currency : '';
         renderCurrencyOptions(selectedCurrency);
         selectMethod(nextMethod || null);
@@ -1194,20 +1217,32 @@
             network: selectedMethod.network
         })
             .then(function (data) {
-                paymentDetail = normalizeSelectedPayment(Object.assign({}, selectedMethod, data));
-                if (!paymentDetail.token && paymentDetail.payment_url) {
-                    window.location.href = paymentDetail.payment_url;
+                var nextTradeId = data.trade_id || tradeId;
+                var nextPaymentDetail = normalizeSelectedPayment(Object.assign({}, selectedMethod, data));
+
+                if (!nextPaymentDetail.token && nextPaymentDetail.payment_url) {
+                    window.location.href = nextPaymentDetail.payment_url;
                     return;
                 }
-                if (!paymentDetail.token) {
+                if (!nextPaymentDetail.token) {
                     throw new Error(t('message.createFailed'));
                 }
 
-                tradeId = paymentDetail.trade_id || tradeId;
-                hydrateOrder(Object.assign({}, orderData || {}, data));
-                renderPaymentDetail();
-                setStep('2');
-                restartStatusPolling();
+                tradeId = nextTradeId;
+
+                return apiPost('/api/v1/pay/info', {trade_id: tradeId})
+                    .catch(function () {
+                        return {};
+                    })
+                    .then(function (freshOrder) {
+                        orderData = Object.assign({}, orderData || {}, data, freshOrder);
+                        paymentDetail = normalizeSelectedPayment(Object.assign({}, selectedMethod, nextPaymentDetail, freshOrder));
+                        reselectingPayment = false;
+                        hydrateOrder(orderData);
+                        renderPaymentDetail();
+                        setStep('2');
+                        restartStatusPolling();
+                    });
             })
             .catch(function (error) {
                 showMessage(error.message || t('message.networkError'));
@@ -1217,6 +1252,32 @@
                     button.disabled = false;
                     button.textContent = t('actions.next');
                 }
+            });
+    }
+
+    function returnToMethodSelection(button) {
+        if (!canReselectPayment()) return;
+
+        function showSelectionStep() {
+            reselectingPayment = true;
+            syncSelectedMethodFromPaymentDetail();
+            renderPaymentSelectors();
+            setStep('1');
+        }
+
+        if (methods.length > 0) {
+            showSelectionStep();
+            return;
+        }
+
+        if (button) button.disabled = true;
+        loadMethods()
+            .then(showSelectionStep)
+            .catch(function (error) {
+                showMessage(error.message || t('message.loadFailed'));
+            })
+            .finally(function () {
+                if (button) button.disabled = false;
             });
     }
 
@@ -1456,7 +1517,11 @@
         $all('[data-step-target]').forEach(function (button) {
             button.addEventListener('click', function () {
                 var target = button.dataset.stepTarget || '1';
-                if (target === '2' && !paymentDetail) return;
+                if (target === '2' && (!paymentDetail || reselectingPayment)) return;
+                if (target === '1' && paymentDetail) {
+                    returnToMethodSelection(button);
+                    return;
+                }
                 setStep(target);
             });
         });
@@ -1531,11 +1596,26 @@
 
                 paymentDetail = normalizePaymentFromOrder(data);
                 if (paymentDetail) {
-                    selectedMethod = selectedPaymentMethod(paymentDetail);
-                    selectedCurrency = selectedMethod ? selectedMethod.currency : '';
-                    selectedNetworkId = selectedMethod ? networkIdentity(selectedMethod) : '';
+                    if (canReselectPayment()) {
+                        selectedMethod = null;
+                        selectedCurrency = '';
+                        selectedNetworkId = '';
+                        return loadMethods()
+                            .catch(function (error) {
+                                showMessage(error.message || t('message.loadFailed'));
+                            })
+                            .then(function () {
+                                syncSelectedMethodFromPaymentDetail();
+                                renderPaymentSelectors();
+                                renderPaymentDetail();
+                                setStep('2');
+                                updateReselectControls();
+                            });
+                    }
+                    syncSelectedMethodFromPaymentDetail();
                     renderPaymentDetail();
                     setStep('2');
+                    updateReselectControls();
                     return;
                 }
 

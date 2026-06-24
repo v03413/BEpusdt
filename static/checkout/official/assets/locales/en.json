@@ -17,6 +17,7 @@
   "networkPrefix": "Network · ",
   "receivingAddress": "Receiving Address",
   "copyAddressTitle": "Copy address",
+  "reselectPayment": "Wrong payment method? Choose again",
   "toastCopied": "Copied",
   "toastAmountCopied": "Amount copied",
   "toastAddressCopied": "Address copied",
