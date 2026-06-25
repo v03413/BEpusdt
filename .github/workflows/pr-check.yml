@@ -1,0 +1,52 @@
+name: pr-check
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+env:
+  APP_NAME: bepusdt
+jobs:
+  docker-build:
+    name: Docker Build
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Generate App Version
+        run: |
+          echo "APP_VERSION=$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
+          echo "VERSION_TAG=pr-${{ github.event.pull_request.number }}-$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./dockerfile
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ env.VERSION_TAG }}
+          tags: |
+            ${{ env.APP_NAME }}:pr-${{ github.event.pull_request.number }}
+
