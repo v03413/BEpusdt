@@ -120,7 +120,7 @@
   <a-modal
     v-model:visible="syncModalVisible"
     title="汇率同步配置"
-    @ok="handleSyncSubmit"
+    :on-before-ok="handleSyncSubmit"
     @cancel="handleSyncCancel"
     :ok-loading="syncLoading"
     :width="syncDialogWidth"
@@ -139,11 +139,15 @@
       </a-form-item>
 
       <a-form-item label="API 接口">
-        <a-select v-model="syncForm.apiUrl" placeholder="请选择 API 接口" style="width: 100%">
+        <a-select v-model="syncForm.apiUrlPreset" placeholder="请选择 API 接口" style="width: 100%">
           <a-option v-for="option in apiUrlOptions" :key="option.value" :value="option.value" :label="option.label">
             {{ option.label }}
           </a-option>
         </a-select>
+      </a-form-item>
+
+      <a-form-item v-if="syncForm.apiUrlPreset === customApiUrlPreset" label="自建接口">
+        <a-input v-model="syncForm.customApiUrl" placeholder="请输入自建 Coingecko API 接口地址" allow-clear style="width: 100%" />
       </a-form-item>
 
       <a-form-item label="API Key">
@@ -169,6 +173,7 @@
           <a-link href="https://www.coingecko.com/" target="_blank" :hoverable="false">API Key</a-link>
           可解除限制<br />
           开源接口：作者提供的免费缓存接口（落后官方接口3分钟），无速率限制<br />
+          自建接口：可填写兼容 Coingecko /api/v3/simple/price 的接口根地址<br />
           <hr />
           <b class="sync-warning">官方接口特指 CoinGecko，是全球最大的独立加密货币数据聚合平台之一</b>
         </a-typography-text>
@@ -530,10 +535,13 @@ const syncFormRef = ref();
 
 const syncForm = reactive({
   minutes: 60,
-  apiUrl: "https://api.coingecko.com",
+  apiUrlPreset: "https://api.coingecko.com",
+  customApiUrl: "",
   apiKey: "",
   historyDays: 30
 });
+
+const customApiUrlPreset = "custom";
 
 // API 接口选项
 const apiUrlOptions = [
@@ -542,10 +550,46 @@ const apiUrlOptions = [
     value: "https://api.coingecko.com"
   },
   {
-    label: "开源免费 作者自建 没有速率限制",
+    label: "作者自建 开源免费 没有速率限制",
     value: "https://api-coingecko-com.bepusdt.online"
+  },
+  {
+    label: "自建接口 自行搭建并输入 URL",
+    value: customApiUrlPreset
   }
 ];
+
+const normalizeApiUrl = (value: string) => value.trim().replace(/\/+$/, "");
+
+const builtInApiUrlValues = apiUrlOptions.filter(option => option.value !== customApiUrlPreset).map(option => option.value);
+
+const isValidApiUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const syncApiUrlForm = (value?: string) => {
+  const apiUrl = normalizeApiUrl(value || "https://api.coingecko.com");
+  if (builtInApiUrlValues.includes(apiUrl)) {
+    syncForm.apiUrlPreset = apiUrl;
+    syncForm.customApiUrl = "";
+    return;
+  }
+
+  syncForm.apiUrlPreset = customApiUrlPreset;
+  syncForm.customApiUrl = apiUrl;
+};
+
+const resetSyncForm = () => {
+  syncForm.minutes = 60;
+  syncApiUrlForm("https://api.coingecko.com");
+  syncForm.apiKey = "";
+  syncForm.historyDays = 30;
+};
 
 // 显示同步频率模态框
 const showSyncModal = async () => {
@@ -563,21 +607,15 @@ const showSyncModal = async () => {
         syncForm.minutes = 60;
       }
 
-      syncForm.apiUrl = res.data.rate_sync_coingecko_api_url || "https://api.coingecko.com";
+      syncApiUrlForm(res.data.rate_sync_coingecko_api_url);
       syncForm.apiKey = res.data.rate_sync_coingecko_api_key || "";
       syncForm.historyDays = res.data.rate_sync_history_days ? parseInt(res.data.rate_sync_history_days) : 30;
     } else {
-      syncForm.minutes = 60;
-      syncForm.apiUrl = "https://api.coingecko.com";
-      syncForm.apiKey = "";
-      syncForm.historyDays = 30;
+      resetSyncForm();
     }
   } catch (error) {
     console.error("获取同步频率配置失败:", error);
-    syncForm.minutes = 60;
-    syncForm.apiUrl = "https://api.coingecko.com";
-    syncForm.apiKey = "";
-    syncForm.historyDays = 30;
+    resetSyncForm();
     Message.warning("获取当前配置失败，使用默认值");
   }
 
@@ -588,34 +626,43 @@ const handleSyncSubmit = async () => {
   try {
     if (!syncForm.minutes || syncForm.minutes < 10 || syncForm.minutes > 1440) {
       Message.error("请输入有效的同步频率（10-1440分钟）");
-      return;
+      return false;
     }
 
-    if (!syncForm.apiUrl) {
-      Message.error("请选择 API 接口");
-      return;
+    const apiUrl = syncForm.apiUrlPreset === customApiUrlPreset ? normalizeApiUrl(syncForm.customApiUrl) : syncForm.apiUrlPreset;
+    if (!apiUrl) {
+      Message.error("请输入自建接口地址");
+      return false;
+    }
+    if (!isValidApiUrl(apiUrl)) {
+      Message.error("请输入有效的 API 接口地址");
+      return false;
     }
 
     if (!syncForm.historyDays || syncForm.historyDays < 1 || syncForm.historyDays > 365) {
       Message.error("请输入有效的汇率保留天数（1-365天）");
-      return;
+      return false;
     }
 
     syncLoading.value = true;
     const seconds = syncForm.minutes * 60;
+    if (syncForm.apiUrlPreset === customApiUrlPreset) {
+      syncForm.customApiUrl = apiUrl;
+    }
 
     await setsConfAPI([
       { key: "rate_sync_interval", value: seconds.toString() },
-      { key: "rate_sync_coingecko_api_url", value: syncForm.apiUrl },
+      { key: "rate_sync_coingecko_api_url", value: apiUrl },
       { key: "rate_sync_coingecko_api_key", value: syncForm.apiKey },
       { key: "rate_sync_history_days", value: syncForm.historyDays.toString() }
     ]);
 
     Message.success("汇率同步配置已保存");
-    syncModalVisible.value = false;
+    return true;
   } catch (error) {
     console.error("设置同步配置失败:", error);
     Message.error("设置失败");
+    return false;
   } finally {
     syncLoading.value = false;
   }
@@ -624,10 +671,7 @@ const handleSyncSubmit = async () => {
 const handleSyncCancel = () => {
   syncModalVisible.value = false;
   syncFormRef.value?.resetFields();
-  syncForm.minutes = 60;
-  syncForm.apiUrl = "https://api.coingecko.com";
-  syncForm.apiKey = "";
-  syncForm.historyDays = 30;
+  resetSyncForm();
 };
 
 // 支付颗粒度相关状态
