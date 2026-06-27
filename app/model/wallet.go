@@ -40,6 +40,7 @@ func (wa *Wallet) SetStatus(status uint8) {
 
 func (wa *Wallet) Validate() error {
 	tradeType := TradeType(wa.TradeType)
+	wa.MatchAddr = wa.Address
 
 	switch tradeType {
 	case TronTrx, UsdtTrc20, UsdcTrc20:
