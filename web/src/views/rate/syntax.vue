@@ -551,7 +551,7 @@ const apiUrlOptions = [
   },
   {
     label: "作者自建 开源免费 没有速率限制",
-    value: "https://api-coingecko-com.bepusdt.online"
+    value: "https://api.bepusdt.online"
   },
   {
     label: "自建接口 自行搭建并输入 URL",
