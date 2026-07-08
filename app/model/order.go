@@ -87,7 +87,7 @@ type Order struct {
 	RefBlockNum       int        `gorm:"column:ref_block_num;not null;default:0;comment:区块索引" json:"ref_block_num"`
 	ExpiredAt         time.Time  `gorm:"column:expired_at;not null;comment:失效时间" json:"expired_at"`
 	ConfirmedAt       *time.Time `gorm:"column:confirmed_at;not null;comment:交易确认时间" json:"confirmed_at"`
-	ClientFingerprint string     `gorm:"column:client_fingerprint;type:varchar(64);not null;default:'';comment:'客户端指纹';index" json:"-"`
+	ClientFingerprint string     `gorm:"column:client_fingerprint;type:varchar(64);not null;default:'';comment:'客户端指纹'" json:"-"`
 	AutoTimeAt
 }
 
