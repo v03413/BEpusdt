@@ -13,21 +13,20 @@ import (
 )
 
 type OrderParams struct {
-	Money             decimal.Decimal `json:"money"`               // 交易金额 (单位：法币)s
-	ApiType           string          `json:"api_type"`            // 支付 API 类型
-	Address           string          `json:"address"`             // 收款地址
-	OrderId           string          `json:"order_id"`            // 商户订单 ID
-	TradeType         TradeType       `json:"trade_type"`          // 交易类型
-	RedirectUrl       string          `json:"redirect_url"`        // 成功跳转地址
-	NotifyUrl         string          `json:"notify_url"`          // 异步通知地址
-	Name              string          `json:"name"`                // 商品名称
-	Timeout           int64           `json:"timeout"`             // 订单超时时间（秒）
-	Rate              string          `json:"rate"`                // 强制指定汇率
-	Fiat              Fiat            `json:"fiat"`                // 法币类型
-	CurrencyLimit     string          `json:"currency_limit"`      // 限定币种
-	AddressLocked     bool            `json:"address_locked"`      // 地址独占锁定
-	TradeTypeReselect bool            `json:"trade_type_reselect"` // 允许订单交易类型重选
-	ClientFingerprint string          `json:"client_fingerprint"`  //  客户端指纹
+	Money             decimal.Decimal `json:"money"`              // 交易金额 (单位：法币)s
+	ApiType           string          `json:"api_type"`           // 支付 API 类型
+	Address           string          `json:"address"`            // 收款地址
+	OrderId           string          `json:"order_id"`           // 商户订单 ID
+	TradeType         TradeType       `json:"trade_type"`         // 交易类型
+	RedirectUrl       string          `json:"redirect_url"`       // 成功跳转地址
+	NotifyUrl         string          `json:"notify_url"`         // 异步通知地址
+	Name              string          `json:"name"`               // 商品名称
+	Timeout           int64           `json:"timeout"`            // 订单超时时间（秒）
+	Rate              string          `json:"rate"`               // 强制指定汇率
+	Fiat              Fiat            `json:"fiat"`               // 法币类型
+	CurrencyLimit     string          `json:"currency_limit"`     // 限定币种
+	AddressLocked     bool            `json:"address_locked"`     // 地址独占锁定
+	ClientFingerprint string          `json:"client_fingerprint"` //  客户端指纹
 }
 
 type Addr struct {
@@ -100,29 +99,28 @@ func BuildOrder(p OrderParams, trade Trade) (Order, error) {
 
 	zero := time.Unix(0, 0)
 	tradeOrder := Order{
-		OrderId:           p.OrderId,
-		TradeId:           tradeId,
-		RefHash:           tradeId,
-		TradeType:         p.TradeType,
-		TradeTypeReselect: p.TradeTypeReselect,
-		Rate:              fmt.Sprintf("%v", trade.Rate),
-		Amount:            trade.Amount,
-		Money:             p.Money.String(),
-		Address:           trade.Wallet.GetPaymentAddr(),
-		MatchAddress:      trade.Wallet.GetMatchAddr(),
-		AddressLocked:     p.Money.IsZero(), // 零值订单，地址锁定 独占
-		Status:            OrderStatusWaiting,
-		Name:              p.Name,
-		ApiType:           p.ApiType,
-		ReturnUrl:         p.RedirectUrl,
-		NotifyUrl:         p.NotifyUrl,
-		NotifyNum:         0,
-		NotifyState:       OrderNotifyStateFail,
-		ExpiredAt:         CalcTradeExpiredAt(p.Timeout),
-		Fiat:              p.Fiat,
-		Crypto:            trade.Crypto,
-		CurrencyLimit:     p.CurrencyLimit,
-		ConfirmedAt:       &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
+		OrderId:       p.OrderId,
+		TradeId:       tradeId,
+		RefHash:       tradeId,
+		TradeType:     p.TradeType,
+		Rate:          fmt.Sprintf("%v", trade.Rate),
+		Amount:        trade.Amount,
+		Money:         p.Money.String(),
+		Address:       trade.Wallet.GetPaymentAddr(),
+		MatchAddress:  trade.Wallet.GetMatchAddr(),
+		AddressLocked: p.Money.IsZero(), // 零值订单，地址锁定 独占
+		Status:        OrderStatusWaiting,
+		Name:          p.Name,
+		ApiType:       p.ApiType,
+		ReturnUrl:     p.RedirectUrl,
+		NotifyUrl:     p.NotifyUrl,
+		NotifyNum:     0,
+		NotifyState:   OrderNotifyStateFail,
+		ExpiredAt:     CalcTradeExpiredAt(p.Timeout),
+		Fiat:          p.Fiat,
+		Crypto:        trade.Crypto,
+		CurrencyLimit: p.CurrencyLimit,
+		ConfirmedAt:   &zero, // 默认填充一个0值时间，尽量避免数据库出现允许 NULL 值存在
 	}
 
 	if tradeOrder.Name == "" {
@@ -202,7 +200,6 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	t.Amount = data.Amount
 	t.Money = p.Money.String()
 	t.TradeType = p.TradeType
-	t.TradeTypeReselect = p.TradeTypeReselect
 	t.Rate = fmt.Sprintf("%v", data.Rate)
 	t.ExpiredAt = CalcTradeExpiredAt(p.Timeout)
 
@@ -212,20 +209,22 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	}
 
 	res := query.Updates(map[string]any{
-		"fiat":                t.Fiat,
-		"address":             t.Address,
-		"match_address":       t.MatchAddress,
-		"crypto":              t.Crypto,
-		"amount":              t.Amount,
-		"money":               t.Money,
-		"trade_type":          t.TradeType,
-		"trade_type_reselect": t.TradeTypeReselect,
-		"rate":                t.Rate,
-		"expired_at":          t.ExpiredAt,
-		"client_fingerprint":  t.ClientFingerprint,
+		"fiat":               t.Fiat,
+		"address":            t.Address,
+		"match_address":      t.MatchAddress,
+		"crypto":             t.Crypto,
+		"amount":             t.Amount,
+		"money":              t.Money,
+		"trade_type":         t.TradeType,
+		"rate":               t.Rate,
+		"expired_at":         t.ExpiredAt,
+		"client_fingerprint": t.ClientFingerprint,
 	})
 	if res.Error != nil {
 		return t, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return t, fmt.Errorf("client fingerprint mismatch")
 	}
 
 	return t, nil

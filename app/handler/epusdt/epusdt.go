@@ -41,7 +41,6 @@ type createOrderReq struct {
 	Fiat        model.Fiat `json:"fiat"`
 	Currencies  string     `json:"currencies"`
 	Timeout     int64      `json:"timeout"`
-	Reselect    *bool      `json:"reselect"`
 }
 
 type updateOrderReq struct {
@@ -77,15 +76,6 @@ func loadPayOrder(ctx *gin.Context, tradeID string) (model.Order, bool) {
 	}
 
 	return order, true
-}
-
-// tradeTypeReselect 返回本次 create-order 是否允许确认交易类型后再次重选；未传 reselect 时使用后台全局配置。
-func (r createOrderReq) tradeTypeReselect() bool {
-	if r.Reselect == nil {
-		return model.OrderTradeTypeReselectEnabled()
-	}
-
-	return *r.Reselect
 }
 
 func (Epusdt) Notify(ctx *gin.Context) {
@@ -146,16 +136,15 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 
 	// 创建待付款订单
 	order, err := model.BuildPendingOrder(model.OrderParams{
-		Money:             decimal.NewFromFloat(req.Amount),
-		ApiType:           model.OrderApiTypeEpusdtOrder,
-		OrderId:           req.OrderID,
-		RedirectUrl:       req.RedirectURL,
-		NotifyUrl:         req.NotifyURL,
-		Name:              req.Name,
-		Timeout:           req.Timeout,
-		Fiat:              req.Fiat,
-		CurrencyLimit:     req.Currencies,
-		TradeTypeReselect: req.tradeTypeReselect(),
+		Money:         decimal.NewFromFloat(req.Amount),
+		ApiType:       model.OrderApiTypeEpusdtOrder,
+		OrderId:       req.OrderID,
+		RedirectUrl:   req.RedirectURL,
+		NotifyUrl:     req.NotifyURL,
+		Name:          req.Name,
+		Timeout:       req.Timeout,
+		Fiat:          req.Fiat,
+		CurrencyLimit: req.Currencies,
 	})
 	if err != nil {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: order create failed: %s", err.Error())))
@@ -237,7 +226,6 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		Name:              order.Name,
 		Timeout:           int64(math.Ceil(remaining.Seconds())),
 		Fiat:              order.Fiat,
-		TradeTypeReselect: order.TradeTypeReselect,
 		ClientFingerprint: fp,
 	}
 

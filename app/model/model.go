@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"gorm.io/driver/mysql"
+	"github.com/v03413/bepusdt/app/model/migration"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -24,19 +24,16 @@ type AutoTimeAt struct {
 	UpdatedAt *Datetime `gorm:"column:updated_at;not null;comment:最后更新时间" json:"updated_at"`
 }
 
-func Init(path, mysql, postgres string) error {
-	if postgres != "" {
-		return initPostgres(postgres)
-	}
-	if mysql != "" {
-		return initMySQL(mysql)
+func Init(db, dsn string) error {
+	if dsn != "" {
+		return initPostgres(dsn)
 	}
 
-	return initSqlite(path)
+	return initSqlite(db)
 }
 
-func initSqlite(path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+func initSqlite(db string) error {
+	if err := os.MkdirAll(filepath.Dir(db), os.ModePerm); err != nil {
 
 		return fmt.Errorf("创建数据库目录失败：%w", err)
 	}
@@ -47,7 +44,7 @@ func initSqlite(path string) error {
 		"&_pragma=busy_timeout(8000)"+ // 8 秒超时，兼顾慢速磁盘
 		"&_pragma=synchronous(NORMAL)"+ // NORMAL 模式，性能与安全平衡
 		"&_pragma=wal_autocheckpoint(1500)", // 适中的 checkpoint 频率
-		path)
+		db)
 	Db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 
@@ -63,49 +60,6 @@ func initSqlite(path string) error {
 		sqlDB.SetMaxOpenConns(5)
 		sqlDB.SetMaxIdleConns(3)
 		sqlDB.SetConnMaxLifetime(0)
-	}
-
-	if err = AutoMigrate(); err != nil {
-
-		return fmt.Errorf("数据库结构迁移失败：%w", err)
-	}
-
-	var count int64
-	Db.Model(&Conf{}).Count(&count)
-	if count == 0 {
-		ConfInit()
-	}
-
-	FillDefaultConf()
-	RefreshC()
-
-	return nil
-}
-
-func initMySQL(dsn string) error {
-	var err error
-	Db, err = gorm.Open(mysql.New(mysql.Config{
-		DSN:                       dsn,
-		DefaultStringSize:         256,   // string 类型字段的默认长度
-		DisableDatetimePrecision:  true,  // 禁用 datetime 精度，MySQL 5.6 之前的数据库不支持
-		DontSupportRenameIndex:    true,  // 重命名索引时采用删除并新建的方式，MySQL 5.7 之前的数据库和 MariaDB 不支持重命名索引
-		DontSupportRenameColumn:   true,  // 用 `change` 重命名列，MySQL 8 之前的数据库和 MariaDB 不支持重命名列
-		SkipInitializeWithVersion: false, // 根据当前 MySQL 版本自动配置
-	}), &gorm.Config{})
-	if err != nil {
-
-		return fmt.Errorf("数据库初始化失败：%w", err)
-	}
-
-	{
-		sqlDB, err := Db.DB()
-		if err != nil {
-
-			return fmt.Errorf("获取数据库连接失败：%w", err)
-		}
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
 
 	if err = AutoMigrate(); err != nil {
@@ -166,7 +120,13 @@ func initPostgres(dsn string) error {
 }
 
 func AutoMigrate() error {
-	return Db.AutoMigrate(&Wallet{}, &Order{}, &NotifyRecord{}, &Conf{}, &Rate{})
+	return migration.Run(Db, []any{
+		&Wallet{},
+		&Order{},
+		&NotifyRecord{},
+		&Conf{},
+		&Rate{},
+	})
 }
 
 func Close() {

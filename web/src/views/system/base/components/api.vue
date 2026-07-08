@@ -38,14 +38,6 @@
             <a-input v-model="form.payment_support_url" placeholder="http(s)://your-support-url" allow-clear />
           </a-form-item>
 
-          <a-form-item
-            field="order_trade_type_reselect"
-            label="交易类型重选"
-            extra="用户确认交易类型后，允许其再次重选网络/代币；仅对创建订单接口有效；默认开启"
-          >
-            <a-switch v-model="form.order_trade_type_reselect" />
-          </a-form-item>
-
           <a-form-item>
             <a-space>
               <a-button type="primary" html-type="submit">提交</a-button>
@@ -72,7 +64,6 @@ const form = ref({
   api_app_uri: "",
   payment_checkout: "",
   payment_support_url: "",
-  order_trade_type_reselect: true
 });
 const rules = {};
 const checkoutList = ref<Array<{ label: string; value: string; author: string; desc: string; link: string }>>([]);
@@ -93,10 +84,6 @@ const normalizePaymentCheckout = (value?: string) => {
   return validValues[0] || "";
 };
 
-function resolveOrderTradeTypeReselect(value?: string) {
-  return value ? value === "1" : true;
-}
-
 const syncFormFromConfig = () => {
   if (!data.value) return;
 
@@ -104,7 +91,6 @@ const syncFormFromConfig = () => {
   form.value.api_app_uri = data.value.api_app_uri || "";
   form.value.payment_checkout = normalizePaymentCheckout(data.value.payment_checkout || data.value.payment_template);
   form.value.payment_support_url = data.value.payment_support_url || "";
-  form.value.order_trade_type_reselect = resolveOrderTradeTypeReselect(data.value.order_trade_type_reselect);
 };
 
 // 获取收银台模板列表
@@ -169,10 +155,6 @@ const onSubmit = async ({ errors }: ArcoDesign.ArcoSubmit) => {
     {
       key: "payment_support_url",
       value: form.value.payment_support_url
-    },
-    {
-      key: "order_trade_type_reselect",
-      value: form.value.order_trade_type_reselect ? "1" : "0"
     }
   ]);
 

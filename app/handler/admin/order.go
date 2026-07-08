@@ -52,18 +52,15 @@ func (Order) Create(ctx *gin.Context) {
 
 	host := utils.GetRequestHost(ctx.Request)
 
-	tradeTypeReselect := model.OrderTradeTypeReselectEnabled()
-
 	// 创建待付款订单
 	order, err := model.BuildPendingOrder(model.OrderParams{
-		Money:             decimal.NewFromFloat(req.Amount),
-		ApiType:           model.OrderApiTypeAdmin, // 使用 Admin 类型
-		OrderId:           req.OrderID,
-		Name:              req.Name,
-		Timeout:           req.Timeout,
-		Fiat:              req.Fiat,
-		CurrencyLimit:     req.Currencies,
-		TradeTypeReselect: tradeTypeReselect,
+		Money:         decimal.NewFromFloat(req.Amount),
+		ApiType:       model.OrderApiTypeAdmin, // 使用 Admin 类型
+		OrderId:       req.OrderID,
+		Name:          req.Name,
+		Timeout:       req.Timeout,
+		Fiat:          req.Fiat,
+		CurrencyLimit: req.Currencies,
 	})
 	if err != nil {
 		base.Response(ctx, 400, gin.H{
@@ -83,9 +80,6 @@ func (Order) Create(ctx *gin.Context) {
 	}
 	order.NotifyUrl = hostUri + "/api/v1/pay/notify"
 	order.ReturnUrl = url
-	if order.Status == model.OrderStatusWaiting {
-		order.TradeTypeReselect = tradeTypeReselect
-	}
 
 	if err := model.Db.Save(&order).Error; err != nil {
 		base.Response(ctx, 400, gin.H{

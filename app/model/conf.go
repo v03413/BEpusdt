@@ -47,7 +47,6 @@ var defaultConf = map[ConfKey]string{
 	PaymentMatchMode:        string(Classic),
 	PaymentSupportUrl:       "",
 	PaymentLookbackHour:     "3",
-	OrderTradeTypeReselect:  "1",
 	SystemInstallLock:       "0",
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
@@ -208,9 +207,6 @@ func AuthToken() string {
 	return GetK(ApiAuthToken)
 }
 
-func OrderTradeTypeReselectEnabled() bool {
-	return cast.ToBool(GetC(OrderTradeTypeReselect))
-}
 
 func IsInstalled() bool {
 	return GetC(SystemInstallLock) == "1"
@@ -230,7 +226,15 @@ func GetInstallInfo() gin.H {
 }
 
 func GetTronGridApiKeys() []string {
-	return strings.Split(GetK(RpcEndpointTronGridApiKey), ",")
+	arr := strings.Split(GetC(RpcEndpointTronGridApiKey), ",")
+	keys := make([]string, 0)
+	for _, v := range arr {
+		if v != "" {
+			keys = append(keys, v)
+		}
+	}
+
+	return keys
 }
 
 func FillDefaultConf() {
