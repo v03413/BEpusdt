@@ -206,7 +206,29 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	t.Rate = fmt.Sprintf("%v", data.Rate)
 	t.ExpiredAt = CalcTradeExpiredAt(p.Timeout)
 
-	return t, Db.Save(&t).Error
+	query := Db.Model(&Order{}).Where("id = ?", t.ID)
+	if p.ClientFingerprint != "" {
+		query = query.Where("(client_fingerprint = '' OR client_fingerprint = ?)", p.ClientFingerprint)
+	}
+
+	res := query.Updates(map[string]any{
+		"fiat":                t.Fiat,
+		"address":             t.Address,
+		"match_address":       t.MatchAddress,
+		"crypto":              t.Crypto,
+		"amount":              t.Amount,
+		"money":               t.Money,
+		"trade_type":          t.TradeType,
+		"trade_type_reselect": t.TradeTypeReselect,
+		"rate":                t.Rate,
+		"expired_at":          t.ExpiredAt,
+		"client_fingerprint":  t.ClientFingerprint,
+	})
+	if res.Error != nil {
+		return t, res.Error
+	}
+
+	return t, nil
 }
 
 // BuildPendingOrder 创建待支付订单（不锁定地址和汇率）

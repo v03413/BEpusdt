@@ -124,6 +124,14 @@ func (o *Order) CanReselectPayment() bool {
 	return o.TradeTypeReselect
 }
 
+func (o *Order) FingerprintBound() bool {
+	return o.ClientFingerprint != ""
+}
+
+func (o *Order) MatchFingerprint(fingerprint string) bool {
+	return !o.FingerprintBound() || o.ClientFingerprint == fingerprint
+}
+
 func (o *Order) SetExpired() {
 	o.Status = OrderStatusExpired
 

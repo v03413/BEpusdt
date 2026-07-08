@@ -64,6 +64,21 @@ type methodsReq struct {
 	Currency string `json:"currency"`
 }
 
+func loadPayOrder(ctx *gin.Context, tradeID string) (model.Order, bool) {
+	order, ok := model.GetTradeOrder(tradeID)
+	if !ok {
+		ctx.JSON(200, respFailJson("order not found"))
+		return model.Order{}, false
+	}
+
+	if order.FingerprintBound() && !order.MatchFingerprint(utils.ClientFingerprint(ctx)) {
+		ctx.JSON(200, respFailJson("order not found"))
+		return model.Order{}, false
+	}
+
+	return order, true
+}
+
 // tradeTypeReselect 返回本次 create-order 是否允许确认交易类型后再次重选；未传 reselect 时使用后台全局配置。
 func (r createOrderReq) tradeTypeReselect() bool {
 	if r.Reselect == nil {
@@ -178,10 +193,8 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		host = "https://" + ctx.Request.Host
 	}
 
-	// 获取订单
-	order, ok := model.GetTradeOrder(req.TradeID)
+	order, ok := loadPayOrder(ctx, req.TradeID)
 	if !ok {
-		ctx.JSON(200, respFailJson("order not found"))
 		return
 	}
 
@@ -196,12 +209,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		return
 	}
 
-	// 客户端指纹校验
 	fp := utils.ClientFingerprint(ctx)
-	if order.ClientFingerprint != "" && order.ClientFingerprint != fp {
-		ctx.JSON(200, respFailJson("update order failed: client fingerprint mismatch"))
-		return
-	}
 
 	// 拒绝过期订单
 	remaining := time.Until(order.ExpiredAt)
@@ -230,7 +238,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		Timeout:           int64(math.Ceil(remaining.Seconds())),
 		Fiat:              order.Fiat,
 		TradeTypeReselect: order.TradeTypeReselect,
-		ClientFingerprint: utils.ClientFingerprint(ctx),
+		ClientFingerprint: fp,
 	}
 
 	newOrder, err := model.RebuildOrder(order, params)
@@ -368,19 +376,9 @@ func (Epusdt) GetMethods(ctx *gin.Context) {
 		return
 	}
 
-	order, ok := model.GetTradeOrder(req.TradeID)
+	order, ok := loadPayOrder(ctx, req.TradeID)
 	if !ok {
-		ctx.JSON(200, respFailJson("order not found"))
 		return
-	}
-
-	// 指纹判断
-	if order.ClientFingerprint != "" {
-		fp := utils.ClientFingerprint(ctx)
-		if fp != order.ClientFingerprint {
-			ctx.JSON(200, respFailJson("order not found"))
-			return
-		}
 	}
 
 	if order.Status != model.OrderStatusWaiting {
@@ -405,18 +403,9 @@ func (Epusdt) Info(ctx *gin.Context) {
 		return
 	}
 
-	order, ok := model.GetTradeOrder(req.TradeID)
+	order, ok := loadPayOrder(ctx, req.TradeID)
 	if !ok {
-		ctx.JSON(200, respFailJson("订单不存在"))
 		return
-	}
-
-	if order.TradeType != "" && order.ClientFingerprint != "" {
-		fp := utils.ClientFingerprint(ctx)
-		if fp != order.ClientFingerprint {
-			ctx.JSON(200, respFailJson("订单不存在"))
-			return
-		}
 	}
 
 	ctx.JSON(200, respSuccJson(gin.H{
