@@ -27,6 +27,7 @@ type OrderParams struct {
 	CurrencyLimit     string          `json:"currency_limit"`      // 限定币种
 	AddressLocked     bool            `json:"address_locked"`      // 地址独占锁定
 	TradeTypeReselect bool            `json:"trade_type_reselect"` // 允许订单交易类型重选
+	ClientFingerprint string          `json:"client_fingerprint"`  //  客户端指纹
 }
 
 type Addr struct {
@@ -188,6 +189,10 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	data, err := BuildTrade(p)
 	if err != nil {
 		return t, err
+	}
+
+	if t.TradeType == "" && p.ClientFingerprint != "" {
+		t.ClientFingerprint = p.ClientFingerprint
 	}
 
 	t.Fiat = p.Fiat

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"unicode"
 
 	"github.com/btcsuite/btcd/btcutil/base58"
+	"github.com/gin-gonic/gin"
 	nid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -252,4 +254,31 @@ func GetRequestHost(r *http.Request) string {
 	}
 
 	return scheme + "://" + r.Host
+}
+
+// ClientFingerprint 客户端指纹
+func ClientFingerprint(ctx *gin.Context) string {
+	ip := ctx.ClientIP()
+
+	if parsed := net.ParseIP(ip); parsed != nil {
+		if v4 := parsed.To4(); v4 != nil {
+			ip = fmt.Sprintf("%d.%d.%d.0", v4[0], v4[1], v4[2])
+		} else if v6 := parsed.To16(); v6 != nil {
+			var masked [16]byte
+			copy(masked[:8], v6[:8])
+			ip = net.IP(masked[:]).String()
+		}
+	}
+
+	parts := []string{
+		ip,
+		ctx.GetHeader("User-Agent"),
+		ctx.GetHeader("Accept-Language"),
+		ctx.GetHeader("Accept-Encoding"),
+		ctx.GetHeader("Accept"),
+		ctx.GetHeader("Sec-CH-UA"),
+		ctx.GetHeader("Sec-CH-UA-Platform"),
+	}
+
+	return StrSha256(strings.Join(parts, "|"))
 }

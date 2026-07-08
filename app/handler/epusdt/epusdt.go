@@ -196,7 +196,14 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		return
 	}
 
-	// 拒绝任务未及时改成 expired，实际订单已过期时更新订单
+	// 客户端指纹校验
+	fp := utils.ClientFingerprint(ctx)
+	if order.ClientFingerprint != "" && order.ClientFingerprint != fp {
+		ctx.JSON(200, respFailJson("update order failed: client fingerprint mismatch"))
+		return
+	}
+
+	// 拒绝过期订单
 	remaining := time.Until(order.ExpiredAt)
 	if remaining <= 0 {
 		ctx.JSON(200, respFailJson("update order failed: order expired"))
@@ -223,6 +230,7 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 		Timeout:           int64(math.Ceil(remaining.Seconds())),
 		Fiat:              order.Fiat,
 		TradeTypeReselect: order.TradeTypeReselect,
+		ClientFingerprint: utils.ClientFingerprint(ctx),
 	}
 
 	newOrder, err := model.RebuildOrder(order, params)
@@ -366,6 +374,15 @@ func (Epusdt) GetMethods(ctx *gin.Context) {
 		return
 	}
 
+	// 指纹判断
+	if order.ClientFingerprint != "" {
+		fp := utils.ClientFingerprint(ctx)
+		if fp != order.ClientFingerprint {
+			ctx.JSON(200, respFailJson("order not found"))
+			return
+		}
+	}
+
 	if order.Status != model.OrderStatusWaiting {
 		ctx.JSON(200, respFailJson("error: Invalid order status"))
 		return
@@ -392,6 +409,14 @@ func (Epusdt) Info(ctx *gin.Context) {
 	if !ok {
 		ctx.JSON(200, respFailJson("订单不存在"))
 		return
+	}
+
+	if order.TradeType != "" && order.ClientFingerprint != "" {
+		fp := utils.ClientFingerprint(ctx)
+		if fp != order.ClientFingerprint {
+			ctx.JSON(200, respFailJson("订单不存在"))
+			return
+		}
 	}
 
 	ctx.JSON(200, respSuccJson(gin.H{
