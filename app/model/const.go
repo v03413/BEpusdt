@@ -53,7 +53,6 @@ const (
 	PaymentMatchMode       ConfKey = "payment_match_mode"        // 订单金额匹配模式
 	PaymentSupportUrl      ConfKey = "payment_support_url"       // 订单支付客服链接
 	PaymentLookbackHour    ConfKey = "payment_lookback_hour"     // 订单回溯时间
-	OrderTradeTypeReselect ConfKey = "order_trade_type_reselect" // 订单交易类型重选
 
 	RpcEndpointPlasma         ConfKey = "rpc_endpoint_plasma"            // Plasma RPC节点
 	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点

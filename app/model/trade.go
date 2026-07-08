@@ -26,7 +26,6 @@ type OrderParams struct {
 	Fiat              Fiat            `json:"fiat"`                // 法币类型
 	CurrencyLimit     string          `json:"currency_limit"`      // 限定币种
 	AddressLocked     bool            `json:"address_locked"`      // 地址独占锁定
-	TradeTypeReselect bool            `json:"trade_type_reselect"` // 允许订单交易类型重选
 }
 
 type Addr struct {
@@ -103,7 +102,6 @@ func BuildOrder(p OrderParams, trade Trade) (Order, error) {
 		TradeId:           tradeId,
 		RefHash:           tradeId,
 		TradeType:         p.TradeType,
-		TradeTypeReselect: p.TradeTypeReselect,
 		Rate:              fmt.Sprintf("%v", trade.Rate),
 		Amount:            trade.Amount,
 		Money:             p.Money.String(),
@@ -197,7 +195,6 @@ func RebuildOrder(t Order, p OrderParams) (Order, error) {
 	t.Amount = data.Amount
 	t.Money = p.Money.String()
 	t.TradeType = p.TradeType
-	t.TradeTypeReselect = p.TradeTypeReselect
 	t.Rate = fmt.Sprintf("%v", data.Rate)
 	t.ExpiredAt = CalcTradeExpiredAt(p.Timeout)
 

@@ -41,7 +41,6 @@ type createOrderReq struct {
 	Fiat        model.Fiat `json:"fiat"`
 	Currencies  string     `json:"currencies"`
 	Timeout     int64      `json:"timeout"`
-	Reselect    *bool      `json:"reselect"`
 }
 
 type updateOrderReq struct {
@@ -62,15 +61,6 @@ type infoReq struct {
 type methodsReq struct {
 	TradeID  string `json:"trade_id" binding:"required"`
 	Currency string `json:"currency"`
-}
-
-// tradeTypeReselect 返回本次 create-order 是否允许确认交易类型后再次重选；未传 reselect 时使用后台全局配置。
-func (r createOrderReq) tradeTypeReselect() bool {
-	if r.Reselect == nil {
-		return model.OrderTradeTypeReselectEnabled()
-	}
-
-	return *r.Reselect
 }
 
 func (Epusdt) Notify(ctx *gin.Context) {
@@ -140,7 +130,6 @@ func (Epusdt) CreateOrder(ctx *gin.Context) {
 		Timeout:           req.Timeout,
 		Fiat:              req.Fiat,
 		CurrencyLimit:     req.Currencies,
-		TradeTypeReselect: req.tradeTypeReselect(),
 	})
 	if err != nil {
 		ctx.JSON(200, respFailJson(fmt.Sprintf("CreateOrder: order create failed: %s", err.Error())))
@@ -214,15 +203,14 @@ func (Epusdt) UpdateOrder(ctx *gin.Context) {
 	// 注意：RebuildOrder 需要 OrderParams，我们需要从现有订单构造参数
 	money, _ := decimal.NewFromString(order.Money)
 	params := model.OrderParams{
-		Money:             money,
-		OrderId:           order.OrderId,
-		TradeType:         tradeType, // 新的交易类型
-		RedirectUrl:       order.ReturnUrl,
-		NotifyUrl:         order.NotifyUrl,
-		Name:              order.Name,
-		Timeout:           int64(math.Ceil(remaining.Seconds())),
-		Fiat:              order.Fiat,
-		TradeTypeReselect: order.TradeTypeReselect,
+		Money:       money,
+		OrderId:     order.OrderId,
+		TradeType:   tradeType, // 新的交易类型
+		RedirectUrl: order.ReturnUrl,
+		NotifyUrl:   order.NotifyUrl,
+		Name:        order.Name,
+		Timeout:     int64(math.Ceil(remaining.Seconds())),
+		Fiat:        order.Fiat,
 	}
 
 	newOrder, err := model.RebuildOrder(order, params)
