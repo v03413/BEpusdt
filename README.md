@@ -85,7 +85,15 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 
 ## 🙏 致谢
 
+感谢原项目提供的灵感和参考：
+
 - [EPusdt](./docs/faq/epusdt.md)
+
+感谢为本项目作出贡献的开发者：
+
+<a href="https://github.com/v03413/BEpusdt/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=v03413/BEpusdt" alt="BEpusdt 贡献者清单">
+</a>
 
 ## 🌟 Star 历史
 
