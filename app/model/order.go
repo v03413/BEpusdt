@@ -420,7 +420,7 @@ func LockTradeAddress(wallets []Wallet, t TradeType) (Wallet, string, error) {
 	status := []int{OrderStatusConfirming, OrderStatusWaiting}
 	for _, w := range wallets {
 		var o Order
-		Db.Where("match_addr = ? and status in (?) and trade_type = ? and address_locked = ?", w.GetMatchAddr(), status, t, true).Order("id desc").Limit(1).Find(&o)
+		Db.Where("match_address = ? and status in (?) and trade_type = ? and address_locked = ?", w.GetMatchAddr(), status, t, true).Order("id desc").Limit(1).Find(&o)
 		if o.ID == 0 {
 			return w, zero, nil
 		}
