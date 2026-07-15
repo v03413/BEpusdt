@@ -47,6 +47,7 @@ var defaultConf = map[ConfKey]string{
 	PaymentMatchMode:        string(Classic),
 	PaymentSupportUrl:       "",
 	PaymentLookbackHour:     "3",
+	PaymentNetworkSort:      "",
 	SystemInstallLock:       "0",
 	RateSyncCoingeckoApiUrl: "https://api.coingecko.com",
 	RateSyncHistoryDays:     "30",
@@ -206,7 +207,6 @@ func AuthToken() string {
 
 	return GetK(ApiAuthToken)
 }
-
 
 func IsInstalled() bool {
 	return GetC(SystemInstallLock) == "1"

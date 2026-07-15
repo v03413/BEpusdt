@@ -25,6 +25,7 @@ const userInfoStore = () => {
   const trade_type = ref<Record<string, string>>({});
   const trade_fiat = ref<string[]>([]);
   const trade_crypto = ref<string[]>([]);
+  const trade_network = ref<Record<string, string>>({});
   const admin_username = ref<string>("");
 
   async function setAccount() {
@@ -35,6 +36,7 @@ const userInfoStore = () => {
       trade_type.value = data.data.trade_type || {};
       trade_fiat.value = data.data.trade_fiat || [];
       trade_crypto.value = data.data.trade_crypto || [];
+      trade_network.value = data.data.trade_network || {};
       admin_username.value = data.data.admin_username || "";
     }
   }
@@ -56,9 +58,17 @@ const userInfoStore = () => {
     token.value = "";
   }
 
-  return { account, token, setAccount, setToken, logOut, trade_type, trade_fiat, trade_crypto, admin_username };
+  return { account, token, setAccount, setToken, logOut, trade_type, trade_fiat, trade_crypto, trade_network, admin_username };
 };
 
 export const useUserInfoStore = defineStore("user-info", userInfoStore, {
-  persist: persistedstateConfig("user-info", ["token", "account", "trade_type", "trade_fiat", "trade_crypto", "admin_username"])
+  persist: persistedstateConfig("user-info", [
+    "token",
+    "account",
+    "trade_type",
+    "trade_fiat",
+    "trade_crypto",
+    "trade_network",
+    "admin_username"
+  ])
 });

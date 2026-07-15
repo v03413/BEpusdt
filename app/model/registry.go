@@ -342,6 +342,15 @@ func GetAllAlias() map[string]string {
 	return alias
 }
 
+func GetAllNetwork() map[string]string {
+	var networks = make(map[string]string)
+	for _, c := range registry {
+		networks[string(c.Network)] = c.NetworkName
+	}
+
+	return networks
+}
+
 func GetAllTradeConfig() map[string]TradeTypeConf {
 	var config = make(map[string]TradeTypeConf)
 

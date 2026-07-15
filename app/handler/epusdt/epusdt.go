@@ -380,7 +380,8 @@ func (Epusdt) GetMethods(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, respSuccJson(gin.H{
-		"methods": order.GetMethods(model.Crypto(req.Currency)),
+		"methods":      order.GetMethods(model.Crypto(req.Currency)),
+		"network_sort": model.GetC(model.PaymentNetworkSort),
 	}))
 }
 

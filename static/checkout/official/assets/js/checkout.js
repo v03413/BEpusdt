@@ -7,7 +7,7 @@
     var SVG_K = '<svg width="W" height="W" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
     var WEB3 = '/checkout/official/assets/web3icons';
     var iconCache = {};
-    var methods = [];
+    var methods = [], networkSort = '';
     var selCur = '', selMethod = null;
     var cfg = {}, tradeId = '';
     var cdTimer = null, stTimer = null;
@@ -209,6 +209,34 @@
     function tokenIcon(c) { return WEB3 + '/token/' + (c || '').toUpperCase() + '.svg'; }
     function netIcon(n) { return WEB3 + '/network/' + (n || '').toLowerCase() + '.svg'; }
 
+    function sortMethodsByNetwork(list, networkSort) {
+        if (!Array.isArray(list) || typeof networkSort !== 'string' || !networkSort.trim()) return list;
+
+        var sortIndex = Object.create(null);
+        var rank = 0;
+        networkSort.split(',').forEach(function (network) {
+            var key = network.trim();
+            if (!key || Object.prototype.hasOwnProperty.call(sortIndex, key)) return;
+            sortIndex[key] = rank++;
+        });
+        if (!rank) return list;
+
+        return list.map(function (method, index) {
+            var network = method && typeof method.network === 'string' ? method.network.trim() : '';
+            var configured = Object.prototype.hasOwnProperty.call(sortIndex, network);
+            return {
+                method: method,
+                index: index,
+                configured: configured,
+                rank: configured ? sortIndex[network] : -1
+            };
+        }).sort(function (a, b) {
+            if (a.configured !== b.configured) return a.configured ? -1 : 1;
+            if (a.configured && a.rank !== b.rank) return a.rank - b.rank;
+            return a.index - b.index;
+        }).map(function (item) { return item.method; });
+    }
+
     function preloadIcons(srcs, cb) {
         var pending = srcs.length;
         if (!pending) return cb();
@@ -250,7 +278,7 @@
     }
 
     function updateNetworkDropdown() {
-        var arr = methods.filter(function (m) { return m.currency === selCur; });
+        var arr = sortMethodsByNetwork(methods.filter(function (m) { return m.currency === selCur; }), networkSort);
         buildDropdown('networkSelect', arr.map(function (m) {
             return {
                 value: m.token_net_name,
@@ -501,9 +529,11 @@
                 .then(function (res) {
                     if (res.status_code === 200 && res.data && Array.isArray(res.data.methods) && res.data.methods.length) {
                         methods = res.data.methods;
+                        networkSort = typeof res.data.network_sort === 'string' ? res.data.network_sort : '';
                         initSelectionUI();
                     } else {
                         methods = [];
+                        networkSort = '';
                         showToast(res.message || t('toastLoadFailed', '无法加载付款网络'), 'error');
                     }
                 })

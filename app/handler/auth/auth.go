@@ -35,6 +35,7 @@ func (Auth) Info(ctx *gin.Context) {
 		"trade_type":     model.GetAllAlias(),
 		"trade_fiat":     model.GetSupportFiat(),
 		"trade_crypto":   model.GetSupportCrypto(),
+		"trade_network":  model.GetAllNetwork(),
 	})
 }
 
