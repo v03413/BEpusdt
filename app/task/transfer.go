@@ -260,7 +260,7 @@ func markFinalConfirmed(o model.Order) {
 }
 
 func receivableOrderStatuses() []int {
-	return []int{model.OrderStatusWaiting, model.OrderStatusExpired}
+	return []int{model.OrderStatusWaiting, model.OrderStatusExpired, model.OrderStatusConfirming}
 }
 
 func getReceivableOrders() map[string][]model.Order {
