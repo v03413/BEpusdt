@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/xssnick/tonutils-go/address"
@@ -9,6 +10,16 @@ import (
 	tgo "github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/jetton"
 )
+
+func IsValidTonAddress(value string) bool {
+	if !strings.HasPrefix(value, "UQ") {
+		return false
+	}
+
+	_, err := address.ParseAddr(value)
+
+	return err == nil
+}
 
 func NewTonClient(configUrl string) tgo.APIClientWrapped {
 	pool := liteclient.NewConnectionPool()
