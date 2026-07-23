@@ -294,6 +294,15 @@ func hasLookbackOrders(tradeType []model.TradeType) bool {
 }
 
 func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
+	startAt, endAt, orderIDs, ok := pendingLookbackUnix(network)
+	if ok {
+		markLookbackDone(orderIDs)
+	}
+
+	return startAt, endAt, ok
+}
+
+func pendingLookbackUnix(network model.Network) (startAt, endAt int64, orderIDs []int64, ok bool) {
 	trade := model.GetNetworkTrades(network)
 	if len(trade) == 0 {
 		return
@@ -317,6 +326,10 @@ func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
 	if len(pending) == 0 {
 		return
 	}
+	orderIDs = make([]int64, 0, len(pending))
+	for _, o := range pending {
+		orderIDs = append(orderIDs, o.ID)
+	}
 
 	// 起点：最早的创建时间（已按 created_at asc 排序）
 	startAt = pending[0].CreatedAt.Time().Unix()
@@ -331,12 +344,13 @@ func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
 
 	ok = true
 
-	// 标记这批订单已回溯，后续不再重复触发
-	for _, o := range pending {
-		lookbackDone.Store(o.ID, struct{}{})
-	}
-
 	return
+}
+
+func markLookbackDone(orderIDs []int64) {
+	for _, orderID := range orderIDs {
+		lookbackDone.Store(orderID, struct{}{})
+	}
 }
 
 func expireWaitingOrders() {

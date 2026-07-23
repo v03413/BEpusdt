@@ -56,7 +56,7 @@ func (wa *Wallet) Validate() error {
 			return errors.New("钱包地址格式不合法，请检查")
 		}
 	case UsdtTon:
-		if !strings.HasPrefix(wa.Address, "UQ") {
+		if !utils.IsValidTonAddress(wa.Address) {
 			return errors.New("TON 地址必须以 UQ 开头")
 		}
 		owner, err := address.ParseAddr(wa.Address)
@@ -70,7 +70,7 @@ func (wa *Wallet) Validate() error {
 		wa.MatchAddr = addr.Bounce(false).String()
 		return nil
 	case TonGram:
-		if !strings.HasPrefix(wa.Address, "UQ") {
+		if !utils.IsValidTonAddress(wa.Address) {
 			return errors.New("TON 地址必须以 UQ 开头")
 		}
 		owner, err := address.ParseAddr(wa.Address)

@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/panjf2000/ants/v2"
 	"github.com/shopspring/decimal"
 	"github.com/smallnest/chanx"
 	"github.com/spf13/cast"
@@ -24,10 +23,22 @@ import (
 const tonMasterChainID = -1
 const tonMasterShard = int64(-0x8000000000000000)
 const tonOpInternalTransfer = uint32(0x178d4519)
+const tonBlockRetryMaxDelay = 15 * time.Second
+
+type tonShardRange struct {
+	Workchain int32
+	Shard     int64
+	Start     uint32
+	End       uint32
+}
+
+type tonShardKey struct {
+	Workchain int32
+	Shard     int64
+}
 
 type ton struct {
 	lastBlockSeqno uint32
-	shardTipMap    sync.Map // key: "workchain:shard", value: uint32 last processed shard seqno
 	blockScanQueue *chanx.UnboundedChan[uint32]
 	clientOnce     sync.Once
 	api            tgo.APIClientWrapped
@@ -102,15 +113,6 @@ func (t *ton) syncMBSeqnoForward(ctx context.Context) {
 }
 
 func (t *ton) blockDispatch(ctx context.Context) {
-	p, err := ants.NewPoolWithFunc(5, t.blockParse)
-	if err != nil {
-		log.Task.Warn("Error creating pool:", err)
-
-		return
-	}
-
-	defer p.Release()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -119,62 +121,134 @@ func (t *ton) blockDispatch(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if err := p.Invoke(n); err != nil {
+			if err := retryTonBlock(ctx, n, time.Second, func(seqno uint32) error {
+				err := t.blockParse(ctx, seqno)
+				if err != nil {
+					log.Task.Warn(fmt.Sprintf("Ton 区块扫描失败，将重试 seqno=%d: %v", seqno, err))
+				}
 
-				log.Task.Warn("Tron Error invoking process block:", err)
+				return err
+			}); err != nil {
+				return
 			}
 		}
 	}
 }
 
-func (t *ton) blockParse(n any) {
-	var seqno = n.(uint32)
-	var ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+func (t *ton) blockParse(parent context.Context, seqno uint32) error {
+	var ctx, cancel = context.WithTimeout(parent, time.Second*60)
 	defer cancel()
 
 	mb, err := t.client().LookupBlock(ctx, tonMasterChainID, tonMasterShard, seqno)
 	if err != nil {
 		conf.RecordFailure(conf.Ton)
-		log.Task.Warn("Ton LookupBlock ", err)
 
-		return
+		return fmt.Errorf("lookup master block: %w", err)
 	}
 
-	conf.RecordSuccess(conf.Ton, cast.ToString(seqno))
-
-	// 目前实际来看，basechain 还未分裂，所以 len(shardsTip) == 1
 	shardsTip, err := t.client().GetBlockShardsInfo(ctx, mb)
 	if err != nil {
 		conf.RecordFailure(conf.Ton)
-		log.Task.Warn(fmt.Sprintf("get shards info seqno=%d err: %v", seqno, err))
 
-		return
+		return fmt.Errorf("get current shards info: %w", err)
 	}
 
-	for _, tip := range shardsTip {
-		start := tip.SeqNo
-		key := fmt.Sprintf("%d:%d", tip.Workchain, tip.Shard)
-		if old, loaded := t.shardTipMap.Swap(key, tip.SeqNo); loaded {
-			start = old.(uint32) + 1
+	var previousShards []*tgo.BlockIDExt
+	if seqno > 0 {
+		previousMB, lookupErr := t.client().LookupBlock(ctx, tonMasterChainID, tonMasterShard, seqno-1)
+		if lookupErr != nil {
+			conf.RecordFailure(conf.Ton)
+
+			return fmt.Errorf("lookup previous master block: %w", lookupErr)
 		}
 
-		for s := start; s <= tip.SeqNo; s++ {
-			shardBlock, err := t.client().LookupBlock(ctx, tip.Workchain, tip.Shard, s)
+		previousShards, err = t.client().GetBlockShardsInfo(ctx, previousMB)
+		if err != nil {
+			conf.RecordFailure(conf.Ton)
+
+			return fmt.Errorf("get previous shards info: %w", err)
+		}
+	}
+
+	for _, shardRange := range tonShardRanges(previousShards, shardsTip) {
+		for s := shardRange.Start; s <= shardRange.End; s++ {
+			shardBlock, err := t.client().LookupBlock(ctx, shardRange.Workchain, shardRange.Shard, s)
 			if err != nil {
 				conf.RecordFailure(conf.Ton)
-				log.Task.Warn(fmt.Sprintf("lookup shard block workchain=%d shard=%d seqno=%d err: %v", tip.Workchain, tip.Shard, s, err))
 
-				continue
+				return fmt.Errorf("lookup shard block workchain=%d shard=%d seqno=%d: %w", shardRange.Workchain, shardRange.Shard, s, err)
 			}
 
 			if err := t.processShard(ctx, shardBlock, seqno); err != nil {
 				conf.RecordFailure(conf.Ton)
-				log.Task.Warn(fmt.Sprintf("process shard block workchain=%d shard=%d seqno=%d err: %v", tip.Workchain, tip.Shard, s, err))
+
+				return fmt.Errorf("process shard block workchain=%d shard=%d seqno=%d: %w", shardRange.Workchain, shardRange.Shard, s, err)
 			}
 		}
 	}
 
+	conf.RecordSuccess(conf.Ton, cast.ToString(seqno))
 	log.Task.Info(fmt.Sprintf("区块扫描完成(Ton): %d 成功率：%s", seqno, conf.GetSuccessRate(conf.Ton)))
+
+	return nil
+}
+
+func tonShardRanges(previous, current []*tgo.BlockIDExt) []tonShardRange {
+	previousTips := make(map[tonShardKey]uint32, len(previous))
+	for _, tip := range previous {
+		key := tonShardKey{Workchain: tip.Workchain, Shard: tip.Shard}
+		previousTips[key] = tip.SeqNo
+	}
+
+	ranges := make([]tonShardRange, 0, len(current))
+	for _, tip := range current {
+		start := tip.SeqNo
+		key := tonShardKey{Workchain: tip.Workchain, Shard: tip.Shard}
+		if previousSeqno, ok := previousTips[key]; ok {
+			if previousSeqno >= tip.SeqNo {
+				continue
+			}
+			start = previousSeqno + 1
+		}
+
+		ranges = append(ranges, tonShardRange{
+			Workchain: tip.Workchain,
+			Shard:     tip.Shard,
+			Start:     start,
+			End:       tip.SeqNo,
+		})
+	}
+
+	return ranges
+}
+
+func retryTonBlock(ctx context.Context, seqno uint32, initialDelay time.Duration, process func(uint32) error) error {
+	delay := initialDelay
+	for {
+		if err := process(seqno); err == nil {
+			return nil
+		}
+
+		if delay <= 0 {
+			continue
+		}
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+
+			return ctx.Err()
+		case <-timer.C:
+		}
+
+		if delay < tonBlockRetryMaxDelay {
+			delay *= 2
+			if delay > tonBlockRetryMaxDelay {
+				delay = tonBlockRetryMaxDelay
+			}
+		}
+	}
 }
 
 func (t *ton) syncBreak() bool {
@@ -188,14 +262,13 @@ func (t *ton) syncBreak() bool {
 		return false
 	}
 
-	var count int64 = 0
 	trade := []model.TradeType{model.UsdtTon, model.TonGram}
-	model.Db.Model(&model.Order{}).Where("status = ? and trade_type in (?)", model.OrderStatusWaiting, trade).Count(&count)
-	if count > 0 {
+	if hasLookbackOrders(trade) {
 
 		return false
 	}
 
+	var count int64
 	model.Db.Model(&model.Wallet{}).Where("other_notify = ? and trade_type in (?)", model.WaOtherEnable, trade).Count(&count)
 	if count > 0 {
 
@@ -356,12 +429,18 @@ func (t *ton) lookbackBlocks(ctx context.Context) {
 		return
 	}
 
-	startAt, endAt, ok := getLookbackUnix(conf.Ton)
+	startAt, endAt, orderIDs, ok := pendingLookbackUnix(conf.Ton)
 	if !ok {
 		return
 	}
 
 	start, end := blockapi.New().GetBoundaryHeights(startAt, endAt, conf.Ton)
+	if start <= 0 || end < start {
+		log.Task.Warn(fmt.Sprintf("Ton 回溯高度范围无效: start=%d end=%d", start, end))
+
+		return
+	}
+
 	for i := start; i <= end; i++ {
 		select {
 		case <-ctx.Done():
@@ -371,7 +450,18 @@ func (t *ton) lookbackBlocks(ctx context.Context) {
 		if t.syncBreak() {
 			return
 		}
-		t.blockScanQueue.In <- uint32(i)
+		if err := retryTonBlock(ctx, uint32(i), time.Second, func(seqno uint32) error {
+			err := t.blockParse(ctx, seqno)
+			if err != nil {
+				log.Task.Warn(fmt.Sprintf("Ton 历史区块扫描失败，将重试 seqno=%d: %v", seqno, err))
+			}
+
+			return err
+		}); err != nil {
+			return
+		}
 		time.Sleep(time.Millisecond * 200) // 速率控制
 	}
+
+	markLookbackDone(orderIDs)
 }
