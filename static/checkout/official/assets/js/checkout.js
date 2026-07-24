@@ -566,9 +566,76 @@
 
 (function () {
     var orderData = null, gTradeId = '';
+    var WEB3 = '/checkout/official/assets/web3icons';
     window._qrAmount = '';
 
     function _t(k, d) { return (window.Payment && window.Payment.t) ? window.Payment.t(k, d) : d; }
+
+    function renderWalletAddress(value) {
+        var el = document.getElementById('walletAddress');
+        if (!el) return;
+
+        var address = value == null || value === '' ? '--' : String(value);
+        el.textContent = '';
+        if (address === '--') {
+            el.textContent = address;
+            return;
+        }
+
+        function appendPart(text, emphasized) {
+            var part = document.createElement('span');
+            part.textContent = text;
+            if (emphasized) part.className = 'address-emphasis';
+            el.appendChild(part);
+        }
+
+        if (address.length <= 10) {
+            appendPart(address, true);
+            return;
+        }
+
+        appendPart(address.slice(0, 4), true);
+        appendPart(address.slice(4, -6), false);
+        appendPart(address.slice(-6), true);
+    }
+
+    function updateQrPaymentLogo(currencyValue, networkValue) {
+        var badge = document.getElementById('qrPaymentLogo');
+        var tokenLogo = document.getElementById('qrTokenLogo');
+        var networkLogo = document.getElementById('qrNetworkLogo');
+        if (!badge || !tokenLogo || !networkLogo) return;
+
+        var currency = currencyValue == null ? '' : String(currencyValue).trim().toUpperCase();
+        var network = networkValue == null ? '' : String(networkValue).trim().toLowerCase();
+        badge.style.display = 'none';
+        tokenLogo.removeAttribute('src');
+        networkLogo.style.display = 'none';
+        networkLogo.removeAttribute('src');
+        tokenLogo.onload = null;
+        tokenLogo.onerror = null;
+        networkLogo.onload = null;
+        networkLogo.onerror = null;
+        if (!currency) return;
+
+        tokenLogo.onerror = function () {
+            badge.style.display = 'none';
+            tokenLogo.removeAttribute('src');
+        };
+        tokenLogo.onload = function () {
+            badge.style.display = 'flex';
+        };
+        tokenLogo.src = WEB3 + '/token/' + currency + '.svg';
+
+        if (!network) return;
+        networkLogo.onerror = function () {
+            networkLogo.style.display = 'none';
+            networkLogo.removeAttribute('src');
+        };
+        networkLogo.onload = function () {
+            networkLogo.style.display = 'block';
+        };
+        networkLogo.src = WEB3 + '/network/' + network + '.svg';
+    }
 
     function showSelection() {
         document.getElementById('selectionStage').style.display = 'block';
@@ -605,6 +672,7 @@
         var d = orderData;
         var currency = (d.network && d.network.crypto) ? d.network.crypto : (d.selected_payment ? d.selected_payment.currency : 'USDT');
         var netName = (d.network && d.network.name) ? d.network.name : (d.selected_payment ? d.selected_payment.token_net_name : '');
+        var network = (d.network && d.network.network) ? d.network.network : (d.selected_payment ? d.selected_payment.network : '');
         var amount = d.actual_amount || '--';
         window._qrAmount = amount;
         document.getElementById('orderMoneyQ').textContent = d.money || '--';
@@ -612,10 +680,12 @@
         document.getElementById('payAmountQ').textContent = amount + ' ' + currency;
         document.getElementById('payNetworkQ').textContent = _t('networkPrefix', '区块网络 · ') + netName;
         document.getElementById('orderIdQ').textContent = d.order_id || '--';
-        document.getElementById('walletAddress').textContent = d.token || d.address || '--';
+        var paymentAddress = d.token || d.address || '';
+        renderWalletAddress(paymentAddress);
         var addr = document.getElementById('addressLabelQ');
         if (addr) addr.textContent = _t('receivingAddress', '收款地址');
-        $('#qrcode').empty().qrcode({ text: d.token || d.address || '', width: 200, height: 200 });
+        $('#qrcode').empty().qrcode({ text: paymentAddress, width: 200, height: 200 });
+        updateQrPaymentLogo(currency, network);
         updateReselectButton();
         bindHelp('helpBtnQ', d.support_url);
         Payment.initQrPage({

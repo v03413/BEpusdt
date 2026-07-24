@@ -96,6 +96,44 @@ body {
 }
 .amount-crypto-value:hover { color: #009a5c; }
 
+#paymentStage .amount-crypto-row {
+    margin-top: 0;
+    min-width: 0;
+}
+#paymentStage .amount-crypto-value {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+#paymentStage .amount-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    margin-top: 8px;
+    white-space: nowrap;
+}
+#paymentStage .amount-fiat {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0;
+    line-height: 1.4;
+}
+#paymentStage .amount-network-line {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-top: 0;
+    overflow: hidden;
+}
+#paymentStage .network-tag {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .copy-trigger {
     display: inline-flex;
     align-items: center;
@@ -395,6 +433,7 @@ body {
 
 .qr-stage { padding: 20px 24px 0; }
 .qr-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -406,7 +445,35 @@ body {
     background: #fff;
 }
 .qr-wrapper canvas { display: block; }
-
+.qr-payment-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+.qr-token-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+.qr-network-logo {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 16px;
+    height: 16px;
+    padding: 1px;
+    border-radius: 50%;
+    background: #fff;
+    object-fit: contain;
+}
 .address-card { background: #f8f9fa; border-radius: 12px; padding: 8px 12px; margin-bottom: 16px; }
 .address-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .address-label {
@@ -422,6 +489,10 @@ body {
     color: var(--color-text-primary);
     word-break: break-all;
     line-height: 1.5;
+}
+.address-emphasis {
+    color: var(--color-accent);
+    font-weight: 800;
 }
 .reselect-btn {
     width: 100%;
@@ -631,6 +702,7 @@ body {
     body { padding: 12px 10px 32px; }
     .checkout-card { margin-top: 0; }
     .amount-fiat { font-size: 26px; }
+    #paymentStage .amount-crypto-value { font-size: 28px; }
     .card-header,
     .amount-block,
     .form-section,
@@ -642,4 +714,5 @@ body {
 
 @media (max-width: 360px) {
     .amount-fiat { font-size: 22px; }
+    #paymentStage .amount-crypto-value { font-size: 26px; }
 }

@@ -132,9 +132,6 @@
         </a>
     </div>
     <div class="amount-block">
-        <div class="amount-fiat">
-            <span id="orderMoneyQ">--</span>&nbsp;<span id="orderFiatQ">--</span>
-        </div>
         <div class="amount-crypto-row">
             <span class="amount-crypto-value" id="payAmountQ"></span>
             <span class="copy-trigger" id="copyAmountQBtn" data-i18n="[title]copyAmountTitle" title="复制金额">
@@ -146,8 +143,13 @@
                 </span>
             </span>
         </div>
-        <div class="amount-network-line">
-            <span class="network-tag" id="payNetworkQ">--</span>
+        <div class="amount-meta-row">
+            <div class="amount-fiat">
+                <span id="orderMoneyQ">--</span>&nbsp;<span id="orderFiatQ">--</span>
+            </div>
+            <div class="amount-network-line">
+                <span class="network-tag" id="payNetworkQ">--</span>
+            </div>
         </div>
     </div>
     <div style="padding: 12px 24px 0; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -179,6 +181,10 @@
     <div class="qr-stage">
         <div class="qr-wrapper">
             <div id="qrcode"></div>
+            <div class="qr-payment-logo" id="qrPaymentLogo" aria-hidden="true" style="display:none;">
+                <img class="qr-token-logo" id="qrTokenLogo" alt="">
+                <img class="qr-network-logo" id="qrNetworkLogo" alt="" style="display:none;">
+            </div>
         </div>
         <div class="address-card">
             <div class="address-label-row">
