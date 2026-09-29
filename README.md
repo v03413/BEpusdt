@@ -1,4 +1,4 @@
-**❗️作者声明：本项目为研究学习区块链的开源项目，不提供任何形式的收费服务(谨防诈骗)
+**❗️作者声明：本项目为研究学习区块链的开源项目，不提供任何形式的收费服务 (谨防诈骗)
 ，不鼓励任何衍生金融属性的交易行为，不负责任何使用本项目进行的三方行为；使用过程中遇见问题请提`issue`
 或群里交流，开源项目请自重！**
 
@@ -66,8 +66,8 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 
 ## 🖼 功能截图
 
-| 前台收银                                                   | 后台订单                                                 | 订单通知                                                          |
-|--------------------------------------------------------|------------------------------------------------------|---------------------------------------------------------------|
+| 前台收银                                                  | 后台订单                                                 | 订单通知                                                        |
+|-----------------------------------------------------------|----------------------------------------------------------|-----------------------------------------------------------------|
 | <img src=./docs/images/checkout.png alt=收银台 width=300> | <img src=./docs/images/admin.png alt=后台订单 width=300> | <img src=./docs/images/telegram.png alt=Telegram通知 width=300> |
 
 ## ❓ 常见问题
@@ -97,4 +97,4 @@ docker run -d --restart=unless-stopped -p 8080:8080 v03413/bepusdt:latest
 
 ## 🌟 Star 历史
 
-[![Stargazers over time](https://starchart.cc/v03413/bepusdt.svg)](https://starchart.cc/v03413/bepusdt)
+[![Star History Chart](https://api.star-history.com/chart?repos=v03413/bepusdt&type=date&legend=top-left)](https://www.star-history.com/?repos=v03413%2Fbepusdt&type=date&legend=top-left)
