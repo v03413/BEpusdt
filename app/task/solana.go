@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -335,6 +336,16 @@ func solanaTxSucceeded(err gjson.Result) bool {
 	return err.Exists() && err.Type == gjson.Null
 }
 
+// solanaRequireSignatureStatus 要求节点知道这笔交易：状态为 null 说明该节点还没有它（或已不在其状态缓存里），换另一个节点查
+func solanaRequireSignatureStatus(result gjson.Result) error {
+	if result.Get("value.0").Type == gjson.Null {
+
+		return errSolanaNullResult
+	}
+
+	return nil
+}
+
 // getSignatureStatuses 对执行失败的交易同样返回 finalized，必须同时检查 err
 func solanaSignatureFinalized(status gjson.Result) bool {
 	return status.Get("confirmationStatus").String() == "finalized" && solanaTxSucceeded(status.Get("err"))
@@ -496,9 +507,11 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
-		result, err := s.rpcCall(ctx, "getSignatureStatuses", []string{o.RefHash}, map[string]any{"searchTransactionHistory": true})
+		result, err := s.rpcCallAccept(ctx, "getSignatureStatuses", solanaRequireSignatureStatus, []string{o.RefHash}, map[string]any{"searchTransactionHistory": true})
 		if err != nil {
-			log.Task.Warn("solana tradeConfirmHandle Error:", err)
+			if !errors.Is(err, errSolanaNullResult) { // 节点都还查不到这笔交易时不记 WARN，长时间查不到由 alertSlowConfirming 告警
+				log.Task.Warn("solana tradeConfirmHandle Error:", err)
+			}
 			s.alertSlowConfirming(o)
 
 			return

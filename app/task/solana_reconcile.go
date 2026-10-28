@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -27,8 +28,19 @@ const (
 	solanaAssociatedTokenProgram = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 )
 
-// solanaReconciled 记录已完成对账的订单 ID；RPC 失败的订单不记录，下一轮重试
+// solanaReconciled 记录已完成对账的订单 ID；RPC 失败或代币账户列表不完整的订单不记录，下一轮重试
 var solanaReconciled sync.Map // key: int64 order ID, value: struct{}
+
+// solanaReconcileProgress 记录未完成对账的订单已经查完的代币账户，重试时跳过，不重复下载交易
+var solanaReconcileProgress sync.Map // key: int64 order ID, value: *solanaReconcileState
+
+type solanaReconcileState struct {
+	checked map[string]bool // 已查完的代币账户
+	warned  bool            // 已记过"代币账户列表不完整"
+}
+
+// errSolanaTokenAccountsIncomplete 表示没能列出钱包的全部代币账户，只查了已知的；没找到付款时不能算对账完成
+var errSolanaTokenAccountsIncomplete = errors.New("token account list incomplete")
 
 func (s *solana) reconcileExpiredOrders(ctx context.Context) {
 	now := time.Now()
@@ -36,6 +48,18 @@ func (s *solana) reconcileExpiredOrders(ctx context.Context) {
 	model.Db.Where("status = ? and trade_type in (?)", model.OrderStatusExpired, model.GetNetworkTrades(conf.Solana)).
 		Where("expired_at > ? and expired_at < ?", now.Add(-solanaReconcileWindow), now.Add(-solanaReconcileDelay)).
 		Find(&orders)
+
+	current := make(map[int64]bool, len(orders))
+	for _, o := range orders {
+		current[o.ID] = true
+	}
+	solanaReconcileProgress.Range(func(id, _ any) bool {
+		if !current[id.(int64)] {
+			solanaReconcileProgress.Delete(id)
+		}
+
+		return true
+	})
 
 	for _, o := range orders {
 		if ctx.Err() != nil {
@@ -46,24 +70,38 @@ func (s *solana) reconcileExpiredOrders(ctx context.Context) {
 
 			continue
 		}
-		if err := s.reconcileOrder(ctx, o); err != nil {
-			log.Task.Warn(fmt.Sprintf("Solana 订单对账失败，稍后重试 %s：%v", o.TradeId, err))
+
+		v, _ := solanaReconcileProgress.LoadOrStore(o.ID, &solanaReconcileState{checked: make(map[string]bool)})
+		state := v.(*solanaReconcileState)
+		if err := s.reconcileOrder(ctx, o, state); err != nil {
+			if !errors.Is(err, errSolanaTokenAccountsIncomplete) {
+				log.Task.Warn(fmt.Sprintf("Solana 订单对账失败，稍后重试 %s：%v", o.TradeId, err))
+			} else if !state.warned && model.GetC(model.RpcEndpointSolanaPoll) != "" { // 只配置一个节点时（如 publicnode 免费节点）该方法通常不可用，不记日志
+				state.warned = true
+				log.Task.Warn(fmt.Sprintf("Solana 订单 %s 已查过已知代币账户，未找到付款；钱包的代币账户列表暂时查不全，稍后重试：%v", o.TradeId, err))
+			}
 
 			continue
 		}
 
 		solanaReconciled.Store(o.ID, struct{}{})
+		solanaReconcileProgress.Delete(o.ID)
 	}
 }
 
-func (s *solana) reconcileOrder(ctx context.Context, o model.Order) error {
-	accounts, err := s.tokenAccounts(ctx, orderMatchAddress(o), model.GetTradeContract(o.TradeType))
+func (s *solana) reconcileOrder(ctx context.Context, o model.Order, state *solanaReconcileState) error {
+	accounts, listErr, err := s.tokenAccounts(ctx, orderMatchAddress(o), model.GetTradeContract(o.TradeType))
 	if err != nil {
 
 		return err
 	}
 
 	for _, account := range accounts {
+		if state.checked[account] {
+
+			continue
+		}
+
 		signatures, err := s.orderSignatures(ctx, account, o)
 		if err != nil {
 
@@ -72,7 +110,10 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order) error {
 
 		for _, signature := range signatures {
 			var used int64
-			model.Db.Model(&model.Order{}).Where("ref_hash = ?", signature).Count(&used)
+			if err := model.Db.Model(&model.Order{}).Where("ref_hash = ?", signature).Count(&used).Error; err != nil {
+
+				return err
+			}
 			if used > 0 {
 
 				continue
@@ -106,29 +147,35 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order) error {
 				return nil
 			}
 		}
+		state.checked[account] = true
+	}
+	if listErr != nil {
+
+		return fmt.Errorf("%w: %v", errSolanaTokenAccountsIncomplete, listErr)
 	}
 
 	return nil
 }
 
 // tokenAccounts 返回钱包在该 mint 下的代币账户：总是包含关联代币账户（ATA），节点支持 getTokenAccountsByOwner 时再加上其他代币账户。
-// 部分节点（如 publicnode 免费节点）不提供 getTokenAccountsByOwner，此时只检查 ATA，绝大多数付款都转入 ATA。
-func (s *solana) tokenAccounts(ctx context.Context, owner, mint string) ([]string, error) {
+// 部分节点（如 publicnode 免费节点）不提供 getTokenAccountsByOwner，此时只能先查 ATA（绝大多数付款都转入 ATA），listErr 不为空，
+// 表示列表可能不完整
+func (s *solana) tokenAccounts(ctx context.Context, owner, mint string) (accounts []string, listErr error, err error) {
 	ata, err := solanaAssociatedTokenAccount(owner, mint)
 	if err != nil {
 
-		return nil, err
+		return nil, nil, err
 	}
 
-	accounts := []string{ata}
-	extra, _ := s.listTokenAccounts(ctx, owner, mint)
+	accounts = []string{ata}
+	extra, listErr := s.listTokenAccounts(ctx, owner, mint)
 	for _, account := range extra {
 		if account != ata {
 			accounts = append(accounts, account)
 		}
 	}
 
-	return accounts, nil
+	return accounts, listErr, nil
 }
 
 // listTokenAccounts 用 getTokenAccountsByOwner 列出钱包在该 mint 下的全部代币账户

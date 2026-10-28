@@ -84,50 +84,7 @@ func orderTransferHandle(ctx context.Context) {
 				continue
 			}
 
-			var other = make([]transfer, 0)
-			var orders = getReceivableOrders()
-
-			for _, t := range batch {
-				// 判断数额是否在允许范围内
-				if !model.IsAmountValid(t.TradeType, t.Amount) {
-					continue
-				}
-
-				mqttPublish(t)
-
-				key := fmt.Sprintf("%s%s", t.RecvAddress, t.TradeType)
-				orderList, ok := orders[key]
-				if !ok {
-					other = append(other, t)
-					continue
-				}
-
-				var matched bool
-				for i, o := range orderList {
-					if !orderTransferMatch(o, t) {
-						continue
-					}
-
-					// 订单匹配 进入确认流程
-					if err := o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
-						log.Task.Warn("mark order confirming failed:", err)
-						continue
-					}
-
-					// 从内存 map 中移除已匹配订单，防止同批次其他 transfer 重复匹配
-					orders[key] = append(orderList[:i], orderList[i+1:]...)
-					matched = true
-					break
-				}
-
-				if !matched {
-					other = append(other, t)
-				}
-			}
-
-			if len(other) > 0 {
-				notOrderQueue.In <- other
-			}
+			handleOrderTransfers(batch)
 
 			batch = batch[:0]
 
@@ -135,6 +92,64 @@ func orderTransferHandle(ctx context.Context) {
 				expireWaitingOrders()
 			}
 		}
+	}
+}
+
+// handleOrderTransfers 把一批链上转账匹配到订单，没匹配上的转给"其它通知"
+func handleOrderTransfers(batch []transfer) {
+	var other = make([]transfer, 0)
+	var orders = getReceivableOrders()
+
+	for _, t := range batch {
+		// 判断数额是否在允许范围内
+		if !model.IsAmountValid(t.TradeType, t.Amount) {
+			continue
+		}
+
+		mqttPublish(t)
+
+		key := fmt.Sprintf("%s%s", t.RecvAddress, t.TradeType)
+		orderList, ok := orders[key]
+		if !ok {
+			other = append(other, t)
+			continue
+		}
+
+		// 按账户检测时 Solana 订单只由它匹配（条件更新、串行），整链扫描此时只为 MQTT 和"其它通知"运行；
+		// 这里不改订单，只判断转账是否属于订单，属于订单的不作为"其它通知"
+		if t.Network == conf.Solana && solanaAddressMode() {
+			if !transferMatchesOrder(orderList, t) {
+				other = append(other, t)
+			}
+
+			continue
+		}
+
+		var matched bool
+		for i, o := range orderList {
+			if !orderTransferMatch(o, t) {
+				continue
+			}
+
+			// 订单匹配 进入确认流程
+			if err := o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
+				log.Task.Warn("mark order confirming failed:", err)
+				continue
+			}
+
+			// 从内存 map 中移除已匹配订单，防止同批次其他 transfer 重复匹配
+			orders[key] = append(orderList[:i], orderList[i+1:]...)
+			matched = true
+			break
+		}
+
+		if !matched {
+			other = append(other, t)
+		}
+	}
+
+	if len(other) > 0 {
+		notOrderQueue.In <- other
 	}
 }
 
@@ -150,6 +165,16 @@ func orderTransferMatch(o model.Order, t transfer) bool {
 	}
 
 	return true
+}
+
+func transferMatchesOrder(orders []model.Order, t transfer) bool {
+	for _, o := range orders {
+		if orderTransferMatch(o, t) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func orderMatchAddress(o model.Order) string {
@@ -364,7 +389,17 @@ func expireWaitingOrders() {
 			continue
 		}
 
-		t.SetExpired()
+		// 读出之后订单可能已被付款检测匹配，此时不再过期，也不发过期通知
+		ok, err := t.SetExpired()
+		if err != nil {
+			log.Task.Warn("订单过期失败：", t.TradeId, err)
+
+			continue
+		}
+		if !ok {
+
+			continue
+		}
 		notify.Bepusdt(t)
 	}
 }

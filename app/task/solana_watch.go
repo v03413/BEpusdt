@@ -2,7 +2,9 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -18,26 +20,32 @@ import (
 //   - 同一个代币账户供多个订单共用，每轮只查一次；
 //   - 进度按账户记在 bep_solana_cursor（低水位 slot：小于它的签名都已处理），重启后从这里继续；
 //   - 单笔交易取不到时单独退避重试，低水位停在它前面，更新的付款照常处理；
-//   - 识别到的转账在这里同步匹配订单，订单进入确认中之后低水位才前进，进程中途退出不会丢付款。
+//   - 已发现但没处理完的签名记在账户的待处理表里（随低水位一起保存），低水位不越过它们；
+//     签名列表暂时缺了它（负载均衡后面的节点索引不一致）也按签名单独下载，不依赖它重新出现在列表里；
+//   - 识别到的转账在这里同步匹配订单，订单进入确认中之后低水位才前进，进程中途退出不会丢付款；
+//   - 各账户独立检测，一个账户或代币账户列表的查询变慢，不耽误其他账户的下一轮。
+// 订单只由这里和过期后的对账匹配；整链扫描此时只为 MQTT 和"其它通知"运行，不改订单。
 // 确认（finalized）、回调和订单过期后的对账沿用原流程。
 
 const (
 	solanaScanModeAddress = "address"
 
-	solanaWatchInterval        = 2 * time.Second
-	solanaWatchExpiredGrace    = 2 * time.Minute  // 过期后继续检测，覆盖最后几秒付款、过期后才确认的交易
-	solanaWatchCreatedMargin   = time.Minute      // 往订单创建时间之前多查一段，覆盖 blockTime 与本机时钟的误差
-	solanaWatchSlotOverlap     = 150              // 低水位比最新签名落后约 1 分钟，覆盖负载均衡节点之间的索引差异
-	solanaWatchFirstPage       = 20               // 首页条数；冷清的账户一页就够，不够再按 1000 条翻页
-	solanaWatchMaxPages        = 20               // 每轮最多翻页数，超过说明账户异常繁忙
-	solanaWatchFetchPerRound   = 10               // 每个账户每轮最多下载的交易数，从最新的开始
-	solanaWatchPollTimeout     = 15 * time.Second // 单个账户一轮的总时长
-	solanaWatchGiveUp          = 30 * time.Minute // 单笔交易持续取不到时放弃，订单过期后由对账再查
-	solanaWatchSignatureTTL    = time.Hour        // 已处理签名在内存里保留的时间
-	solanaWatchWarnAfter       = 30 * time.Second // 账户持续查询失败多久记 WARN
-	solanaWatchErrorAfter      = 2 * time.Minute  // 账户持续查询失败多久记 ERROR
-	solanaTokenAccountsTTL     = 30 * time.Second // 钱包名下代币账户列表的刷新间隔
-	solanaConfirmingAlertAfter = 5 * time.Minute  // 确认中超过这个时间仍未成功记 ERROR
+	solanaWatchInterval         = 2 * time.Second
+	solanaWatchExpiredGrace     = 2 * time.Minute  // 过期后继续检测，覆盖最后几秒付款、过期后才确认的交易
+	solanaWatchCreatedMargin    = time.Minute      // 往订单创建时间之前多查一段，覆盖 blockTime 与本机时钟的误差
+	solanaWatchSlotOverlap      = 150              // 低水位比最新签名落后约 1 分钟，覆盖负载均衡节点之间的索引差异
+	solanaWatchFirstPage        = 20               // 首页条数；冷清的账户一页就够，不够再按 1000 条翻页
+	solanaWatchMaxPages         = 20               // 每轮最多翻页数，超过说明账户异常繁忙
+	solanaWatchFetchPerRound    = 10               // 每个账户每轮最多下载的交易数，从最新的开始
+	solanaWatchPollTimeout      = 15 * time.Second // 单个账户一轮的总时长
+	solanaWatchGiveUp           = 30 * time.Minute // 单笔交易持续取不到时放弃，订单过期后由对账再查
+	solanaWatchSignatureTTL     = time.Hour        // 已处理签名在内存里保留的时间
+	solanaWatchWarnAfter        = 30 * time.Second // 账户持续查询失败多久记 WARN
+	solanaWatchErrorAfter       = 2 * time.Minute  // 账户持续查询失败多久记 ERROR
+	solanaTokenAccountsTTL      = 30 * time.Second // 钱包名下代币账户列表的刷新间隔
+	solanaTokenAccountsTimeout  = 10 * time.Second // 刷新代币账户列表的最长时间
+	solanaConfirmingAlertAfter  = 5 * time.Minute  // 确认中超过这个时间仍未成功记 ERROR
+	solanaWatchPendingSaveLimit = 200              // 待处理签名超过这个数量时不随低水位保存
 )
 
 type solanaWatch struct {
@@ -45,12 +53,16 @@ type solanaWatch struct {
 	accounts      map[string]*solanaAccountState   // key: 代币账户
 	signatures    map[string]*solanaSignatureState // key: 签名
 	tokenAccounts map[string]*solanaTokenAccounts  // key: 钱包 + " " + mint
+	inflight      sync.WaitGroup                   // 进行中的账户检测和代币账户列表刷新
 
 	confirmAlerted sync.Map // 已告警的确认中订单 ID
 }
 
+// solanaAccountState 只由该账户正在运行的那次检测读写（running 保证同一账户同时只有一次），running 本身受 solanaWatch.mu 保护
 type solanaAccountState struct {
+	running      bool
 	cursor       model.SolanaCursor
+	pending      map[string]int64 // 已发现、尚未处理完的签名 -> slot
 	loaded       bool
 	failures     int
 	retryAt      time.Time
@@ -66,9 +78,10 @@ type solanaSignatureState struct {
 }
 
 type solanaTokenAccounts struct {
-	accounts  []string
-	refreshAt time.Time
-	listErr   bool
+	accounts   []string
+	refreshAt  time.Time
+	refreshing bool
+	listErr    bool
 }
 
 type solanaWatchTarget struct {
@@ -106,28 +119,35 @@ func solanaMonitorEnabled() bool {
 	return count > 0
 }
 
+// watchPayments 为每个要检测的代币账户启动一次检测，不等它们结束：还在运行的账户本轮跳过，其他账户照常按间隔检测
 func (s *solana) watchPayments(ctx context.Context) {
 	if !solanaAddressMode() {
 
 		return
 	}
 
-	var wg sync.WaitGroup
-	for _, t := range s.watchTargets(ctx) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			s.pollAccount(ctx, t)
-		}()
+	for _, g := range s.watchGroups() {
+		for _, account := range s.watchTokenAccounts(ctx, g) {
+			s.startPoll(ctx, g.target(account))
+		}
 	}
-	wg.Wait()
 
 	s.watch.prune(time.Now())
 }
 
-// watchTargets 返回需要检测的代币账户：等待支付的订单，以及过期不到 solanaWatchExpiredGrace 的订单
-func (s *solana) watchTargets(ctx context.Context) []solanaWatchTarget {
+type solanaWatchGroup struct {
+	owner     string
+	tradeType model.TradeType
+	since     time.Time // 早于这个时间的签名与当前订单无关
+}
+
+func (g solanaWatchGroup) target(account string) solanaWatchTarget {
+
+	return solanaWatchTarget{account: account, owner: g.owner, tradeType: g.tradeType, since: g.since}
+}
+
+// watchGroups 按收款地址和币种汇总需要检测的订单：等待支付的订单，以及过期不到 solanaWatchExpiredGrace 的订单
+func (s *solana) watchGroups() []solanaWatchGroup {
 	trades := model.GetNetworkTrades(conf.Solana)
 	if len(trades) == 0 {
 
@@ -145,13 +165,8 @@ func (s *solana) watchTargets(ctx context.Context) []solanaWatchTarget {
 		return nil
 	}
 
-	type group struct {
-		owner     string
-		tradeType model.TradeType
-		since     time.Time
-	}
-	groups := make(map[string]*group)
-	keys := make([]string, 0)
+	groups := make([]solanaWatchGroup, 0)
+	index := make(map[string]int)
 	for _, o := range orders {
 		if o.CreatedAt == nil {
 
@@ -160,69 +175,112 @@ func (s *solana) watchTargets(ctx context.Context) []solanaWatchTarget {
 
 		key := orderMatchAddress(o) + " " + string(o.TradeType)
 		since := o.CreatedAt.Time().Add(-solanaWatchCreatedMargin)
-		if g, ok := groups[key]; ok {
-			if since.Before(g.since) {
-				g.since = since
+		if i, ok := index[key]; ok {
+			if since.Before(groups[i].since) {
+				groups[i].since = since
 			}
 
 			continue
 		}
-		groups[key] = &group{owner: orderMatchAddress(o), tradeType: o.TradeType, since: since}
-		keys = append(keys, key)
+		index[key] = len(groups)
+		groups = append(groups, solanaWatchGroup{owner: orderMatchAddress(o), tradeType: o.TradeType, since: since})
 	}
 
-	targets := make([]solanaWatchTarget, 0)
-	for _, key := range keys {
-		g := groups[key]
-		for _, account := range s.watchTokenAccounts(ctx, g.owner, g.tradeType) {
-			targets = append(targets, solanaWatchTarget{account: account, owner: g.owner, tradeType: g.tradeType, since: g.since})
-		}
-	}
-
-	return targets
+	return groups
 }
 
-// watchTokenAccounts 返回钱包在该币种下要检测的代币账户：推导出的 ATA（账户还不存在也查，第一笔付款通常会创建它），
-// 加上 getTokenAccountsByOwner 列出的其他代币账户。列表定时刷新；节点不支持或查询失败时沿用已知账户
-func (s *solana) watchTokenAccounts(ctx context.Context, owner string, tradeType model.TradeType) []string {
-	mint := model.GetTradeContract(tradeType)
-	key := owner + " " + mint
+// watchTokenAccounts 返回钱包在该币种下已知的代币账户：推导出的 ATA（账户还不存在也查，第一笔付款通常会创建它），
+// 加上 getTokenAccountsByOwner 列出过的其他代币账户。列表到了刷新时间就在后台刷新，不等它返回；新发现的账户立即开始检测
+func (s *solana) watchTokenAccounts(ctx context.Context, g solanaWatchGroup) []string {
+	mint := model.GetTradeContract(g.tradeType)
+	key := g.owner + " " + mint
 
 	s.watch.mu.Lock()
-	cached, ok := s.watch.tokenAccounts[key]
+	entry, ok := s.watch.tokenAccounts[key]
+	if !ok {
+		ata, err := solanaAssociatedTokenAccount(g.owner, mint)
+		if err != nil {
+			s.watch.mu.Unlock()
+			log.Task.Warn("Solana 收款地址无效，跳过检测：", err)
+
+			return nil
+		}
+		entry = &solanaTokenAccounts{accounts: []string{ata}}
+		s.watch.tokenAccounts[key] = entry
+	}
+	accounts := append([]string(nil), entry.accounts...)
+	refresh := !entry.refreshing && !time.Now().Before(entry.refreshAt)
+	if refresh {
+		entry.refreshing = true
+		s.watch.inflight.Add(1)
+	}
 	s.watch.mu.Unlock()
-	if ok && time.Now().Before(cached.refreshAt) {
 
-		return cached.accounts
+	if refresh {
+		go func() {
+			defer s.watch.inflight.Done()
+
+			s.refreshTokenAccounts(ctx, g, key, mint)
+		}()
 	}
 
-	ata, err := solanaAssociatedTokenAccount(owner, mint)
-	if err != nil {
-		log.Task.Warn("Solana 收款地址无效，跳过检测：", err)
+	return accounts
+}
 
-		return nil
-	}
+// refreshTokenAccounts 用 getTokenAccountsByOwner 补充钱包的其他代币账户；节点不支持或查询失败时沿用已知账户
+func (s *solana) refreshTokenAccounts(ctx context.Context, g solanaWatchGroup, key, mint string) {
+	listCtx, cancel := context.WithTimeout(ctx, solanaTokenAccountsTimeout)
+	extra, listErr := s.listTokenAccounts(listCtx, g.owner, mint)
+	cancel()
 
-	accounts := []string{ata}
-	if ok {
-		accounts = append([]string(nil), cached.accounts...)
-	}
-	extra, listErr := s.listTokenAccounts(ctx, owner, mint)
+	s.watch.mu.Lock()
+	entry := s.watch.tokenAccounts[key]
+	added := make([]string, 0)
 	for _, account := range extra {
-		if !containsString(accounts, account) {
-			accounts = append(accounts, account)
+		if !containsString(entry.accounts, account) {
+			entry.accounts = append(entry.accounts, account)
+			added = append(added, account)
 		}
 	}
 	// 只配置了一个节点时（如 publicnode 免费节点）该方法通常不可用，不记日志
-	if listErr != nil && (!ok || !cached.listErr) && model.GetC(model.RpcEndpointSolanaPoll) != "" {
-		log.Task.Warn(fmt.Sprintf("Solana 查询钱包 %s 的代币账户失败，暂时只检测已知账户：%v", owner, listErr))
-	}
-
-	s.watch.mu.Lock()
-	s.watch.tokenAccounts[key] = &solanaTokenAccounts{accounts: accounts, refreshAt: time.Now().Add(solanaTokenAccountsTTL), listErr: listErr != nil}
+	warn := listErr != nil && !entry.listErr && model.GetC(model.RpcEndpointSolanaPoll) != ""
+	entry.listErr = listErr != nil
+	entry.refreshAt = time.Now().Add(solanaTokenAccountsTTL)
+	entry.refreshing = false
 	s.watch.mu.Unlock()
 
-	return accounts
+	if warn {
+		log.Task.Warn(fmt.Sprintf("Solana 查询钱包 %s 的代币账户失败，暂时只检测已知账户：%v", g.owner, listErr))
+	}
+	for _, account := range added {
+		s.startPoll(ctx, g.target(account))
+	}
+}
+
+// startPoll 在后台检测一个代币账户；该账户上一次检测还没结束时跳过
+func (s *solana) startPoll(ctx context.Context, t solanaWatchTarget) {
+	st := s.watch.account(t.account)
+
+	s.watch.mu.Lock()
+	if st.running {
+		s.watch.mu.Unlock()
+
+		return
+	}
+	st.running = true
+	s.watch.inflight.Add(1)
+	s.watch.mu.Unlock()
+
+	go func() {
+		defer s.watch.inflight.Done()
+		defer func() {
+			s.watch.mu.Lock()
+			st.running = false
+			s.watch.mu.Unlock()
+		}()
+
+		s.pollAccount(ctx, t)
+	}()
 }
 
 func (s *solana) pollAccount(ctx context.Context, t solanaWatchTarget) {
@@ -242,9 +300,14 @@ func (s *solana) pollAccount(ctx context.Context, t solanaWatchTarget) {
 
 			return
 		}
+		pending, err := decodeSolanaPending(cursor.Pending)
+		if err != nil {
+			log.Task.Warn(fmt.Sprintf("Solana 代币账户 %s 的待处理签名无法解析，忽略：%v", t.account, err))
+		}
 		st.cursor = cursor
+		st.pending = pending
 		st.loaded = true
-		log.Task.Info(fmt.Sprintf("Solana 开始按账户检测付款：%s（%s %s），低水位 slot %d", t.account, t.owner, t.tradeType, cursor.Slot))
+		log.Task.Info(fmt.Sprintf("Solana 开始按账户检测付款：%s（%s %s），低水位 slot %d，待处理签名 %d 笔", t.account, t.owner, t.tradeType, cursor.Slot, len(pending)))
 	}
 
 	items, complete, err := s.listSignatures(ctx, t.account, st.cursor.Slot, t.since)
@@ -258,16 +321,38 @@ func (s *solana) pollAccount(ctx context.Context, t solanaWatchTarget) {
 		log.Task.Error(fmt.Sprintf("Solana 代币账户 %s 新签名超过 %d 页，本轮只处理最新的部分，低水位不前进；较早的付款要等订单过期后对账", t.account, solanaWatchMaxPages))
 	}
 
-	// 从最新的签名开始处理，新付款不必排在旧签名后面
-	now := time.Now()
-	fetched := 0
+	// 列表里执行成功、还没处理完的签名都记入待处理表；执行失败的不必下载
+	listed := make(map[string]bool, len(items))
+	queue := make([]string, 0)
 	for _, itm := range items {
 		sig := itm.Get("signature").String()
-		if !solanaTxSucceeded(itm.Get("err")) { // 链上执行失败
+		listed[sig] = true
+		if !solanaTxSucceeded(itm.Get("err")) {
 			s.watch.markDone(sig)
 
 			continue
 		}
+		if s.watch.isDone(sig) {
+
+			continue
+		}
+		st.pending[sig] = itm.Get("slot").Int()
+		queue = append(queue, sig)
+	}
+	// 待处理表里这次没列出来的签名排在后面，按 slot 从新到旧，直接按签名下载
+	unlisted := make([]string, 0)
+	for sig := range st.pending {
+		if !listed[sig] {
+			unlisted = append(unlisted, sig)
+		}
+	}
+	sort.Slice(unlisted, func(i, j int) bool { return st.pending[unlisted[i]] > st.pending[unlisted[j]] })
+	queue = append(queue, unlisted...)
+
+	// 从最新的签名开始处理，新付款不必排在旧签名后面
+	now := time.Now()
+	fetched := 0
+	for _, sig := range queue {
 		if !s.watch.due(sig, now) {
 
 			continue
@@ -286,9 +371,12 @@ func (s *solana) pollAccount(ctx context.Context, t solanaWatchTarget) {
 		s.watch.markDone(sig)
 	}
 
-	if complete {
-		s.advanceCursor(t, st, items)
+	for sig := range st.pending {
+		if s.watch.isDone(sig) {
+			delete(st.pending, sig)
+		}
 	}
+	s.saveProgress(t, st, items, complete)
 }
 
 // listSignatures 从最新往旧列出代币账户的签名，到低水位 slot 或 since 为止；complete 为 false 表示翻页达到上限
@@ -364,27 +452,19 @@ func solanaRequireTransaction(trans gjson.Result) error {
 	return nil
 }
 
-// matchTransfers 与 orderTransferHandle 的规则相同，但同步执行，并且用条件更新防止重复入账
+// matchTransfers 与 orderTransferHandle 的规则相同，但同步执行，并且用条件更新防止重复入账。
+// MQTT 和"其它通知"需要整链数据，开启时由整链扫描负责推送（见 solanaMonitorEnabled），这里不重复推送
 func (s *solana) matchTransfers(transfers []transfer) error {
-	other := make([]transfer, 0)
 	for _, t := range transfers {
 		if !model.IsAmountValid(t.TradeType, t.Amount) {
 
 			continue
 		}
 
-		mqttPublish(t)
-		matched, err := solanaMatchTransfer(t)
-		if err != nil {
+		if _, err := solanaMatchTransfer(t); err != nil {
 
 			return err
 		}
-		if !matched {
-			other = append(other, t)
-		}
-	}
-	if len(other) > 0 {
-		notOrderQueue.In <- other
 	}
 
 	return nil
@@ -438,33 +518,38 @@ func solanaMarkConfirming(o *model.Order, t transfer) (bool, error) {
 	return o.MarkConfirmingOnce(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount)
 }
 
-// advanceCursor 把低水位推进到最早一笔未处理签名；全部处理完时推进到最新签名之前 solanaWatchSlotOverlap 个 slot
-func (s *solana) advanceCursor(t solanaWatchTarget, st *solanaAccountState, items []gjson.Result) {
-	if len(items) == 0 {
-
-		return
-	}
-
-	low := items[0].Get("slot").Int() - solanaWatchSlotOverlap
+// saveProgress 把低水位推进到最早一笔未处理签名（列表里的和待处理表里的都算）；全部处理完时推进到最新签名之前 solanaWatchSlotOverlap 个 slot。
+// 待处理表随低水位一起保存，重启后接着处理；翻页没到底（complete 为 false）时低水位不动，只保存待处理表
+func (s *solana) saveProgress(t solanaWatchTarget, st *solanaAccountState, items []gjson.Result, complete bool) {
+	low := st.cursor.Slot
 	latest := ""
-	for _, itm := range items {
-		sig := itm.Get("signature").String()
-		if !s.watch.isDone(sig) {
-			low = min(low, itm.Get("slot").Int())
+	if complete && len(items) > 0 {
+		low = items[0].Get("slot").Int() - solanaWatchSlotOverlap
+		for _, itm := range items {
+			sig := itm.Get("signature").String()
+			if !s.watch.isDone(sig) {
+				low = min(low, itm.Get("slot").Int())
 
-			continue
+				continue
+			}
+			if latest == "" {
+				latest = sig
+			}
 		}
-		if latest == "" {
-			latest = sig
+		for _, slot := range st.pending {
+			low = min(low, slot)
 		}
 	}
-	if low <= st.cursor.Slot {
+	low = max(low, st.cursor.Slot) // 低水位只前进；待处理签名都来自低水位之上的列表，不会被它越过
+
+	pending := encodeSolanaPending(st.pending)
+	if low == st.cursor.Slot && pending == st.cursor.Pending {
 
 		return
 	}
 
-	cursor := model.SolanaCursor{Account: t.account, Owner: t.owner, TradeType: string(t.tradeType), Slot: low, Signature: latest}
-	if cursor.Signature == "" {
+	cursor := model.SolanaCursor{Account: t.account, Owner: t.owner, TradeType: string(t.tradeType), Slot: low, Signature: latest, Pending: pending}
+	if cursor.Signature == "" || low == st.cursor.Slot {
 		cursor.Signature = st.cursor.Signature
 	}
 	if err := model.SaveSolanaCursor(cursor); err != nil {
@@ -473,6 +558,33 @@ func (s *solana) advanceCursor(t solanaWatchTarget, st *solanaAccountState, item
 		return
 	}
 	st.cursor = cursor
+}
+
+// encodeSolanaPending 编码要保存的待处理签名。账户异常繁忙时待处理签名可能上千，不再保存（每轮都要整段重写）：
+// 低水位仍停在其中最早的一笔之前，重启后从低水位重新列出，只是失去了列表缺项时的保护
+func encodeSolanaPending(pending map[string]int64) string {
+	if len(pending) == 0 || len(pending) > solanaWatchPendingSaveLimit {
+
+		return ""
+	}
+
+	data, _ := json.Marshal(pending) // 键按字母排序，内容不变时结果不变
+
+	return string(data)
+}
+
+func decodeSolanaPending(raw string) (map[string]int64, error) {
+	pending := make(map[string]int64)
+	if raw == "" {
+
+		return pending, nil
+	}
+	if err := json.Unmarshal([]byte(raw), &pending); err != nil {
+
+		return make(map[string]int64), err
+	}
+
+	return pending, nil
 }
 
 func (s *solana) pollSucceeded(t solanaWatchTarget, st *solanaAccountState, items []gjson.Result) {

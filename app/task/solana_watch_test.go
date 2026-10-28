@@ -41,6 +41,7 @@ type watchTestRPC struct {
 	t      *testing.T
 	mu     sync.Mutex
 	lists  map[string][]watchTestSig // 代币账户 -> 签名，从新到旧
+	txs    map[string]watchTestSig   // 不在任何签名列表里、但 getTransaction 能查到的交易
 	extra  map[string]string         // 钱包 -> getTokenAccountsByOwner 额外返回的代币账户
 	status map[string]int            // 节点路径 -> 强制返回的 HTTP 状态码
 	calls  map[string]int            // "节点路径 方法" 和 "getTransaction 签名" 的调用次数
@@ -50,6 +51,7 @@ func newWatchTestRPC(t *testing.T) *watchTestRPC {
 	return &watchTestRPC{
 		t:      t,
 		lists:  make(map[string][]watchTestSig),
+		txs:    make(map[string]watchTestSig),
 		extra:  make(map[string]string),
 		status: make(map[string]int),
 		calls:  make(map[string]int),
@@ -78,6 +80,9 @@ func (r *watchTestRPC) count(key string) int {
 }
 
 func (r *watchTestRPC) find(sig string) (watchTestSig, bool) {
+	if itm, ok := r.txs[sig]; ok {
+		return itm, true
+	}
 	for _, list := range r.lists {
 		for _, itm := range list {
 			if itm.sig == sig {
@@ -212,6 +217,14 @@ func initWatchTest(t *testing.T, rpc *watchTestRPC) (*solana, string) {
 	return &s, srv.URL
 }
 
+// watchRound 运行一轮检测，并等这一轮启动的账户检测和代币账户列表刷新全部结束
+func watchRound(t *testing.T, s *solana) {
+	t.Helper()
+
+	s.watchPayments(t.Context())
+	s.watch.inflight.Wait()
+}
+
 func watchTestATA(t *testing.T) string {
 	t.Helper()
 
@@ -283,7 +296,7 @@ func TestSolanaWatchDetectsPaymentAndConfirms(t *testing.T) {
 	ata := watchTestATA(t)
 	rpc.set(ata, watchTestPayment("pay-1", 5000, now.Add(-30*time.Second)))
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	got := getTestOrder(t, order.TradeId)
 	if got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" || got.RefBlockNum != 5000 ||
@@ -306,7 +319,7 @@ func TestSolanaWatchDetectsPaymentAndConfirms(t *testing.T) {
 	}
 
 	// 下一轮不再下载同一笔交易
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if n := rpc.count("getTransaction pay-1"); n != 1 {
 		t.Fatalf("getTransaction pay-1 = %d, want 1", n)
 	}
@@ -331,7 +344,7 @@ func TestSolanaWatchSkipsFailedTransactions(t *testing.T) {
 	failedInMeta.failMeta = true
 	rpc.set(ata, failedInList, failedInMeta)
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusWaiting || got.RefHash != "" {
 		t.Fatalf("order = status %d ref %q, want waiting", got.Status, got.RefHash)
@@ -358,7 +371,7 @@ func TestSolanaWatchStuckTransactionDoesNotBlockNewPayment(t *testing.T) {
 	stuck := watchTestSig{sig: "stuck", slot: 4000, blockTime: now.Add(-90 * time.Second).Unix()} // 两个节点都还查不到
 	rpc.set(ata, watchTestPayment("pay-1", 6000, now.Add(-10*time.Second)), stuck)
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" {
 		t.Fatalf("order = status %d ref %q, want confirming with pay-1 while another transaction is stuck", got.Status, got.RefHash)
@@ -371,7 +384,7 @@ func TestSolanaWatchStuckTransactionDoesNotBlockNewPayment(t *testing.T) {
 	}
 
 	// 退避期间不再请求这笔交易
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if n := rpc.count("getTransaction stuck"); n != 2 {
 		t.Fatalf("getTransaction stuck = %d during backoff, want 2", n)
 	}
@@ -382,7 +395,7 @@ func TestSolanaWatchStuckTransactionDoesNotBlockNewPayment(t *testing.T) {
 	s.watch.mu.Lock()
 	s.watch.signatures["stuck"].retryAt = time.Time{}
 	s.watch.mu.Unlock()
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if c := getWatchTestCursor(t, ata); c.Slot != 6000-solanaWatchSlotOverlap {
 		t.Fatalf("cursor slot = %d after the stuck transaction was processed, want %d", c.Slot, 6000-solanaWatchSlotOverlap)
 	}
@@ -413,7 +426,7 @@ func TestSolanaWatchResumesFromCursorAfterRestart(t *testing.T) {
 	stuck := watchTestSig{sig: "pay-1", slot: 2000, blockTime: now.Add(-time.Minute).Unix()}
 	rpc.set(ata, stuck, unrelated)
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusWaiting {
 		t.Fatalf("order status = %d, want waiting before the transaction is available", got.Status)
 	}
@@ -424,7 +437,7 @@ func TestSolanaWatchResumesFromCursorAfterRestart(t *testing.T) {
 	// 重启：内存状态全部丢失，只剩库里的低水位
 	rpc.set(ata, watchTestPayment("pay-1", 2000, now.Add(-time.Minute)), unrelated)
 	restarted := newSolana()
-	restarted.watchPayments(t.Context())
+	watchRound(t, &restarted)
 
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" {
 		t.Fatalf("order = status %d ref %q after restart, want confirming with pay-1", got.Status, got.RefHash)
@@ -443,7 +456,7 @@ func TestSolanaWatchDoesNotReuseTransaction(t *testing.T) {
 	waiting := createWatchTestOrder(t, srvURL, "trade-waiting", model.OrderStatusWaiting, now.Add(-2*time.Minute), now.Add(8*time.Minute))
 	rpc.set(watchTestATA(t), watchTestPayment("pay-1", 5000, now.Add(-30*time.Second)))
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	if got := getTestOrder(t, waiting.TradeId); got.Status != model.OrderStatusWaiting {
 		t.Fatalf("waiting order status = %d, want waiting: pay-1 already belongs to another order", got.Status)
@@ -492,13 +505,13 @@ func TestSolanaWatchFailsOverWhenPollNodeRateLimited(t *testing.T) {
 	rpc.setStatus("/poll", http.StatusTooManyRequests)
 	createWatchTestIdleOrder(t, srvURL, now)
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming {
 		t.Fatalf("order status = %d, want confirming through the main node", got.Status)
 	}
 
 	// 冷却期间直接用主节点
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if n := rpc.count("/poll getSignaturesForAddress"); n != 1 {
 		t.Fatalf("poll node getSignaturesForAddress = %d during cooldown, want 1", n)
 	}
@@ -522,7 +535,7 @@ func TestSolanaWatchPagesThroughSignatures(t *testing.T) {
 	sigs = append(sigs, watchTestPayment("pay-1", 5000, now.Add(-30*time.Second)))
 	rpc.set(ata, sigs...)
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" {
 		t.Fatalf("order = status %d ref %q, want the payment on the second page", got.Status, got.RefHash)
@@ -549,7 +562,7 @@ func TestSolanaWatchRecentlyExpiredOrder(t *testing.T) {
 			order := createWatchTestOrder(t, srvURL, "trade-watch-1", model.OrderStatusExpired, now.Add(-11*time.Minute), now.Add(-time.Minute))
 			rpc.set(watchTestATA(t), watchTestPayment("pay-1", 5000, now.Add(-tt.paidAgo)))
 
-			s.watchPayments(t.Context())
+			watchRound(t, s)
 
 			if got := getTestOrder(t, order.TradeId); got.Status != tt.want {
 				t.Fatalf("order status = %d, want %d", got.Status, tt.want)
@@ -567,7 +580,7 @@ func TestSolanaWatchFindsNonAssociatedTokenAccount(t *testing.T) {
 	rpc.extra[watchTestOwner] = extra
 	rpc.set(extra, watchTestPayment("pay-1", 5000, now.Add(-30*time.Second)))
 
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 
 	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" {
 		t.Fatalf("order = status %d ref %q, want the payment to a non-associated token account", got.Status, got.RefHash)
@@ -590,7 +603,7 @@ func TestSolanaScanModeSwitchesDetection(t *testing.T) {
 	// block：不按账户检测
 	model.Db.Model(&model.Conf{}).Where("k = ?", model.SolanaScanMode).Update("v", "block")
 	model.RefreshC()
-	s.watchPayments(t.Context())
+	watchRound(t, s)
 	if n := rpc.count("/poll getSignaturesForAddress") + rpc.count("/main getTokenAccountsByOwner"); n != 0 {
 		t.Fatalf("address detection made %d RPC calls in block mode", n)
 	}

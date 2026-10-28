@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -284,6 +285,11 @@ func (Order) Cancel(ctx *gin.Context) {
 	}
 
 	if err := order.SetCanceled(); err != nil {
+		if errors.Is(err, model.ErrOrderStatusChanged) {
+			base.BadRequest(ctx, "仅允许取消未支付订单")
+
+			return
+		}
 		base.Error(ctx, err)
 
 		return

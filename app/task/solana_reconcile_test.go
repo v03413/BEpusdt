@@ -107,6 +107,7 @@ func initReconcileTest(t *testing.T, rpc *reconcileTestRPC) *solana {
 	srv := newReconcileTestServer(t, rpc)
 	initTaskTestEnv(t, map[model.ConfKey]string{model.RpcEndpointSolana: srv.URL})
 	solanaReconciled.Clear()
+	solanaReconcileProgress.Clear()
 	s := newSolana()
 
 	return &s
@@ -155,7 +156,7 @@ func TestSolanaReconcileSkipsUnmatchedPayments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rpc := &reconcileTestRPC{blockTime: tt.blockTime, signatureErr: tt.signatureErr}
+			rpc := &reconcileTestRPC{blockTime: tt.blockTime, signatureErr: tt.signatureErr, extraAccount: "ExtraTokenAccount111111111111111111111111111"}
 			s := initReconcileTest(t, rpc)
 			order := createReconcileTestOrder(t, "trade-order-1", tt.amount)
 			if tt.usedByOtherOrder {

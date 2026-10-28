@@ -21,9 +21,13 @@ import (
 // Solana RPC 分两个角色：主节点（rpc_endpoint_solana）负责取交易、确认状态、代币账户列表和区块；
 // 轮询节点（rpc_endpoint_solana_poll，为空时同主节点）负责高频的 getSignaturesForAddress。
 // 每个请求先发首选节点，失败再换另一个；被限流的节点按方法冷却一段时间，期间直接用另一个。
+// 每次尝试单独限时，并给后面的节点留出时间：一个节点卡住（例如响应体迟迟不结束）不会耗尽整个请求的时限。
 // 付费节点的 API Key 通常在地址路径里，日志和错误里只出现主机名。
 
-const solanaRateLimitCooldown = 5 * time.Second
+const (
+	solanaRateLimitCooldown = 5 * time.Second
+	solanaAttemptTimeout    = 8 * time.Second // 单个节点单次请求的最长时间
+)
 
 // solanaCooldown 记录被限流的节点和方法，key: 节点地址 + " " + 方法，value: 冷却结束时间
 var solanaCooldown sync.Map
@@ -59,10 +63,11 @@ func (s *solana) rpcCallAccept(ctx context.Context, method string, accept func(g
 	}
 
 	var errs []error
-	for _, endpoint := range solanaEndpoints(method) {
+	endpoints := solanaEndpoints(method)
+	for i, endpoint := range endpoints {
 		if err := ctx.Err(); err != nil {
 
-			return gjson.Result{}, err
+			return gjson.Result{}, errors.Join(append(errs, err)...)
 		}
 		if until, ok := solanaCooldown.Load(endpoint + " " + method); ok && time.Now().Before(until.(time.Time)) {
 			errs = append(errs, fmt.Errorf("%s %s: rate limited, cooling down", method, solanaHost(endpoint)))
@@ -70,7 +75,9 @@ func (s *solana) rpcCallAccept(ctx context.Context, method string, accept func(g
 			continue
 		}
 
-		result, err := s.rpcPost(ctx, endpoint, method, post)
+		attemptCtx, cancel := solanaAttemptContext(ctx, len(endpoints)-i)
+		result, err := s.rpcPost(attemptCtx, endpoint, method, post)
+		cancel()
 		if err == nil && accept != nil {
 			if err = accept(result); err != nil {
 				err = fmt.Errorf("%s %s: %w", method, solanaHost(endpoint), err)
@@ -84,6 +91,16 @@ func (s *solana) rpcCallAccept(ctx context.Context, method string, accept func(g
 	}
 
 	return gjson.Result{}, errors.Join(errs...)
+}
+
+// solanaAttemptContext 返回单次尝试的时限：不超过 solanaAttemptTimeout，调用方有截止时间时按剩余节点数平分剩余时间
+func solanaAttemptContext(ctx context.Context, left int) (context.Context, context.CancelFunc) {
+	timeout := solanaAttemptTimeout
+	if deadline, ok := ctx.Deadline(); ok && left > 1 {
+		timeout = min(timeout, time.Until(deadline)/time.Duration(left))
+	}
+
+	return context.WithTimeout(ctx, timeout)
 }
 
 func (s *solana) rpcPost(ctx context.Context, endpoint, method string, post []byte) (gjson.Result, error) {

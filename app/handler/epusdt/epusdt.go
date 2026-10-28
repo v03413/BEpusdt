@@ -3,6 +3,7 @@ package epusdt
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -335,6 +336,11 @@ func (Epusdt) CancelTransaction(ctx *gin.Context) {
 	}
 
 	if err := order.SetCanceled(); err != nil {
+		if errors.Is(err, model.ErrOrderStatusChanged) {
+			ctx.JSON(200, respFailJson(fmt.Sprintf("当前订单(%s)状态不允许取消", req.TradeID)))
+
+			return
+		}
 		ctx.JSON(200, respFailJson(fmt.Sprintf("订单取消失败：%s", err.Error())))
 
 		return

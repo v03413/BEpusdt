@@ -103,11 +103,23 @@ type MethodItem struct {
 	IsPopular       bool   `json:"is_popular"`
 }
 
+// ErrOrderStatusChanged 表示订单读出之后状态已被其他流程改变（例如刚匹配到付款），本次状态变更没有执行
+var ErrOrderStatusChanged = errors.New("order status changed")
+
+// SetCanceled 只取消仍在等待支付的订单。读出订单到写回之间，付款检测可能已让它进入确认中，整行写回会把付款覆盖掉
 func (o *Order) SetCanceled() error {
 	core.New()
-	o.Status = OrderStatusCanceled
+	ok, err := o.setStatusFrom(OrderStatusWaiting, OrderStatusCanceled)
+	if err != nil {
 
-	return Db.Save(o).Error
+		return err
+	}
+	if !ok {
+
+		return ErrOrderStatusChanged
+	}
+
+	return nil
 }
 
 // CanReselectPayment 判断订单是否支持重选交易类型
@@ -131,10 +143,27 @@ func (o *Order) MatchFingerprint(fingerprint string) bool {
 	return !o.FingerprintBound() || o.ClientFingerprint == fingerprint
 }
 
-func (o *Order) SetExpired() {
-	o.Status = OrderStatusExpired
+// SetExpired 只让仍在等待支付的订单过期，返回是否已过期；原因同 SetCanceled
+func (o *Order) SetExpired() (bool, error) {
 
-	Db.Save(o)
+	return o.setStatusFrom(OrderStatusWaiting, OrderStatusExpired)
+}
+
+// setStatusFrom 在数据库中的状态仍为 from 时改为 to，只更新状态，不回写订单的其他字段
+func (o *Order) setStatusFrom(from, to int) (bool, error) {
+	now := Datetime(time.Now())
+	tx := Db.Model(&Order{}).
+		Where("id = ? and status = ?", o.ID, from).
+		Updates(map[string]any{"status": to, "updated_at": now})
+	if tx.Error != nil || tx.RowsAffected == 0 {
+
+		return false, tx.Error
+	}
+
+	o.Status = to
+	o.UpdatedAt = &now
+
+	return true, nil
 }
 
 func (o *Order) SetSuccess() {

@@ -13,6 +13,7 @@ type SolanaCursor struct {
 	TradeType string    `gorm:"column:trade_type;type:varchar(20);not null;default:'';comment:交易类型" json:"trade_type"`
 	Slot      int64     `gorm:"column:slot;not null;default:0;comment:低水位，slot 小于它的签名都已处理" json:"slot"`
 	Signature string    `gorm:"column:signature;type:varchar(128);not null;default:'';comment:最近处理的签名" json:"signature"`
+	Pending   string    `gorm:"column:pending;type:text;not null;default:'';comment:已发现尚未处理完的签名，JSON：签名 -> slot" json:"pending"`
 	UpdatedAt time.Time `gorm:"column:updated_at;not null;comment:最后更新时间" json:"updated_at"`
 }
 
@@ -33,6 +34,6 @@ func SaveSolanaCursor(c SolanaCursor) error {
 
 	return Db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "account"}},
-		DoUpdates: clause.AssignmentColumns([]string{"owner", "trade_type", "slot", "signature", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"owner", "trade_type", "slot", "signature", "pending", "updated_at"}),
 	}).Create(&c).Error
 }
