@@ -31,7 +31,7 @@ func (s *solana) stopSlotRetryTimers() {
 
 func TestSolanaSlotRetryGivesUpAfterMaxRetries(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","error":{"code":-32001,"message":"Block 457000000 cleaned up, does not exist on node. First available block: 457100000"},"id":1}`))
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","error":{"code":-32004,"message":"Block not available for slot 457000000"},"id":1}`))
 	}))
 	defer srv.Close()
 	initTaskTestEnv(t, map[model.ConfKey]string{model.RpcEndpointSolana: srv.URL})
