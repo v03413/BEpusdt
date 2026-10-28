@@ -544,12 +544,19 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 }
 
 func (s *solana) lookbackSlots(ctx context.Context) {
+	s.lookbackMu.Lock()
+	defer s.lookbackMu.Unlock()
+
+	// 回溯到一半时订单已支付、取消或过期，剩余区间不再需要。扫描空闲时这里不会执行到下面，
+	// 不清空的话进度会一直保留，下一笔订单到来时接着扫这段旧 slot，节点可能早已清理
+	if s.lookbackNext != 0 && !lookbackOrdersPending(s.lookbackOrderIDs) {
+		log.Task.Info(fmt.Sprintf("Solana 回溯的订单已结束，丢弃剩余回溯区间 %d-%d", s.lookbackNext, s.lookbackEnd))
+		s.resetLookback()
+	}
+
 	if syncBreak(conf.Solana, s.slotQueue.Len()) {
 		return
 	}
-
-	s.lookbackMu.Lock()
-	defer s.lookbackMu.Unlock()
 
 	if s.lookbackNext == 0 {
 		startAt, endAt, orderIDs, ok := pendingLookbackUnix(conf.Solana)
@@ -581,10 +588,14 @@ func (s *solana) lookbackSlots(ctx context.Context) {
 
 	if s.lookbackNext > s.lookbackEnd {
 		markLookbackDone(s.lookbackOrderIDs)
-		s.lookbackNext = 0
-		s.lookbackEnd = 0
-		s.lookbackOrderIDs = nil
+		s.resetLookback()
 	}
+}
+
+func (s *solana) resetLookback() {
+	s.lookbackNext = 0
+	s.lookbackEnd = 0
+	s.lookbackOrderIDs = nil
 }
 
 func validSolanaLookbackRange(start, end int64) bool {
