@@ -31,12 +31,13 @@ const (
 // solanaReconciled 记录已完成对账的订单 ID；RPC 失败或代币账户列表不完整的订单不记录，下一轮重试
 var solanaReconciled sync.Map // key: int64 order ID, value: struct{}
 
-// solanaReconcileProgress 记录未完成对账的订单已经查完的代币账户，重试时跳过，不重复下载交易
+// solanaReconcileProgress 记录未完成对账的订单已经下载核对过的交易，重试时不重复下载。
+// 每次重试都重新列出全部账户的签名：节点一时返回的空列表或缺项不能当作该账户已经查完
 var solanaReconcileProgress sync.Map // key: int64 order ID, value: *solanaReconcileState
 
 type solanaReconcileState struct {
-	checked map[string]bool // 已查完的代币账户
-	warned  bool            // 已记过"代币账户列表不完整"
+	examined map[string]bool // 已下载核对、与该订单不匹配的交易签名
+	warned   bool            // 已记过"代币账户列表不完整"
 }
 
 // errSolanaTokenAccountsIncomplete 表示没能列出钱包的全部代币账户，只查了已知的；没找到付款时不能算对账完成
@@ -71,7 +72,7 @@ func (s *solana) reconcileExpiredOrders(ctx context.Context) {
 			continue
 		}
 
-		v, _ := solanaReconcileProgress.LoadOrStore(o.ID, &solanaReconcileState{checked: make(map[string]bool)})
+		v, _ := solanaReconcileProgress.LoadOrStore(o.ID, &solanaReconcileState{examined: make(map[string]bool)})
 		state := v.(*solanaReconcileState)
 		if err := s.reconcileOrder(ctx, o, state); err != nil {
 			if !errors.Is(err, errSolanaTokenAccountsIncomplete) {
@@ -97,11 +98,6 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order, state *solan
 	}
 
 	for _, account := range accounts {
-		if state.checked[account] {
-
-			continue
-		}
-
 		signatures, err := s.orderSignatures(ctx, account, o)
 		if err != nil {
 
@@ -109,6 +105,11 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order, state *solan
 		}
 
 		for _, signature := range signatures {
+			if state.examined[signature] {
+
+				continue
+			}
+
 			var used int64
 			if err := model.Db.Model(&model.Order{}).Where("ref_hash = ?", signature).Count(&used).Error; err != nil {
 
@@ -146,8 +147,8 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order, state *solan
 
 				return nil
 			}
+			state.examined[signature] = true
 		}
-		state.checked[account] = true
 	}
 	if listErr != nil {
 

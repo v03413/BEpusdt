@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -367,4 +368,167 @@ func waitFor(t *testing.T, timeout time.Duration, cond func() bool, msg string) 
 		}
 	}
 	t.Fatal(msg)
+}
+
+func TestSolanaWatchSlowTransactionDoesNotBlockPaymentOnSameAccount(t *testing.T) {
+	rpc := newWatchTestRPC(t)
+	var slowCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if gjson.GetBytes(body, "method").String() == "getTransaction" && gjson.GetBytes(body, "params.0").String() == "slow-noise" {
+			slowCalls.Add(1)
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			<-r.Context().Done() // 两个节点上都卡住，直到请求超时
+
+			return
+		}
+		r.Body = io.NopCloser(strings.NewReader(string(body)))
+		rpc.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	initTaskTestEnv(t, map[model.ConfKey]string{
+		model.RpcEndpointSolana:     srv.URL + "/main",
+		model.RpcEndpointSolanaPoll: srv.URL + "/poll",
+		model.SolanaScanMode:        solanaScanModeAddress,
+	})
+	solanaCooldown.Clear()
+	s := newSolana()
+	now := time.Now()
+	order := createWatchTestOrder(t, srv.URL, "trade-slow-tx", model.OrderStatusWaiting, now.Add(-2*time.Minute), now.Add(8*time.Minute))
+	createWatchTestIdleOrder(t, srv.URL, now)
+	ata := watchTestATA(t)
+	slow := watchTestSig{sig: "slow-noise", slot: 6000, blockTime: now.Add(-5 * time.Second).Unix(), fixture: watchTestOther}
+	rpc.set(ata, slow, watchTestPayment("pay-1", 5900, now.Add(-10*time.Second)))
+
+	start := time.Now()
+	watchRound(t, &s)
+	if d := time.Since(start); d >= solanaWatchPollTimeout {
+		t.Fatalf("round took %s, want the slow transaction limited to its own budget", d)
+	}
+	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-1" {
+		t.Fatalf("order = status %d ref %q, want the payment behind a slow transaction on the same account", got.Status, got.RefHash)
+	}
+
+	// 退避从失败时算起：紧接着的下一轮不再先去请求这笔慢交易
+	calls := slowCalls.Load()
+	watchRound(t, &s)
+	if n := slowCalls.Load(); n != calls {
+		t.Fatalf("slow transaction requested again right after it failed (%d -> %d)", calls, n)
+	}
+}
+
+func TestSolanaWatchRetriesGoAfterNewSignatures(t *testing.T) {
+	rpc := newWatchTestRPC(t)
+	var mu sync.Mutex
+	var downloads []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if gjson.GetBytes(body, "method").String() == "getTransaction" {
+			mu.Lock()
+			downloads = append(downloads, gjson.GetBytes(body, "params.0").String())
+			mu.Unlock()
+		}
+		r.Body = io.NopCloser(strings.NewReader(string(body)))
+		rpc.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	initTaskTestEnv(t, map[model.ConfKey]string{
+		model.RpcEndpointSolana:     srv.URL + "/main",
+		model.RpcEndpointSolanaPoll: srv.URL + "/poll",
+		model.SolanaScanMode:        solanaScanModeAddress,
+	})
+	solanaCooldown.Clear()
+	s := newSolana()
+	now := time.Now()
+	order := createWatchTestOrder(t, srv.URL, "trade-prioritize-fresh", model.OrderStatusWaiting, now.Add(-2*time.Minute), now.Add(8*time.Minute))
+	rpc.set(watchTestATA(t),
+		watchTestSig{sig: "retry-noise", slot: 6000, blockTime: now.Add(-5 * time.Second).Unix(), fixture: watchTestOther},
+		watchTestPayment("fresh-pay", 5900, now.Add(-10*time.Second)))
+	// 签名列表中重试项较新，但已到重试时间的旧失败不能抢在未下载的新付款前面。
+	s.watch.retryLater("retry-noise", now.Add(-3*time.Second), errors.New("not found"))
+	watchRound(t, &s)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(downloads) != 2 || downloads[0] != "fresh-pay" || downloads[1] != "retry-noise" {
+		t.Fatalf("download order = %v, want [fresh-pay retry-noise]", downloads)
+	}
+	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "fresh-pay" {
+		t.Fatalf("order = status %d ref %q, want the fresh payment matched", got.Status, got.RefHash)
+	}
+}
+
+func TestSolanaReconcileRelistsAccountsOnRetry(t *testing.T) {
+	rpc := newWatchTestRPC(t)
+	s, srvURL := initWatchTest(t, rpc)
+	solanaReconciled.Clear()
+	solanaReconcileProgress.Clear()
+	now := time.Now()
+	order := createWatchTestOrder(t, srvURL, "trade-relist", model.OrderStatusExpired, now.Add(-15*time.Minute), now.Add(-5*time.Minute))
+	ata := watchTestATA(t)
+
+	// 主节点故障、账户列表查不全；轮询节点的 ATA 签名列表这时还缺这笔付款
+	rpc.setStatus("/main", http.StatusServiceUnavailable)
+	s.reconcileExpiredOrders(t.Context())
+	if _, done := solanaReconciled.Load(order.ID); done {
+		t.Fatal("order marked as reconciled with an incomplete token account list")
+	}
+
+	// 恢复后再查：ATA 必须重新列出，不能因为上次列出为空就跳过
+	rpc.setStatus("/main", 0)
+	rpc.set(ata, watchTestPayment("pay-late-index", 5000, now.Add(-6*time.Minute)))
+	s.reconcileExpiredOrders(t.Context())
+	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pay-late-index" {
+		t.Fatalf("order = status %d ref %q, want the payment found when the ATA is listed again", got.Status, got.RefHash)
+	}
+}
+
+func TestSolanaPendingSignaturesAllSaved(t *testing.T) {
+	pending := make(map[string]int64)
+	for i := 0; i < 1000; i++ {
+		pending[fmt.Sprintf("sig-%d", i)] = int64(5000 + i)
+	}
+	got, err := decodeSolanaPending(encodeSolanaPending(pending))
+	if err != nil || len(got) != len(pending) || got["sig-999"] != 5999 {
+		t.Fatalf("decoded %d pending signatures (%v), want all %d", len(got), err, len(pending))
+	}
+}
+
+func TestSolanaWatchRestoresOver200PendingSignaturesAfterRestart(t *testing.T) {
+	rpc := newWatchTestRPC(t)
+	s, srvURL := initWatchTest(t, rpc)
+	now := time.Now()
+	order := createWatchTestOrder(t, srvURL, "trade-many-pending", model.OrderStatusWaiting, now.Add(-3*time.Minute), now.Add(7*time.Minute))
+	ata := watchTestATA(t)
+	items := make([]watchTestSig, 0, 201)
+	for i := 200; i >= 0; i-- {
+		items = append(items, watchTestSig{sig: fmt.Sprintf("pending-%03d", i), slot: int64(4700 + i), blockTime: now.Add(-90 * time.Second).Unix()})
+	}
+	rpc.set(ata, items...)
+	watchRound(t, s)
+	cursor := getWatchTestCursor(t, ata)
+	pending, err := decodeSolanaPending(cursor.Pending)
+	if err != nil || cursor.Slot != 4700 || len(pending) != 201 {
+		t.Fatalf("cursor slot = %d, pending = %d (%v), want 4700 and all 201 signatures persisted", cursor.Slot, len(pending), err)
+	}
+
+	// 重启后列表暂时缺了所有待处理签名，只列出一笔更新的无关交易。
+	// 付款 slot 4900 小于 5100-150，只有恢复了 pending 才不会被低水位越过。
+	rpc.set(ata, watchTestSig{sig: "latest-noise", slot: 5100, blockTime: now.Add(-time.Second).Unix(), fixture: watchTestOther})
+	rpc.mu.Lock()
+	rpc.txs["pending-200"] = watchTestPayment("pending-200", 4900, now.Add(-90*time.Second))
+	rpc.mu.Unlock()
+	restarted := newSolana()
+	watchRound(t, &restarted)
+	if got := getTestOrder(t, order.TradeId); got.Status != model.OrderStatusConfirming || got.RefHash != "pending-200" {
+		t.Fatalf("order = status %d ref %q after restart, want the missing payment found in persisted pending signatures", got.Status, got.RefHash)
+	}
+	cursor = getWatchTestCursor(t, ata)
+	pending, err = decodeSolanaPending(cursor.Pending)
+	if err != nil || cursor.Slot != 4700 || len(pending) != 200 {
+		t.Fatalf("cursor slot = %d, pending = %d (%v), want 4700 with the other 200 signatures retained", cursor.Slot, len(pending), err)
+	}
+	if _, remains := pending["pending-200"]; remains {
+		t.Fatal("matched payment should be removed from pending signatures")
+	}
 }

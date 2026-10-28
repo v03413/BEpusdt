@@ -30,22 +30,22 @@ import (
 const (
 	solanaScanModeAddress = "address"
 
-	solanaWatchInterval         = 2 * time.Second
-	solanaWatchExpiredGrace     = 2 * time.Minute  // 过期后继续检测，覆盖最后几秒付款、过期后才确认的交易
-	solanaWatchCreatedMargin    = time.Minute      // 往订单创建时间之前多查一段，覆盖 blockTime 与本机时钟的误差
-	solanaWatchSlotOverlap      = 150              // 低水位比最新签名落后约 1 分钟，覆盖负载均衡节点之间的索引差异
-	solanaWatchFirstPage        = 20               // 首页条数；冷清的账户一页就够，不够再按 1000 条翻页
-	solanaWatchMaxPages         = 20               // 每轮最多翻页数，超过说明账户异常繁忙
-	solanaWatchFetchPerRound    = 10               // 每个账户每轮最多下载的交易数，从最新的开始
-	solanaWatchPollTimeout      = 15 * time.Second // 单个账户一轮的总时长
-	solanaWatchGiveUp           = 30 * time.Minute // 单笔交易持续取不到时放弃，订单过期后由对账再查
-	solanaWatchSignatureTTL     = time.Hour        // 已处理签名在内存里保留的时间
-	solanaWatchWarnAfter        = 30 * time.Second // 账户持续查询失败多久记 WARN
-	solanaWatchErrorAfter       = 2 * time.Minute  // 账户持续查询失败多久记 ERROR
-	solanaTokenAccountsTTL      = 30 * time.Second // 钱包名下代币账户列表的刷新间隔
-	solanaTokenAccountsTimeout  = 10 * time.Second // 刷新代币账户列表的最长时间
-	solanaConfirmingAlertAfter  = 5 * time.Minute  // 确认中超过这个时间仍未成功记 ERROR
-	solanaWatchPendingSaveLimit = 200              // 待处理签名超过这个数量时不随低水位保存
+	solanaWatchInterval        = 2 * time.Second
+	solanaWatchExpiredGrace    = 2 * time.Minute  // 过期后继续检测，覆盖最后几秒付款、过期后才确认的交易
+	solanaWatchCreatedMargin   = time.Minute      // 往订单创建时间之前多查一段，覆盖 blockTime 与本机时钟的误差
+	solanaWatchSlotOverlap     = 150              // 低水位比最新签名落后约 1 分钟，覆盖负载均衡节点之间的索引差异
+	solanaWatchFirstPage       = 20               // 首页条数；冷清的账户一页就够，不够再按 1000 条翻页
+	solanaWatchMaxPages        = 20               // 每轮最多翻页数，超过说明账户异常繁忙
+	solanaWatchFetchPerRound   = 10               // 每个账户每轮最多下载的交易数，从最新的开始
+	solanaWatchPollTimeout     = 15 * time.Second // 单个账户一轮的总时长
+	solanaWatchFetchTimeout    = 5 * time.Second  // 单笔交易一次下载（含主备节点）的最长时间，给同一账户后面的签名留出时间
+	solanaWatchGiveUp          = 30 * time.Minute // 单笔交易持续取不到时放弃，订单过期后由对账再查
+	solanaWatchSignatureTTL    = time.Hour        // 已处理签名在内存里保留的时间
+	solanaWatchWarnAfter       = 30 * time.Second // 账户持续查询失败多久记 WARN
+	solanaWatchErrorAfter      = 2 * time.Minute  // 账户持续查询失败多久记 ERROR
+	solanaTokenAccountsTTL     = 30 * time.Second // 钱包名下代币账户列表的刷新间隔
+	solanaTokenAccountsTimeout = 10 * time.Second // 刷新代币账户列表的最长时间
+	solanaConfirmingAlertAfter = 5 * time.Minute  // 确认中超过这个时间仍未成功记 ERROR
 )
 
 type solanaWatch struct {
@@ -349,22 +349,37 @@ func (s *solana) pollAccount(ctx context.Context, t solanaWatchTarget) {
 	sort.Slice(unlisted, func(i, j int) bool { return st.pending[unlisted[i]] > st.pending[unlisted[j]] })
 	queue = append(queue, unlisted...)
 
-	// 从最新的签名开始处理，新付款不必排在旧签名后面
+	// 从最新的签名开始处理，新付款不必排在旧签名后面；没下载过的签名排在重试的前面，
+	// 一笔一直取不到（或节点卡住）的交易不会每轮都先占用时间，挡住同一账户后面的新付款
 	now := time.Now()
-	fetched := 0
+	fresh := make([]string, 0, len(queue))
+	retry := make([]string, 0)
 	for _, sig := range queue {
 		if !s.watch.due(sig, now) {
 
 			continue
 		}
+		if s.watch.attempted(sig) {
+			retry = append(retry, sig)
+
+			continue
+		}
+		fresh = append(fresh, sig)
+	}
+
+	fetched := 0
+	for _, sig := range append(fresh, retry...) {
 		if fetched >= solanaWatchFetchPerRound || ctx.Err() != nil {
 
 			break
 		}
 
 		fetched++
-		if err := s.processSignature(ctx, sig); err != nil {
-			s.watch.retryLater(sig, now, err)
+		fetchCtx, cancel := context.WithTimeout(ctx, solanaWatchFetchTimeout)
+		err := s.processSignature(fetchCtx, sig)
+		cancel()
+		if err != nil {
+			s.watch.retryLater(sig, time.Now(), err) // 退避从失败时算起，慢请求失败后不会立刻又到期
 
 			continue
 		}
@@ -560,10 +575,9 @@ func (s *solana) saveProgress(t solanaWatchTarget, st *solanaAccountState, items
 	st.cursor = cursor
 }
 
-// encodeSolanaPending 编码要保存的待处理签名。账户异常繁忙时待处理签名可能上千，不再保存（每轮都要整段重写）：
-// 低水位仍停在其中最早的一笔之前，重启后从低水位重新列出，只是失去了列表缺项时的保护
+// encodeSolanaPending 编码要保存的待处理签名；全部保存，否则重启后不知道低水位不能越过哪些签名
 func encodeSolanaPending(pending map[string]int64) string {
-	if len(pending) == 0 || len(pending) > solanaWatchPendingSaveLimit {
+	if len(pending) == 0 {
 
 		return ""
 	}
@@ -657,6 +671,16 @@ func (w *solanaWatch) account(account string) *solanaAccountState {
 	}
 
 	return st
+}
+
+// attempted 判断签名是否下载过（失败后在等重试）
+func (w *solanaWatch) attempted(sig string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	st, ok := w.signatures[sig]
+
+	return ok && !st.done && st.attempts > 0
 }
 
 func (w *solanaWatch) isDone(sig string) bool {
