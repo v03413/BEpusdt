@@ -47,6 +47,30 @@ func TestSolanaLookbackDropsRangeOfFinishedOrders(t *testing.T) {
 	}
 }
 
+// 查询订单失败时不能当作订单已结束，保留进度，下一轮再判断
+func TestSolanaLookbackKeepsRangeOnDatabaseError(t *testing.T) {
+	initTaskTestEnv(t, nil)
+	lookbackDone.Clear()
+
+	waiting := createSolanaLookbackOrder(t, "lookback-waiting", model.OrderStatusWaiting)
+
+	const start, end = 462296900, 462296904
+	s := newSolana()
+	s.lookbackNext, s.lookbackEnd, s.lookbackOrderIDs = start, end, []int64{waiting.ID}
+	db, err := model.Db.DB()
+	if err != nil {
+		t.Fatalf("get db: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+	s.lookbackSlots(t.Context())
+
+	if s.lookbackNext != start || s.lookbackEnd != end {
+		t.Fatalf("lookback progress dropped on a database error: next = %d, end = %d", s.lookbackNext, s.lookbackEnd)
+	}
+}
+
 func TestSolanaLookbackResumesRangeOfPendingOrders(t *testing.T) {
 	initTaskTestEnv(t, nil)
 	lookbackDone.Clear()

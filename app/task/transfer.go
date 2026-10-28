@@ -294,19 +294,19 @@ func hasLookbackOrders(tradeType []model.TradeType) bool {
 }
 
 // lookbackOrdersPending 判断这些订单中是否还有需要回溯的，条件与 hasLookbackOrders 相同
-func lookbackOrdersPending(orderIDs []int64) bool {
+func lookbackOrdersPending(orderIDs []int64) (bool, error) {
 	if len(orderIDs) == 0 {
-		return false
+		return false, nil
 	}
 
 	var count int64
-	model.Db.Model(&model.Order{}).
+	err := model.Db.Model(&model.Order{}).
 		Where("id in (?)", orderIDs).
 		Where("status in (?)", receivableOrderStatuses()).
 		Where("expired_at > ?", time.Now().Add(model.GetLookbackHour())).
-		Count(&count)
+		Count(&count).Error
 
-	return count > 0
+	return count > 0, err
 }
 
 func getLookbackUnix(network model.Network) (startAt, endAt int64, ok bool) {
