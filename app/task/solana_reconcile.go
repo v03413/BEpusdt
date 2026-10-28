@@ -1,13 +1,9 @@
 package task
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"sync"
 	"time"
 
@@ -82,15 +78,11 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order) error {
 				continue
 			}
 
-			trans, err := s.rpcCall(ctx, "getTransaction", signature,
+			trans, err := s.rpcCallAccept(ctx, "getTransaction", solanaRequireTransaction, signature,
 				map[string]any{"encoding": "json", "maxSupportedTransactionVersion": 1, "commitment": "finalized"})
 			if err != nil {
 
 				return err
-			}
-			if trans.Type == gjson.Null {
-
-				return fmt.Errorf("getTransaction %s: transaction not found", signature)
 			}
 
 			timestamp := time.Unix(trans.Get("blockTime").Int(), 0)
@@ -99,9 +91,14 @@ func (s *solana) reconcileOrder(ctx context.Context, o model.Order) error {
 
 					continue
 				}
-				if err := o.MarkConfirming(t.BlockNum, t.FromAddress, t.TxHash, t.Timestamp, t.Amount); err != nil {
+				ok, err := solanaMarkConfirming(&o, t)
+				if err != nil {
 
 					return err
+				}
+				if !ok { // 订单状态已变，或交易已被其他订单使用；状态已变时后面的匹配也不会更新
+
+					continue
 				}
 
 				log.Task.Info(fmt.Sprintf("Solana 对账找回付款 %s：%s", o.TradeId, t.TxHash))
@@ -124,16 +121,28 @@ func (s *solana) tokenAccounts(ctx context.Context, owner, mint string) ([]strin
 	}
 
 	accounts := []string{ata}
+	extra, _ := s.listTokenAccounts(ctx, owner, mint)
+	for _, account := range extra {
+		if account != ata {
+			accounts = append(accounts, account)
+		}
+	}
+
+	return accounts, nil
+}
+
+// listTokenAccounts 用 getTokenAccountsByOwner 列出钱包在该 mint 下的全部代币账户
+func (s *solana) listTokenAccounts(ctx context.Context, owner, mint string) ([]string, error) {
 	result, err := s.rpcCall(ctx, "getTokenAccountsByOwner", owner, map[string]any{"mint": mint},
 		map[string]any{"encoding": "base64", "dataSlice": map[string]int{"offset": 0, "length": 0}, "commitment": "finalized"})
 	if err != nil {
 
-		return accounts, nil
+		return nil, err
 	}
+
+	accounts := make([]string, 0)
 	for _, account := range result.Get("value.#.pubkey").Array() {
-		if account.String() != ata {
-			accounts = append(accounts, account.String())
-		}
+		accounts = append(accounts, account.String())
 	}
 
 	return accounts, nil
@@ -204,53 +213,4 @@ func (s *solana) orderSignatures(ctx context.Context, account string, o model.Or
 
 		opts["before"] = items[len(items)-1].Get("signature").String()
 	}
-}
-
-func (s *solana) rpcCall(ctx context.Context, method string, params ...any) (gjson.Result, error) {
-	post, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
-	if err != nil {
-
-		return gjson.Result{}, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
-	if err != nil {
-
-		return gjson.Result{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-
-		return gjson.Result{}, err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-
-		return gjson.Result{}, fmt.Errorf("%s response status code %d", method, resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-
-		return gjson.Result{}, err
-	}
-	if !gjson.ValidBytes(body) {
-
-		return gjson.Result{}, fmt.Errorf("%s invalid JSON response", method)
-	}
-
-	data := gjson.ParseBytes(body)
-	if rpcErr := data.Get("error"); rpcErr.Exists() {
-
-		return gjson.Result{}, fmt.Errorf("%s RPC error: %s", method, rpcErr.Raw)
-	}
-	if !data.Get("result").Exists() {
-
-		return gjson.Result{}, fmt.Errorf("%s missing result", method)
-	}
-
-	return data.Get("result"), nil
 }

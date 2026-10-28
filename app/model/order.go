@@ -164,6 +164,45 @@ func (o *Order) MarkConfirming(blockNum int, from, hash string, at time.Time, am
 	return Db.Save(o).Error
 }
 
+// MarkConfirmingOnce 与 MarkConfirming 相同，但只在订单仍可收款（等待支付或已过期）、且该交易没有被任何订单使用时才更新。
+// 订单从读出到写回之间可能已被取消或已匹配了别的交易，整行写回拦不住；返回 false 表示没有更新
+func (o *Order) MarkConfirmingOnce(blockNum int, from, hash string, at time.Time, amount decimal.Decimal) (bool, error) {
+	updates := map[string]any{
+		"from_address":  from,
+		"confirmed_at":  at,
+		"ref_hash":      hash,
+		"ref_block_num": blockNum,
+		"status":        OrderStatusConfirming,
+		"updated_at":    time.Now(),
+	}
+	if o.AddressLocked {
+		rate, _ := decimal.NewFromString(o.Rate)
+		updates["amount"] = amount.String()
+		updates["money"] = rate.Mul(amount).String()
+	}
+
+	tx := Db.Model(&Order{}).
+		Where("id = ? and status in (?)", o.ID, []int{OrderStatusWaiting, OrderStatusExpired}).
+		Where("not exists (select 1 from bep_order used where used.ref_hash = ?)", hash).
+		Updates(updates)
+	if tx.Error != nil || tx.RowsAffected == 0 {
+
+		return false, tx.Error
+	}
+
+	o.FromAddress = from
+	o.ConfirmedAt = &at
+	o.RefHash = hash
+	o.RefBlockNum = blockNum
+	o.Status = OrderStatusConfirming
+	if o.AddressLocked {
+		o.Amount = updates["amount"].(string)
+		o.Money = updates["money"].(string)
+	}
+
+	return true, nil
+}
+
 func (o *Order) SetNotifyState(state int) error {
 	o.NotifyNum += 1
 	o.NotifyState = state

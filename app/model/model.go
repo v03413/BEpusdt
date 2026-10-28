@@ -126,6 +126,7 @@ func AutoMigrate() error {
 		&NotifyRecord{},
 		&Conf{},
 		&Rate{},
+		&SolanaCursor{},
 	})
 }
 

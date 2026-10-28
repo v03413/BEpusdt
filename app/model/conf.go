@@ -31,6 +31,7 @@ var defaultConf = map[ConfKey]string{
 	RpcEndpointTron:         "grpc.trongrid.io:50051",
 	RpcEndpointBsc:          "https://binance-smart-chain-public.nodies.app/",
 	RpcEndpointSolana:       "https://solana-rpc.publicnode.com/",
+	RpcEndpointSolanaPoll:   "",
 	RpcEndpointXlayer:       "https://xlayerrpc.okx.com/",
 	RpcEndpointPolygon:      "https://polygon-public.nodies.app/",
 	RpcEndpointArbitrum:     "https://arb1.arbitrum.io/rpc",
@@ -42,6 +43,7 @@ var defaultConf = map[ConfKey]string{
 	NotifyMaxRetry:          "10",
 	BlockHeightMaxDiff:      "1000",
 	BlockOffsetConfirm:      "0",
+	SolanaScanMode:          "block",
 	PaymentTimeout:          "1200",     // 20分钟
 	PaymentCheckout:         "official", // 官方模板
 	PaymentMatchMode:        string(Classic),

@@ -41,6 +41,7 @@ type solana struct {
 	lookbackNext        int
 	lookbackEnd         int
 	lookbackOrderIDs    []int64
+	watch               *solanaWatch
 }
 
 type solanaTokenOwner struct {
@@ -54,7 +55,8 @@ func init() {
 	sol = newSolana()
 	Register(Task{Callback: sol.slotDispatch})
 	Register(Task{Callback: sol.syncSlotForward, Duration: time.Second * 5})
-	Register(Task{Callback: sol.tradeConfirmHandle, Duration: time.Second * 5})
+	Register(Task{Callback: sol.watchPayments, Duration: solanaWatchInterval})
+	Register(Task{Callback: sol.tradeConfirmHandle, Duration: time.Second * 2})
 	Register(Task{Callback: sol.lookbackSlots, Duration: time.Second * 15})
 	Register(Task{Callback: sol.reconcileExpiredOrders, Duration: time.Minute})
 }
@@ -67,6 +69,7 @@ func newSolana() solana {
 		client:              utils.NewHttpClient(),
 		retryAttempts:       make(map[int]int),
 		retryScheduled:      make(map[int]*time.Timer),
+		watch:               newSolanaWatch(),
 	}
 }
 
@@ -75,6 +78,11 @@ func solanaGetBlockPayload(slot int) []byte {
 }
 
 func (s *solana) syncSlotForward(ctx context.Context) {
+	if solanaAddressMode() && !solanaMonitorEnabled() { // 订单由按账户检测负责，整链扫描只为 MQTT 和"其它通知"运行
+		s.forwardIdle = true
+
+		return
+	}
 	if queued := s.slotQueue.Len(); syncBreak(conf.Solana, queued) {
 		if queued < blockQueueLimit {
 			s.forwardIdle = true
@@ -91,7 +99,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		log.Task.Warn("syncSlotForward Error sending request:", err)
+		log.Task.Warn("syncSlotForward Error sending request:", solanaRedactError(err))
 
 		return
 	}
@@ -106,7 +114,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Task.Warn("syncSlotForward Error reading response body:", err)
+		log.Task.Warn("syncSlotForward Error reading response body:", solanaRedactError(err))
 
 		return
 	}
@@ -175,7 +183,7 @@ func (s *solana) slotParse(n any) {
 	if err != nil {
 		conf.RecordFailure(network)
 		s.scheduleSlotRetry(slot)
-		log.Task.Warn("slotParse Error sending request:", err)
+		log.Task.Warn("slotParse Error sending request:", solanaRedactError(err))
 
 		return
 	}
@@ -193,7 +201,7 @@ func (s *solana) slotParse(n any) {
 	if err != nil {
 		conf.RecordFailure(network)
 		s.scheduleSlotRetry(slot)
-		log.Task.Warn("slotParse Error reading response body:", err)
+		log.Task.Warn("slotParse Error reading response body:", solanaRedactError(err))
 
 		return
 	}
@@ -488,47 +496,28 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	var handle = func(o model.Order) {
-		post := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"getSignatureStatuses","params":[["%s"],{"searchTransactionHistory":true}]}`, o.RefHash))
-		req, _ := http.NewRequestWithContext(ctx, "POST", model.Endpoint(conf.Solana), bytes.NewBuffer(post))
-		resp, err := s.client.Do(req)
+		result, err := s.rpcCall(ctx, "getSignatureStatuses", []string{o.RefHash}, map[string]any{"searchTransactionHistory": true})
 		if err != nil {
-			log.Task.Warn("solana tradeConfirmHandle Error sending request:", err)
-
-			return
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			log.Task.Warn("solana tradeConfirmHandle Error response status code:", resp.StatusCode)
-
-			return
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Task.Warn("solana tradeConfirmHandle Error reading response body:", err)
-
-			return
-		}
-
-		data := gjson.ParseBytes(body)
-		if data.Get("error").Exists() {
-			log.Task.Warn("solana tradeConfirmHandle Error:", data.Get("error").String())
+			log.Task.Warn("solana tradeConfirmHandle Error:", err)
+			s.alertSlowConfirming(o)
 
 			return
 		}
 
 		// 用同一响应里节点当前的 slot 计算确认数，不依赖向前扫描进度：扫描在没有待支付订单时会暂停，重启后为 0
-		if model.GetC(model.BlockOffsetConfirm) == "1" && data.Get("result.context.slot").Int()-int64(o.RefBlockNum) < int64(s.slotConfirmedOffset) {
+		if model.GetC(model.BlockOffsetConfirm) == "1" && result.Get("context.slot").Int()-int64(o.RefBlockNum) < int64(s.slotConfirmedOffset) {
 
 			return
 		}
 
-		if solanaSignatureFinalized(data.Get("result.value.0")) {
+		if solanaSignatureFinalized(result.Get("value.0")) {
 
 			markFinalConfirmed(o)
+
+			return
 		}
+
+		s.alertSlowConfirming(o)
 	}
 
 	for _, order := range orders {
@@ -543,7 +532,30 @@ func (s *solana) tradeConfirmHandle(ctx context.Context) {
 	wg.Wait()
 }
 
+// alertSlowConfirming 确认中的订单长时间没有 finalized（交易可能已被丢弃或执行失败）时记一次 ERROR。
+// 付款时间在有效期内的确认中订单不会超时，需要人工核对
+func (s *solana) alertSlowConfirming(o model.Order) {
+	if o.UpdatedAt == nil || time.Since(o.UpdatedAt.Time()) < solanaConfirmingAlertAfter {
+
+		return
+	}
+	if _, loaded := s.watch.confirmAlerted.LoadOrStore(o.ID, struct{}{}); loaded {
+
+		return
+	}
+
+	log.Task.Error(fmt.Sprintf("Solana 订单 %s 确认中已超过 %s 仍未成功，交易 %s 可能已被丢弃或执行失败，需要人工核对", o.TradeId, solanaConfirmingAlertAfter, o.RefHash))
+}
+
 func (s *solana) lookbackSlots(ctx context.Context) {
+	if solanaAddressMode() { // 回溯只为订单服务，按账户检测按订单创建时间补查，不需要回溯区块
+		s.lookbackMu.Lock()
+		s.lookbackNext, s.lookbackEnd, s.lookbackOrderIDs = 0, 0, nil
+		s.lookbackMu.Unlock()
+
+		return
+	}
+
 	if syncBreak(conf.Solana, s.slotQueue.Len()) {
 		return
 	}

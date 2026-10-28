@@ -58,6 +58,7 @@ const (
 	RpcEndpointPlasma         ConfKey = "rpc_endpoint_plasma"            // Plasma RPC节点
 	RpcEndpointBsc            ConfKey = "rpc_endpoint_bsc"               // BSC RPC节点
 	RpcEndpointSolana         ConfKey = "rpc_endpoint_solana"            // Solana RPC节点
+	RpcEndpointSolanaPoll     ConfKey = "rpc_endpoint_solana_poll"       // Solana 签名轮询节点，为空时使用 RpcEndpointSolana
 	RpcEndpointXlayer         ConfKey = "rpc_endpoint_xlayer"            // Xlayer RPC节点
 	RpcEndpointPolygon        ConfKey = "rpc_endpoint_polygon"           // Polygon RPC节点
 	RpcEndpointArbitrum       ConfKey = "rpc_endpoint_arbitrum"          // Arbitrum RPC节点
@@ -76,6 +77,7 @@ const (
 	NotifyMaxRetry     ConfKey = "notify_max_retry"      // 最大重试次数，订单回调失败
 	BlockHeightMaxDiff ConfKey = "block_height_max_diff" // 区块高度最大差值，超过此值则以当前区块高度为准，重新开始扫描
 	BlockOffsetConfirm ConfKey = "block_offset_confirm"  // 区块偏移确认数，扫描时以当前区块高度减去此偏移量为准，避免重链导致的订单回调失败
+	SolanaScanMode     ConfKey = "solana_scan_mode"      // Solana 付款检测方式：address 按收款代币账户检测，block 逐块扫描
 
 	MqttHost        ConfKey = "mqtt_host"
 	MqttPort        ConfKey = "mqtt_port"
