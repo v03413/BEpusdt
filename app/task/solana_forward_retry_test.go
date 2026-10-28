@@ -29,7 +29,7 @@ func TestSolanaForwardContinuesWhileFewSlotsRetry(t *testing.T) {
 	const last = 458000000
 	s := newSolana()
 	s.lastSlotNum = last
-	s.setPendingSlotRetries(last-3, 1)
+	s.setPendingSlotRetries(last-9, solanaForwardPauseRetries-1)
 	head.Store(last + 5)
 	s.syncSlotForward(t.Context())
 
@@ -62,5 +62,11 @@ func TestSolanaForwardPausesWhileManySlotsRetry(t *testing.T) {
 
 	if s.lastSlotNum != last || s.slotQueue.Len() != 0 {
 		t.Fatalf("lastSlotNum = %d, queued = %d; want forward sync paused at %d", s.lastSlotNum, s.slotQueue.Len(), last)
+	}
+
+	s.resetSlotRetry(last - solanaForwardPauseRetries)
+	s.syncSlotForward(t.Context())
+	if s.lastSlotNum != last+5 {
+		t.Fatalf("lastSlotNum = %d after retries dropped below threshold, want %d", s.lastSlotNum, last+5)
 	}
 }
