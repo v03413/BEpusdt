@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -37,6 +38,7 @@ type solana struct {
 	retryMu             sync.Mutex
 	retryAttempts       map[int]int
 	retryScheduled      map[int]*time.Timer
+	retryStopped        map[int]struct{}
 	lookbackMu          sync.Mutex
 	lookbackNext        int
 	lookbackEnd         int
@@ -67,6 +69,7 @@ func newSolana() solana {
 		client:              utils.NewHttpClient(),
 		retryAttempts:       make(map[int]int),
 		retryScheduled:      make(map[int]*time.Timer),
+		retryStopped:        make(map[int]struct{}),
 	}
 }
 
@@ -199,6 +202,13 @@ func (s *solana) slotParse(n any) {
 	}
 
 	result, err := validateSolanaBlockResponse(body)
+	if errors.Is(err, errSolanaBlockCleanedUp) { // 节点已清理该 slot，重试也拿不到；放弃，不暂停向前扫描
+		conf.RecordFailure(network)
+		s.stopSlotRetry(slot)
+		log.Task.Error(fmt.Sprintf("Solana slot %d 已被节点清理，无法扫描，该 slot 内的付款需要人工核对：%s", slot, err))
+
+		return
+	}
 	if err != nil {
 		conf.RecordFailure(network)
 		s.scheduleSlotRetry(slot)
@@ -334,9 +344,13 @@ func solanaSignatureFinalized(status gjson.Result) bool {
 
 // Solana JSON-RPC 错误码，参考 https://github.com/anza-xyz/agave/blob/master/rpc-client-api/src/custom_error.rs
 const (
+	solanaErrBlockCleanedUp             = -32001
 	solanaErrSlotSkipped                = -32007
 	solanaErrLongTermStorageSlotSkipped = -32009
 )
+
+// 节点只保留最近一段时间的区块，更早的 slot 返回 -32001，换一个时间重试也不会有
+var errSolanaBlockCleanedUp = errors.New("block cleaned up")
 
 func validateSolanaBlockResponse(body []byte) (gjson.Result, error) {
 	if !gjson.ValidBytes(body) {
@@ -348,6 +362,8 @@ func validateSolanaBlockResponse(body []byte) (gjson.Result, error) {
 		switch rpcErr.Get("code").Int() {
 		case solanaErrSlotSkipped, solanaErrLongTermStorageSlotSkipped: // 被跳过的 slot 没有区块，按空 slot 处理
 			return gjson.Result{Type: gjson.Null}, nil
+		case solanaErrBlockCleanedUp:
+			return gjson.Result{}, fmt.Errorf("%w: %s", errSolanaBlockCleanedUp, rpcErr.Raw)
 		}
 
 		return gjson.Result{}, fmt.Errorf("RPC error: %s", rpcErr.Raw)
@@ -366,6 +382,11 @@ func validateSolanaBlockResponse(body []byte) (gjson.Result, error) {
 
 func (s *solana) scheduleSlotRetry(slot int) {
 	s.retryMu.Lock()
+	if _, stopped := s.retryStopped[slot]; stopped {
+		s.retryMu.Unlock()
+
+		return
+	}
 	if _, ok := s.retryScheduled[slot]; ok {
 		s.retryMu.Unlock()
 
@@ -398,6 +419,24 @@ func (s *solana) scheduleSlotRetry(slot int) {
 	})
 	s.retryScheduled[slot] = timer
 	s.retryMu.Unlock()
+}
+
+func (s *solana) stopSlotRetry(slot int) {
+	s.retryMu.Lock()
+	delete(s.retryAttempts, slot)
+	if timer, ok := s.retryScheduled[slot]; ok {
+		timer.Stop()
+		delete(s.retryScheduled, slot)
+	}
+	s.retryStopped[slot] = struct{}{}
+	s.retryMu.Unlock()
+
+	// 防止同一 slot 的并发请求在终态响应之后重新建立重试；并发请求结束后无需长期保留。
+	time.AfterFunc(time.Minute, func() {
+		s.retryMu.Lock()
+		delete(s.retryStopped, slot)
+		s.retryMu.Unlock()
+	})
 }
 
 func (s *solana) resetSlotRetry(slot int) {
