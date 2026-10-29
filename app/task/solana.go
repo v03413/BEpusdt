@@ -85,7 +85,7 @@ func (s *solana) syncSlotForward(ctx context.Context) {
 
 		return
 	}
-	if s.pendingSlotRetryCount() > 0 {
+	if s.pendingSlotRetryCount() >= solanaForwardPauseRetries {
 		return
 	}
 
@@ -459,6 +459,10 @@ func (s *solana) pendingSlotRetryCount() int {
 
 // 单个 slot 最多重试 10 次，按 solanaRetryDelay 约 7 分钟
 const solanaSlotMaxRetries = 10
+
+// 待重试的 slot 达到这个数量，说明节点整体故障，暂停向前扫描，避免新 slot 不断进入重试；
+// 个别 slot 失败时继续向前扫描，否则一个 slot 的重试会让之后的付款最多等约 7 分钟
+const solanaForwardPauseRetries = 10
 
 func solanaRetryDelay(attempt int) time.Duration {
 	delays := [...]time.Duration{2 * time.Second, 5 * time.Second, 15 * time.Second, 30 * time.Second, time.Minute}
