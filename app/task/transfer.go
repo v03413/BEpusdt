@@ -445,6 +445,21 @@ func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
 		t = t.Round(precision)
 
 		return a.Equal(t)
+	case model.Truncate:
+		t, err := decimal.NewFromString(target)
+		if err != nil {
+			log.Warn(err.Error())
+
+			return false
+		}
+
+		// 订单金额去掉了末尾的 0（1.50 存为 1.5），精度取原子精度和订单金额小数位的较大者
+		_, precision := model.GetAtomicity(model.TradeType(tradeType))
+		if p := abs(t.Exponent()); p > precision {
+			precision = p
+		}
+
+		return amount.Truncate(precision).Equal(t)
 	}
 
 	return false

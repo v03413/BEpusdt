@@ -110,6 +110,7 @@ const (
 	Classic   MatchMode = "classic"    // 经典模式，精确匹配
 	HasPrefix MatchMode = "has_prefix" // 前缀匹配，允许多付
 	RoundOff  MatchMode = "round_off"  // 数值修约，四舍五入，允许容错
+	Truncate  MatchMode = "truncate"   // 截断匹配，按原子精度截断后精确比较，只容忍精度以下的多付
 )
 
 // USD 交易类型常见扫描范围

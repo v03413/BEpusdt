@@ -77,6 +77,7 @@
               <a-option value="classic">传统模式</a-option>
               <a-option value="has_prefix">前缀匹配</a-option>
               <a-option value="round_off">修约匹配</a-option>
+              <a-option value="truncate">截断匹配</a-option>
             </a-select>
           </a-form-item>
 
