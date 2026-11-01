@@ -7,8 +7,8 @@ import (
 	"github.com/v03413/bepusdt/app/model"
 )
 
-func TestAmountMatchTruncate(t *testing.T) {
-	initTaskTestEnv(t, map[model.ConfKey]string{model.PaymentMatchMode: string(model.Truncate)})
+func TestAmountMatchHasPrefix(t *testing.T) {
+	initTaskTestEnv(t, map[model.ConfKey]string{model.PaymentMatchMode: string(model.HasPrefix)})
 
 	cases := []struct {
 		paid, order string
@@ -26,6 +26,8 @@ func TestAmountMatchTruncate(t *testing.T) {
 		{"10.379", "10.37", true},
 		{"10.38", "10.37", false},
 		{"20", "2", false},
+		{"100.5", "100", false},
+		{"123.456789", "123.45", true},
 		// 订单金额小数位多于原子精度时按订单金额的小数位截断
 		{"1.5059", "1.505", true},
 		{"1.506", "1.505", false},
@@ -39,8 +41,8 @@ func TestAmountMatchTruncate(t *testing.T) {
 }
 
 // 同一地址并发订单按原子精度递增金额，截断后每笔付款最多对应其中一笔
-func TestAmountMatchTruncateConcurrentOrders(t *testing.T) {
-	initTaskTestEnv(t, map[model.ConfKey]string{model.PaymentMatchMode: string(model.Truncate)})
+func TestAmountMatchHasPrefixConcurrentOrders(t *testing.T) {
+	initTaskTestEnv(t, map[model.ConfKey]string{model.PaymentMatchMode: string(model.HasPrefix)})
 
 	orders := []string{"1.5", "1.51", "1.52"}
 	payments := map[string]string{"1.5": "1.5", "1.50123": "1.5", "1.51": "1.51", "1.519": "1.51", "1.52": "1.52"}

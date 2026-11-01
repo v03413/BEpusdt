@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -417,16 +416,21 @@ func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
 	case model.Classic:
 		return amount.String() == target
 	case model.HasPrefix:
-		s := amount.String()
-		if !strings.HasPrefix(s, target) {
+		t, err := decimal.NewFromString(target)
+		if err != nil {
+			log.Warn(err.Error())
+
 			return false
 		}
-		rest := s[len(target):]
-		if rest == "" {
-			return true
+
+		// 订单金额去掉了末尾的 0（1.50 存为 1.5），直接按字符串比前缀会让 1.5 的订单吃掉 1.51 的付款；
+		// 按原子精度和订单金额小数位中的较大者截断实付金额再精确比较，只容忍精度以下的多付
+		_, precision := model.GetAtomicity(model.TradeType(tradeType))
+		if p := abs(t.Exponent()); p > precision {
+			precision = p
 		}
 
-		return strings.Contains(target, ".") || strings.HasPrefix(rest, ".")
+		return amount.Truncate(precision).Equal(t)
 	case model.RoundOff:
 		t, err := decimal.NewFromString(target)
 		if err != nil {
@@ -445,21 +449,6 @@ func amountMatch(amount decimal.Decimal, target, tradeType string) bool {
 		t = t.Round(precision)
 
 		return a.Equal(t)
-	case model.Truncate:
-		t, err := decimal.NewFromString(target)
-		if err != nil {
-			log.Warn(err.Error())
-
-			return false
-		}
-
-		// 订单金额去掉了末尾的 0（1.50 存为 1.5），精度取原子精度和订单金额小数位的较大者
-		_, precision := model.GetAtomicity(model.TradeType(tradeType))
-		if p := abs(t.Exponent()); p > precision {
-			precision = p
-		}
-
-		return amount.Truncate(precision).Equal(t)
 	}
 
 	return false
