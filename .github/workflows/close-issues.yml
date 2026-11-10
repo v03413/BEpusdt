@@ -16,7 +16,7 @@ jobs:
           days-before-issue-stale: 3
           days-before-issue-close: 7
           stale-issue-label: "stale"
-          stale-issue-message: "此议题由于30天内没有任何活动，现在标记为过时。"
+          stale-issue-message: "此议题由于3天内没有任何活动，现在标记为过时。"
           close-issue-message: "此议题被标记为过时并且在7天内没有活动，因此已被关闭。请随时重新打开此议题以继续讨论。"
           days-before-pr-stale: -1
           days-before-pr-close: -1
