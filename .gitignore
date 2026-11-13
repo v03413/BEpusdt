@@ -10,3 +10,4 @@ static/web
 static/secure
 *.log
 AGENTS.md
+CLAUDE.md
